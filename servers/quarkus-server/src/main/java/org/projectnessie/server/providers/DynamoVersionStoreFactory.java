@@ -61,7 +61,7 @@ public class DynamoVersionStoreFactory extends TieredVersionStoreFactory {
    */
   @Override
   protected Store createStore() {
-    DynamoStore dynamo = new DynamoStore(
+    return new DynamoStore(
         DynamoStoreConfig.builder()
           .endpoint(endpoint.map(e -> {
             try {
@@ -75,7 +75,5 @@ public class DynamoVersionStoreFactory extends TieredVersionStoreFactory {
           .tablePrefix(config.getTablePrefix())
           .enableTracing(config.enableTracing())
           .build());
-    dynamo.start();
-    return dynamo;
   }
 }

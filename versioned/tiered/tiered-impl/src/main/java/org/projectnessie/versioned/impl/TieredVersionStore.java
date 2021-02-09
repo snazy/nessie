@@ -77,8 +77,16 @@ import org.slf4j.LoggerFactory;
 import com.google.common.base.Preconditions;
 import com.google.common.base.Throwables;
 import com.google.common.collect.ImmutableList;
+import com.google.common.collect.ImmutableMap;
 import com.google.common.collect.Lists;
 import com.google.common.collect.Streams;
+
+import io.opentracing.Scope;
+import io.opentracing.Tracer;
+import io.opentracing.Tracer.SpanBuilder;
+import io.opentracing.log.Fields;
+import io.opentracing.tag.Tags;
+import io.opentracing.util.GlobalTracer;
 
 /**
  * A version store that uses a tree of levels to store version information.
@@ -249,17 +257,27 @@ public class TieredVersionStore<DATA, METADATA> implements VersionStore<DATA, ME
     InternalRefId ref = InternalRefId.ofBranch(branchName.getName());
     InternalBranch updatedBranch;
     while (true) {
-      try {
+      try (Scope scope = createSpan("Try-Commit-" + loop).startActive(true)) {
         final PartialTree<DATA> current = PartialTree.of(serializer, ref, keys);
         final PartialTree<DATA> expected = expectedHash.isPresent()
             ? PartialTree.of(serializer, InternalRefId.ofHash(expectedHash.get()), keys) : current;
+
+        scope.span().setTag("nessie.commit.branch", branchName.getName())
+            .setTag("nessie.commit.expectedHash", expectedHash.map(Hash::toString).orElse("<not set>"))
+            .setTag("nessie.commit.num-ops", keys.size())
+            .setTag("nessie.commit.current.l1", current.toString())
+            .setTag("nessie.commit.expected.l1", expected.toString());
 
         try {
           // load both trees (excluding values)
           store.load(current.getLoadChain(this::ensureValidL1, LoadType.NO_VALUES)
               .combine(expected.getLoadChain(this::ensureValidL1, LoadType.NO_VALUES)));
         } catch (NotFoundException ex) {
-          throw new ReferenceNotFoundException("Unable to find requested ref.", ex);
+          Tags.ERROR.set(scope.span().log(ImmutableMap.of(Fields.EVENT, Tags.ERROR.getKey(),
+              Fields.ERROR_OBJECT, ex.toString())), true);
+
+          LOGGER.debug("Unable to find requested ref for commit. current={}, expected={}.", current, expected, ex);
+          throw new ReferenceNotFoundException("Unable to find requested ref for commit.", ex);
         }
 
         List<OperationHolder> holders = ops.stream().map(o -> new OperationHolder(current, expected, o)).collect(Collectors.toList());
@@ -269,6 +287,8 @@ public class TieredVersionStore<DATA, METADATA> implements VersionStore<DATA, ME
             .map(Optional::get)
             .collect(Collectors.toList());
         if (!mismatches.isEmpty()) {
+          Tags.ERROR.set(scope.span().log(ImmutableMap.of(Fields.EVENT, Tags.ERROR.getKey(),
+              Fields.ERROR_OBJECT, mismatches.toString())), true);
           throw new InconsistentValue.InconsistentValueException(mismatches);
         }
 
@@ -292,12 +312,8 @@ public class TieredVersionStore<DATA, METADATA> implements VersionStore<DATA, ME
         boolean updated = store.update(ValueType.REF, ref.getId(),
             commitOp.getUpdateWithCommit(), Optional.of(commitOp.getTreeCondition()), Optional.of(builder));
         if (!updated) {
-          if (loop++ < config.commitRetryCount()) {
-            continue;
-          }
-          throw new ReferenceConflictException(
-              String.format("Unable to complete commit due to conflicting events. "
-                  + "Retried %d times before failing.", config.commitRetryCount()));
+          loop = maybeRetryCommit(scope, loop);
+          continue;
         }
 
         updatedBranch = builder.build().getBranch();
@@ -316,6 +332,18 @@ public class TieredVersionStore<DATA, METADATA> implements VersionStore<DATA, ME
     } catch (Exception ex) {
       LOGGER.debug("Failure while collapsing intention log after commit.", ex);
     }
+  }
+
+  private int maybeRetryCommit(Scope scope, int loop) throws ReferenceConflictException  {
+    if (loop++ < config.commitRetryCount()) {
+      LOGGER.debug("Retrying commit due to unsuccessful update");
+      return loop;
+    }
+    LOGGER.debug("Failing commit after {} attempts, last reason: unsuccessful update", config.commitRetryCount());
+    Tags.ERROR.set(scope.span().log(ImmutableMap.of(Fields.EVENT, Tags.ERROR.getKey(),
+        Fields.ERROR_OBJECT, String.format("Give up after %d retries", config.commitRetryCount()))), true);
+    throw new ReferenceConflictException(
+        String.format("Unable to complete commit due to conflicting events. Retried %d times before failing.", config.commitRetryCount()));
   }
 
   @Override
@@ -879,4 +907,13 @@ public class TieredVersionStore<DATA, METADATA> implements VersionStore<DATA, ME
     }
   }
 
+  private Tracer getTracer() {
+    return GlobalTracer.get();
+  }
+
+  private SpanBuilder createSpan(String name) {
+    Tracer tracer = getTracer();
+    return tracer.buildSpan(name)
+        .asChildOf(tracer.activeSpan());
+  }
 }

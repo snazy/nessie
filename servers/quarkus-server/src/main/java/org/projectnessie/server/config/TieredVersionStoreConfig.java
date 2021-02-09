@@ -22,6 +22,13 @@ import org.eclipse.microprofile.config.inject.ConfigProperty;
 
 public interface TieredVersionStoreConfig {
 
+  /**
+   * Whether calls against the tiered-backend-store are traced with
+   * OpenTracing/OpenTelemetry (Jaeger), enabled by default.
+   */
+  @ConfigProperty(name = "trace.enable", defaultValue = "true")
+  boolean isTracingEnabled();
+
   @ConfigProperty(name = "commit-retry-count", defaultValue = DEFAULT_COMMIT_RETRY_COUNT)
   int commitRetryCount();
 

@@ -22,6 +22,7 @@ import org.projectnessie.versioned.StoreWorker;
 import org.projectnessie.versioned.VersionStore;
 import org.projectnessie.versioned.impl.TieredVersionStore;
 import org.projectnessie.versioned.store.Store;
+import org.projectnessie.versioned.store.TracingStore;
 
 public abstract class TieredVersionStoreFactory implements VersionStoreFactory {
 
@@ -34,7 +35,15 @@ public abstract class TieredVersionStoreFactory implements VersionStoreFactory {
   @Override
   public <VALUE, METADATA> VersionStore<VALUE, METADATA> newStore(
       StoreWorker<VALUE, METADATA> worker) throws IOException {
-    return new TieredVersionStore<>(worker, createStore(),
+    Store store = createStore();
+
+    if (tieredVersionStoreConfig.isTracingEnabled()) {
+      store = new TracingStore(store);
+    }
+
+    store.start();
+
+    return new TieredVersionStore<>(worker, store,
         org.projectnessie.versioned.impl.TieredVersionStoreConfig.builder()
             .waitOnCollapse(false)
             .commitRetryCount(tieredVersionStoreConfig.commitRetryCount())
