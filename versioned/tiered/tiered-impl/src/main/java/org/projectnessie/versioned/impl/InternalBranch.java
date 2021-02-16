@@ -21,9 +21,7 @@ import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.Optional;
-import java.util.concurrent.CompletableFuture;
 import java.util.concurrent.CompletionException;
-import java.util.concurrent.ExecutionException;
 import java.util.concurrent.Executor;
 import java.util.stream.Collectors;
 
@@ -365,36 +363,36 @@ class InternalBranch extends InternalRef {
      * @param waitOnCollapse Whether or not the operation should wait on the final operation of collapsing the commit log succesfully
      *        before returning/failing. If false, the final collapse will be done in a separate thread.
      */
-    CompletableFuture<InternalBranch> ensureAvailable(Store store, Executor executor, int attempts, boolean waitOnCollapse) {
+    void ensureAvailable(Store store, Executor executor, int attempts, boolean waitOnCollapse) {
 
       save(store);
 
       if (saves.isEmpty()) {
-        return CompletableFuture.completedFuture(initialBranch);
+        return;
       }
 
-      CompletableFuture<InternalBranch> future = CompletableFuture.supplyAsync(() -> {
+      if (waitOnCollapse) {
         try {
-          return collapseIntentionLog(this, store, initialBranch, attempts);
-        } catch (ReferenceNotFoundException | ReferenceConflictException e) {
-          throw new CompletionException(e);
+          callCollapseIntentionLog(store, attempts);
+        } catch (Exception e) {
+          Throwables.throwIfUnchecked(e.getCause());
+          throw new RuntimeException(e.getCause());
         }
-      }, executor);
-
-      if (!waitOnCollapse) {
-        return future;
+        return;
       }
 
-      try {
-        future.get();
-      } catch (InterruptedException e) {
-        throw new RuntimeException(e);
-      } catch (ExecutionException e) {
-        Throwables.throwIfUnchecked(e.getCause());
-        throw new IllegalStateException(e.getCause());
-      }
-      return future;
+      branchCollapseSync.submitCollapse(executor, initialBranch.getId(), () -> callCollapseIntentionLog(store, attempts));
     }
+
+    private void callCollapseIntentionLog(Store store, int attempts) {
+      try {
+        collapseIntentionLog(this, store, initialBranch, attempts);
+      } catch (ReferenceNotFoundException | ReferenceConflictException e) {
+        throw new CompletionException(e);
+      }
+    }
+
+    static final BranchCollapseSync<Id> branchCollapseSync = new BranchCollapseSync<>();
 
     /**
      * Collapses the intention log within a branch, reattempting multiple times.
@@ -409,11 +407,10 @@ class InternalBranch extends InternalRef {
      *
      * @param branch The branch that potentially has items to collapse.
      * @param attempts Number of attempts to make before giving up on collapsing. (This is an optimistic locking scheme.)
-     * @return The updated branch object after the intention log was collapsed.
      * @throws ReferenceNotFoundException when branch does not exist.
      * @throws ReferenceConflictException If attempts are depleted and operation cannot be applied due to heavy concurrency
      */
-    private static InternalBranch collapseIntentionLog(UpdateState initialState, Store store, InternalBranch branch, int attempts)
+    private static void collapseIntentionLog(UpdateState initialState, Store store, InternalBranch branch, int attempts)
         throws ReferenceNotFoundException, ReferenceConflictException {
       try (Scope outerScope = createSpan("InternalBranch.collapseIntentionLog")
           .withTag("nessie.operation", "CollapseIntentionLog")
@@ -454,13 +451,12 @@ class InternalBranch extends InternalRef {
                   .and(SetClause.equals(last.toBuilder().name(Commit.PARENT).build(), updateState.finalL1.getParentId().toEntity()))
                   .and(SetClause.equals(last.toBuilder().name(Commit.ID).build(), updateState.finalL1.getId().toEntity()));
 
-              InternalRef.Builder<?> producer = EntityType.REF.newEntityProducer();
-              boolean updated = store.update(ValueType.REF, branch.getId(), update, Optional.of(condition), Optional.of(producer));
+              boolean updated = store.update(ValueType.REF, branch.getId(), update, Optional.of(condition), Optional.empty());
               if (updated) {
                 innerScope.span().setTag("nessie.completed", true);
                 LOGGER.debug("Completed collapse update on attempt {}, L1.id={}, L1.parentId={}, position={}.",
                     attempt, updateState.finalL1.getId(), updateState.finalL1.getParentId(), updateState.finalL1position);
-                return producer.build().getBranch();
+                return;
               }
 
               LOGGER.debug("Failed to collapse update on attempt {}, L1.id={}, L1.parentId={}, position={}.",
