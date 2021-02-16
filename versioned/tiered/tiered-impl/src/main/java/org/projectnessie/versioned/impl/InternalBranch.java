@@ -21,10 +21,10 @@ import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.Optional;
-import java.util.concurrent.CompletableFuture;
 import java.util.concurrent.CompletionException;
 import java.util.concurrent.ExecutionException;
 import java.util.concurrent.Executor;
+import java.util.concurrent.Future;
 import java.util.stream.Collectors;
 
 import org.projectnessie.versioned.ReferenceConflictException;
@@ -373,129 +373,7 @@ class InternalBranch extends InternalRef {
         return;
       }
 
-      CompletableFuture<InternalBranch> future = CompletableFuture.supplyAsync(() -> {
-        try {
-          return collapseIntentionLog(this, store, initialBranch, config);
-        } catch (ReferenceNotFoundException | ReferenceConflictException e) {
-          throw new CompletionException(e);
-        }
-      }, executor);
-
-      if (!config.waitOnCollapse()) {
-        return;
-      }
-
-      try {
-        future.get();
-      } catch (InterruptedException e) {
-        throw new RuntimeException(e);
-      } catch (ExecutionException e) {
-        Throwables.throwIfUnchecked(e.getCause());
-        throw new IllegalStateException(e.getCause());
-      }
-    }
-
-    /**
-     * Collapses the intention log within a branch, reattempting multiple times.
-     *
-     * <p>After completing an operation, we should attempt to collapse the intention log. There are two steps associated with this:
-     *
-     * <ul>
-     * <li>Save all the unsaved items in the intention log.
-     * <li>Removing all the unsaved items in the intention log except the last one, which will be
-     * converted to an id pointer of the previous commit.
-     * </ul>
-     *
-     * @param branch The branch that potentially has items to collapse.
-     * @param config Tiered-version-store configuration, the number of attempts to make before giving up on collapsing.
-     *               (This is an optimistic locking scheme.)
-     * @return The updated branch object after the intention log was collapsed.
-     * @throws ReferenceNotFoundException when branch does not exist.
-     * @throws ReferenceConflictException If attempts are depleted and operation cannot be applied due to heavy concurrency
-     */
-    private static InternalBranch collapseIntentionLog(UpdateState updateState, Store store, InternalBranch branch,
-        TieredVersionStoreConfig config) throws ReferenceNotFoundException, ReferenceConflictException {
-      try (Scope outerScope = createSpan(config.enableTracing(), "InternalBranch.collapseIntentionLog")
-          .withTag(TAG_OPERATION, "CollapseIntentionLog")
-          .withTag(TAG_BRANCH, branch.getName())
-          .startActive(true)) {
-        try {
-          for (int attempt = 0; attempt < config.getP2CommitAttempts(); attempt++) {
-            try (Scope innerScope = createSpan(config.enableTracing(), "Attempt-" + attempt).startActive(true)) {
-
-              innerScope.span().setTag("nessie.num-saves", updateState.saves.size())
-                  .setTag("nessie.num-deletes", updateState.deletes.size());
-
-              Optional<InternalBranch> updated = tryCollapseIntentionLog(store, branch, updateState, attempt);
-
-              if (updated.isPresent()) {
-                innerScope.span().setTag("nessie.completed", true);
-                return updated.get();
-              }
-
-              // something must have changed, reload the branch.
-              final InternalRef ref = EntityType.REF.loadSingle(store, branch.getId());
-              if (ref.getType() != Type.BRANCH) {
-                throw new ReferenceNotFoundException("Failure while collapsing log. Former branch is now a " + ref.getType());
-              }
-              branch = ref.getBranch();
-              updateState = branch.getUpdateState(store);
-            }
-          }
-
-          throw new ReferenceConflictException(String.format("Unable to collapse intention log after %d attempts, giving up.",
-              config.getP2CommitAttempts()));
-
-        } catch (VersionStoreException ex) {
-          throw ex;
-        } catch (Exception ex) {
-          Tags.ERROR.set(outerScope.span().log(ImmutableMap.of(Fields.EVENT, Tags.ERROR.getKey(),
-              Fields.ERROR_OBJECT, ex.toString())), true);
-          LOGGER.debug("Exception when trying to collapse intention log.", ex);
-          Throwables.throwIfUnchecked(ex);
-          throw new RuntimeException(ex);
-        }
-      }
-    }
-
-    private static Optional<InternalBranch> tryCollapseIntentionLog(Store store, InternalBranch branch, UpdateState updateState,
-        int attempt) {
-      // ensure that any to-be-saved items are saved. This is a noop on attempt 0 since
-      // ensureAvailable will have already done a save.
-      updateState.save(store);
-
-      // now we need to take the current list and turn it into a list of 1 item that is saved.
-      final ExpressionPath commits = ExpressionPath.builder("commits").build();
-      final ExpressionPath last = commits.toBuilder().position(updateState.finalL1position).build();
-
-      UpdateExpression update = UpdateExpression.initial();
-      ConditionExpression condition = ConditionExpression.initial();
-
-      for (Delete d : updateState.deletes) {
-        ExpressionPath path = commits.toBuilder().position(d.position).build();
-        condition = condition.and(ExpressionFunction.equals(path.toBuilder().name(ID).build(), d.id.toEntity()));
-        update = update.and(RemoveClause.of(path));
-      }
-
-      condition = condition.and(ExpressionFunction.equals(last.toBuilder().name(ID).build(),
-          updateState.finalL1RandomId.toEntity()));
-
-      // remove extra commits field for last commit.
-      update = update
-          .and(RemoveClause.of(last.toBuilder().name(Commit.DELTAS).build()))
-          .and(RemoveClause.of(last.toBuilder().name(Commit.KEY_MUTATIONS).build()))
-          .and(SetClause.equals(last.toBuilder().name(Commit.PARENT).build(), updateState.finalL1.getParentId().toEntity()))
-          .and(SetClause.equals(last.toBuilder().name(Commit.ID).build(), updateState.finalL1.getId().toEntity()));
-      InternalRef.Builder<?> producer = EntityType.REF.newEntityProducer();
-      if (store.update(ValueType.REF, branch.getId(), update, Optional.of(condition), Optional.of(producer))) {
-        LOGGER.debug("Completed collapse update on attempt {}, L1.id={}, L1.parentId={}, position={}.",
-            attempt, updateState.finalL1.getId(), updateState.finalL1.getParentId(), updateState.finalL1position);
-        return Optional.of(producer.build().getBranch());
-      }
-
-      LOGGER.debug("Failed to collapse update on attempt {}, L1.id={}, L1.parentId={}, position={}.",
-          attempt, updateState.finalL1.getId(), updateState.finalL1.getParentId(), updateState.finalL1position);
-      return Optional.empty();
+      initialBranch.collapseIntentionLog(this, store, executor, config);
     }
 
     public InternalL1 getL1() {
@@ -503,6 +381,151 @@ class InternalBranch extends InternalRef {
           "You must call UpdateState.ensureAvailable() before attempting to retrieve the L1 state of this branch.");
       return finalL1;
     }
+  }
+
+  static final BranchCollapseSync<Id> branchCollapseSync = new BranchCollapseSync<>();
+
+  /**
+   * Collapses the intention log within a branch, reattempting multiple times.
+   *
+   * <p>After completing an operation, we should attempt to collapse the intention log. There are two steps associated with this:
+   *
+   * <ul>
+   * <li>Save all the unsaved items in the intention log.
+   * <li>Removing all the unsaved items in the intention log except the last one, which will be
+   * converted to an id pointer of the previous commit.
+   * </ul>
+   * <p>Asnc</p>
+   *
+   * @param initialState The initial {@link UpdateState} to use in the 1st attempt, can be {@code null},
+   *                     in which case the initial-state is fetched.
+   * @param config Tiered-version-store configuration, the number of attempts to make before giving up on collapsing.
+   *               (This is an optimistic locking scheme.)
+   * @param executor The executor instance onto which async tasks are scheduled.
+   */
+  void collapseIntentionLog(UpdateState initialState, Store store, Executor executor, TieredVersionStoreConfig config) {
+    Future<?> future = branchCollapseSync.submitCollapse(executor, getId(),
+        () -> collapseIntentionLogUnchecked(initialState, store, config));
+    if (config.waitOnCollapse()) {
+      try {
+        future.get();
+      } catch (ExecutionException e) {
+        Throwables.throwIfUnchecked(e.getCause());
+        throw new RuntimeException(e.getCause());
+      } catch (Exception e) {
+        Throwables.throwIfUnchecked(e);
+        throw new RuntimeException(e);
+      }
+    }
+  }
+
+  private void collapseIntentionLogUnchecked(UpdateState initialState, Store store, TieredVersionStoreConfig config) {
+    try {
+      collapseIntentionLogInternal(initialState, store, this, config);
+    } catch (ReferenceNotFoundException | ReferenceConflictException e) {
+      throw new CompletionException(e);
+    }
+  }
+
+  /**
+   * Collapses the intention log within a branch, reattempting multiple times.
+   *
+   * <p>After completing an operation, we should attempt to collapse the intention log. There are two steps associated with this:
+   *
+   * <ul>
+   * <li>Save all the unsaved items in the intention log.
+   * <li>Removing all the unsaved items in the intention log except the last one, which will be
+   * converted to an id pointer of the previous commit.
+   * </ul>
+   *
+   * @param branch The branch that potentially has items to collapse.
+   * @param config Tiered-version-store configuration, the number of attempts to make before giving up on collapsing.
+   *               (This is an optimistic locking scheme.)
+   * @throws ReferenceNotFoundException when branch does not exist.
+   * @throws ReferenceConflictException If attempts are depleted and operation cannot be applied due to heavy concurrency
+   */
+  private static void collapseIntentionLogInternal(UpdateState updateState, Store store, InternalBranch branch,
+      TieredVersionStoreConfig config) throws ReferenceNotFoundException, ReferenceConflictException {
+    try (Scope outerScope = createSpan(config.enableTracing(), "InternalBranch.collapseIntentionLog")
+        .withTag(TAG_OPERATION, "CollapseIntentionLog")
+        .withTag(TAG_BRANCH, branch.getName())
+        .startActive(true)) {
+      try {
+        if (updateState == null) {
+          updateState = branch.getUpdateState(store);
+        }
+        for (int attempt = 0; attempt < config.getP2CommitAttempts(); attempt++) {
+          try (Scope innerScope = createSpan(config.enableTracing(), "Attempt-" + attempt).startActive(true)) {
+
+            innerScope.span().setTag("nessie.num-saves", updateState.saves.size())
+                .setTag("nessie.num-deletes", updateState.deletes.size());
+
+            if (tryCollapseIntentionLog(store, branch, updateState, attempt)) {
+              innerScope.span().setTag("nessie.completed", true);
+              return;
+            }
+
+            // something must have changed, reload the branch.
+            final InternalRef ref = EntityType.REF.loadSingle(store, branch.getId());
+            if (ref.getType() != Type.BRANCH) {
+              throw new ReferenceNotFoundException("Failure while collapsing log. Former branch is now a " + ref.getType());
+            }
+            branch = ref.getBranch();
+            updateState = branch.getUpdateState(store);
+          }
+        }
+
+        throw new ReferenceConflictException(String.format("Unable to collapse intention log after %d attempts, giving up.",
+            config.getP2CommitAttempts()));
+      } catch (VersionStoreException ex) {
+        throw ex;
+      } catch (Exception ex) {
+        Tags.ERROR.set(outerScope.span().log(ImmutableMap.of(Fields.EVENT, Tags.ERROR.getKey(),
+            Fields.ERROR_OBJECT, ex.toString())), true);
+        LOGGER.debug("Exception when trying to collapse intention log.", ex);
+        Throwables.throwIfUnchecked(ex);
+        throw new RuntimeException(ex);
+      }
+    }
+  }
+
+  private static boolean tryCollapseIntentionLog(Store store, InternalBranch branch, UpdateState updateState,
+      int attempt) {
+    // ensure that any to-be-saved items are saved. This is a noop on attempt 0 since
+    // ensureAvailable will have already done a save.
+    updateState.save(store);
+
+    // now we need to take the current list and turn it into a list of 1 item that is saved.
+    final ExpressionPath commits = ExpressionPath.builder("commits").build();
+    final ExpressionPath last = commits.toBuilder().position(updateState.finalL1position).build();
+
+    UpdateExpression update = UpdateExpression.initial();
+    ConditionExpression condition = ConditionExpression.initial();
+
+    for (Delete d : updateState.deletes) {
+      ExpressionPath path = commits.toBuilder().position(d.position).build();
+      condition = condition.and(ExpressionFunction.equals(path.toBuilder().name(ID).build(), d.id.toEntity()));
+      update = update.and(RemoveClause.of(path));
+    }
+
+    condition = condition.and(ExpressionFunction.equals(last.toBuilder().name(ID).build(),
+        updateState.finalL1RandomId.toEntity()));
+
+    // remove extra commits field for last commit.
+    update = update
+        .and(RemoveClause.of(last.toBuilder().name(Commit.DELTAS).build()))
+        .and(RemoveClause.of(last.toBuilder().name(Commit.KEY_MUTATIONS).build()))
+        .and(SetClause.equals(last.toBuilder().name(Commit.PARENT).build(), updateState.finalL1.getParentId().toEntity()))
+        .and(SetClause.equals(last.toBuilder().name(Commit.ID).build(), updateState.finalL1.getId().toEntity()));
+    if (store.update(ValueType.REF, branch.getId(), update, Optional.of(condition), Optional.empty())) {
+      LOGGER.debug("Completed collapse update on attempt {}, L1.id={}, L1.parentId={}, position={}.",
+          attempt, updateState.finalL1.getId(), updateState.finalL1.getParentId(), updateState.finalL1position);
+      return true;
+    }
+
+    LOGGER.debug("Failed to collapse update on attempt {}, L1.id={}, L1.parentId={}, position={}.",
+        attempt, updateState.finalL1.getId(), updateState.finalL1.getParentId(), updateState.finalL1position);
+    return false;
   }
 
   static class Delete {

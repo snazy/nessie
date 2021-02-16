@@ -78,7 +78,6 @@ import com.google.common.base.Preconditions;
 import com.google.common.collect.ImmutableList;
 import com.google.common.collect.Lists;
 import com.google.common.collect.Streams;
-import com.google.common.util.concurrent.MoreExecutors;
 
 import io.micrometer.core.instrument.Counter;
 import io.micrometer.core.instrument.MeterRegistry;
@@ -118,12 +117,14 @@ public class TieredVersionStore<DATA, METADATA, DATA_TYPE extends Enum<DATA_TYPE
     // waitOnCollapse==true. It is not nice to instantiate an executor-service but never shut it
     // down, like unit tests did.
     Executor executor;
-    if (config.waitOnCollapse()) {
-      executor = MoreExecutors.directExecutor();
-    } else {
-      executor = Executors.newCachedThreadPool();
-      executor = ExecutorServiceMetrics.monitor(Metrics.globalRegistry, executor, "TieredVersionStore");
-    }
+    // TODO implementation runs into "java.lang.IllegalStateException: Recursive update"
+    //  in ConcurrentHashMap w/ MoreExecutors.directExecutor()
+    //if (waitOnCollapse) {
+    //  executor = MoreExecutors.directExecutor();
+    //} else {
+    executor = Executors.newCachedThreadPool();
+    executor = ExecutorServiceMetrics.monitor(Metrics.globalRegistry, executor, "TieredVersionStore");
+    //}
     this.executor = executor;
     this.config = config;
 
