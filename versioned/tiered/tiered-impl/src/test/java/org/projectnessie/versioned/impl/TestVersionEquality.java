@@ -33,6 +33,7 @@ import org.projectnessie.versioned.store.Store;
 import org.projectnessie.versioned.store.ValueType;
 import org.projectnessie.versioned.tiered.BaseValue;
 import org.projectnessie.versioned.tiered.L1;
+import org.projectnessie.versioned.util.BackoffConfig;
 
 class TestVersionEquality {
 
@@ -50,7 +51,7 @@ class TestVersionEquality {
 
     };
     UpdateState us = b.getUpdateState(store);
-    us.ensureAvailable(null, null, 1, true);
+    us.ensureAvailable(null, null, BackoffConfig.NONE, true);
     assertEquals(InternalL1.EMPTY_ID, us.getL1().getId());
   }
 

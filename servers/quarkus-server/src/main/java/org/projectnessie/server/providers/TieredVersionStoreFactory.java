@@ -23,6 +23,7 @@ import org.projectnessie.versioned.VersionStore;
 import org.projectnessie.versioned.impl.TieredVersionStore;
 import org.projectnessie.versioned.store.Store;
 import org.projectnessie.versioned.store.TracingStore;
+import org.projectnessie.versioned.util.BackoffConfig;
 
 public abstract class TieredVersionStoreFactory implements VersionStoreFactory {
 
@@ -46,8 +47,20 @@ public abstract class TieredVersionStoreFactory implements VersionStoreFactory {
     return new TieredVersionStore<>(worker, store,
         org.projectnessie.versioned.impl.TieredVersionStoreConfig.builder()
             .waitOnCollapse(false)
-            .commitRetryCount(tieredVersionStoreConfig.commitRetryCount())
-            .p2CommitRetryCount(tieredVersionStoreConfig.p2CommitRetryCount())
+            .commitBackoff(BackoffConfig.builder()
+                .retries(tieredVersionStoreConfig.getCommitBackoffRetries())
+                .retrySleep(tieredVersionStoreConfig.getCommitBackoffRetrySleep())
+                .maxTime(tieredVersionStoreConfig.getCommitBackoffMaxTime())
+                .jitter(tieredVersionStoreConfig.getCommitBackoffJitter())
+                .multiplier(tieredVersionStoreConfig.getCommitBackoffMultiplier())
+                .build())
+            .p2CommitBackoff(BackoffConfig.builder()
+                .retries(tieredVersionStoreConfig.getP2CommitBackoffRetries())
+                .retrySleep(tieredVersionStoreConfig.getP2CommitBackoffRetrySleep())
+                .maxTime(tieredVersionStoreConfig.getP2CommitBackoffMaxTime())
+                .jitter(tieredVersionStoreConfig.getP2CommitBackoffJitter())
+                .multiplier(tieredVersionStoreConfig.getP2CommitBackoffMultiplier())
+                .build())
             .build());
   }
 

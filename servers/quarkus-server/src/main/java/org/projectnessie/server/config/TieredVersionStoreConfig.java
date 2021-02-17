@@ -15,8 +15,7 @@
  */
 package org.projectnessie.server.config;
 
-import static org.projectnessie.versioned.impl.TieredVersionStoreConfig.DEFAULT_COMMIT_RETRY_COUNT;
-import static org.projectnessie.versioned.impl.TieredVersionStoreConfig.DEFAULT_P2_COMMIT_RETRY_COUNT;
+import java.time.Duration;
 
 import org.eclipse.microprofile.config.inject.ConfigProperty;
 
@@ -29,9 +28,83 @@ public interface TieredVersionStoreConfig {
   @ConfigProperty(name = "trace.enable", defaultValue = "true")
   boolean isTracingEnabled();
 
-  @ConfigProperty(name = "commit-retry-count", defaultValue = DEFAULT_COMMIT_RETRY_COUNT)
-  int commitRetryCount();
+  /**
+   * The maximum number of retries, a value of {@code 0}, means "unlimited" or until {@link
+   * #getCommitBackoffMaxTime()} triggers. Default value os {@code 5}. If both {@link #getCommitBackoffRetries()}
+   * and {@link #getCommitBackoffMaxTime()} would never trigger, no retries are allowed.
+   *
+   * @return max time to retry.
+   */
+  @ConfigProperty(name = "commit-backoff.retries", defaultValue = "5")
+  int getCommitBackoffRetries();
 
-  @ConfigProperty(name = "p2-commit-retry-count", defaultValue = DEFAULT_P2_COMMIT_RETRY_COUNT)
-  int p2CommitRetryCount();
+  /**
+   * The maximum amount of time to retry, a value of {@code 0}, which is the default, means
+   * "unlimited" or until {@link #getCommitBackoffRetries()} triggers. If both {@link #getCommitBackoffRetries()}
+   * and {@link #getCommitBackoffMaxTime()} would never trigger, no retries are allowed.
+   *
+   * @return max time to retry.
+   */
+  @ConfigProperty(name = "commit-backoff.max-time", defaultValue = "0")
+  Duration getCommitBackoffMaxTime();
+
+  @ConfigProperty(name = "commit-backoff.retry-sleep", defaultValue = "0")
+  Duration getCommitBackoffRetrySleep();
+
+  /**
+   * The commit-backoff multiplier. A value greater than 1 enables exponential backoff with
+   * this multiplier. Formula: {@code time-between-retries = retry-sleep * retry ^ multiplier}.
+   * @return backoff-multiplier, defaults to {@code 1}
+   */
+  @ConfigProperty(name = "commit-backoff.multiplier", defaultValue = "1")
+  double getCommitBackoffMultiplier();
+
+  /**
+   * Jitter for retries. A value greater than 0 and less than 1 enables the retry-sleep-time
+   * jitter. Formula: {@code retry-sleep -= random(0..jitter) * retry-sleep }
+   *
+   * @return jitter (factor), defaults to {@code 1}
+   */
+  @ConfigProperty(name = "commit-backoff.jitter", defaultValue = "1")
+  double getCommitBackoffJitter();
+
+  /**
+   * The maximum number of retries, a value of {@code 0}, means "unlimited" or until {@link
+   * #getP2CommitBackoffMaxTime()} triggers. Default value os {@code 5}. If both {@link #getP2CommitBackoffRetries()}
+   * and {@link #getP2CommitBackoffMaxTime()} would never trigger, no retries are allowed.
+   *
+   * @return max time to retry.
+   */
+  @ConfigProperty(name = "p2-commit-backoff.retries", defaultValue = "5")
+  int getP2CommitBackoffRetries();
+
+  /**
+   * The maximum amount of time to retry, a value of {@code 0}, which is the default, means
+   * "unlimited" or until {@link #getP2CommitBackoffRetries()} triggers. If both {@link #getP2CommitBackoffRetries()}
+   * and {@link #getP2CommitBackoffMaxTime()} would never trigger, no retries are allowed.
+   *
+   * @return max time to retry.
+   */
+  @ConfigProperty(name = "p2-commit-backoff.max-time", defaultValue = "0")
+  Duration getP2CommitBackoffMaxTime();
+
+  @ConfigProperty(name = "p2-commit-backoff.retry-sleep", defaultValue = "0")
+  Duration getP2CommitBackoffRetrySleep();
+
+  /**
+   * The commit-backoff multiplier. A value greater than 1 enables exponential backoff with
+   * this multiplier. Formula: {@code time-between-retries = retry-sleep * retry ^ multiplier}.
+   * @return backoff-multiplier, defaults to {@code 1}
+   */
+  @ConfigProperty(name = "p2-commit-backoff.multiplier", defaultValue = "1")
+  double getP2CommitBackoffMultiplier();
+
+  /**
+   * Jitter for retries. A value greater than 0 and less than 1 enables the retry-sleep-time
+   * jitter. Formula: {@code retry-sleep -= random(0..jitter) * retry-sleep }
+   *
+   * @return jitter (factor), defaults to {@code 1}
+   */
+  @ConfigProperty(name = "p2-commit-backoff.jitter", defaultValue = "1")
+  double getP2CommitBackoffJitter();
 }

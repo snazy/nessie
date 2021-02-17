@@ -73,6 +73,7 @@ import org.projectnessie.versioned.store.LoadStep;
 import org.projectnessie.versioned.store.NotFoundException;
 import org.projectnessie.versioned.store.Store;
 import org.projectnessie.versioned.store.ValueType;
+import org.projectnessie.versioned.util.BackoffState;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -272,6 +273,7 @@ public class TieredVersionStore<DATA, METADATA> implements VersionStore<DATA, ME
     int loop = 0;
     InternalRefId ref = InternalRefId.ofBranch(branchName.getName());
     InternalBranch updatedBranch;
+    BackoffState backoff = new BackoffState(config.commitBackoff());
     while (true) {
       try (Scope scope = createSpan("Try-Commit-" + loop).startActive(true)) {
         final PartialTree<DATA> current = PartialTree.of(serializer, ref, keys);
@@ -329,7 +331,17 @@ public class TieredVersionStore<DATA, METADATA> implements VersionStore<DATA, ME
         boolean updated = store.update(ValueType.REF, ref.getId(),
             commitOp.getUpdateWithCommit(), Optional.of(commitOp.getTreeCondition()), Optional.of(builder));
         if (!updated) {
-          loop = maybeRetryCommit(scope, loop);
+          backoff.retry(failureReason -> {
+            commitFailures.incrementAndGet();
+            LOGGER.warn("Failing commit {}, last reason: unsuccessful update", failureReason);
+            Tags.ERROR.set(scope.span().log(ImmutableMap.of(Fields.EVENT, Tags.ERROR.getKey(),
+                Fields.ERROR_OBJECT, String.format("Give up %s", failureReason))), true);
+            return new ReferenceConflictException(
+                String.format("Unable to complete commit due to conflicting events %s", failureReason));
+          });
+          commitRetries.incrementAndGet();
+          loop++;
+          LOGGER.debug("Retrying commit due to unsuccessful update");
           continue;
         }
 
@@ -346,24 +358,10 @@ public class TieredVersionStore<DATA, METADATA> implements VersionStore<DATA, ME
     // Now we'll try to collapse the intention log. Note that this is done post official commit so we need to return
     // successfully even if this fails.
     try {
-      updatedBranch.collapseIntentionLog(null, store, executor, config.p2CommitRetryCount(), config.waitOnCollapse());
+      updatedBranch.getUpdateState(store).ensureAvailable(store, executor, config.p2CommitBackoff(), config.waitOnCollapse());
     } catch (Exception ex) {
       LOGGER.debug("Failure while collapsing intention log after commit.", ex);
     }
-  }
-
-  private int maybeRetryCommit(Scope scope, int loop) throws ReferenceConflictException  {
-    if (loop++ < config.commitRetryCount()) {
-      commitRetries.incrementAndGet();
-      LOGGER.debug("Retrying commit due to unsuccessful update");
-      return loop;
-    }
-    commitFailures.incrementAndGet();
-    LOGGER.debug("Failing commit after {} attempts, last reason: unsuccessful update", config.commitRetryCount());
-    Tags.ERROR.set(scope.span().log(ImmutableMap.of(Fields.EVENT, Tags.ERROR.getKey(),
-        Fields.ERROR_OBJECT, String.format("Give up after %d retries", config.commitRetryCount()))), true);
-    throw new ReferenceConflictException(
-        String.format("Unable to complete commit due to conflicting events. Retried %d times before failing.", config.commitRetryCount()));
   }
 
   @Override
@@ -422,7 +420,7 @@ public class TieredVersionStore<DATA, METADATA> implements VersionStore<DATA, ME
    */
   private InternalL1 ensureValidL1(InternalBranch branch) {
     UpdateState updateState = branch.getUpdateState(store);
-    updateState.ensureAvailable(store, executor, config.p2CommitRetryCount(), config.waitOnCollapse());
+    updateState.ensureAvailable(store, executor, config.p2CommitBackoff(), config.waitOnCollapse());
     return updateState.getL1();
   }
 

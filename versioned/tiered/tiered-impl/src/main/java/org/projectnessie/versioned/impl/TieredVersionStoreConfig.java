@@ -15,14 +15,29 @@
  */
 package org.projectnessie.versioned.impl;
 
+import java.util.List;
+import java.util.Optional;
+
 import org.immutables.value.Value.Default;
 import org.immutables.value.Value.Immutable;
+import org.projectnessie.versioned.BranchName;
 import org.projectnessie.versioned.impl.ImmutableTieredVersionStoreConfig.Builder;
+import org.projectnessie.versioned.impl.InternalBranch.UpdateState;
+import org.projectnessie.versioned.store.Store;
+import org.projectnessie.versioned.util.BackoffConfig;
 
 @Immutable
 public interface TieredVersionStoreConfig {
-  String DEFAULT_COMMIT_RETRY_COUNT = "5";
-  String DEFAULT_P2_COMMIT_RETRY_COUNT = "5";
+
+  /**
+   * The number of <em>re</em>tries for {@link TieredVersionStore#commit(BranchName, Optional, Object, List)}.
+   */
+  int DEFAULT_COMMIT_RETRIES = 4;
+  /**
+   * The number of <em>re</em>tries for
+   * {@link InternalBranch.UpdateState#collapseIntentionLog(UpdateState, Store, InternalBranch, BackoffConfig)}.
+   */
+  int DEFAULT_P2_COMMIT_RETRIES = 4;
 
   /**
    * Whether to block on collapsing the InternalBranch commit log before returning valid L1s.
@@ -33,14 +48,27 @@ public interface TieredVersionStoreConfig {
     return false;
   }
 
+  /**
+   * The backoff-configuration used during {@link TieredVersionStore#commit(BranchName, Optional, Object, List)}.
+   * @return backoff-config for commits
+   */
   @Default
-  default int commitRetryCount() {
-    return Integer.parseInt(DEFAULT_COMMIT_RETRY_COUNT);
+  default BackoffConfig commitBackoff() {
+    return BackoffConfig.builder()
+        .retries(DEFAULT_COMMIT_RETRIES)
+        .build();
   }
 
+  /**
+   * The backoff-configuration used during
+   * {@link InternalBranch.UpdateState#collapseIntentionLog(UpdateState, Store, InternalBranch, BackoffConfig)}.
+   * @return backoff-config used when collapsing the branch-commit-log
+   */
   @Default
-  default int p2CommitRetryCount() {
-    return Integer.parseInt(DEFAULT_P2_COMMIT_RETRY_COUNT);
+  default BackoffConfig p2CommitBackoff() {
+    return BackoffConfig.builder()
+        .retries(DEFAULT_P2_COMMIT_RETRIES)
+        .build();
   }
 
   static Builder builder() {
