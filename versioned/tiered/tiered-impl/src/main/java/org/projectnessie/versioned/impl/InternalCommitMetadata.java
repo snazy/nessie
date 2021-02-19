@@ -16,6 +16,7 @@
 package org.projectnessie.versioned.impl;
 
 import org.projectnessie.versioned.store.Id;
+import org.projectnessie.versioned.store.ValueType;
 import org.projectnessie.versioned.tiered.CommitMetadata;
 
 import com.google.protobuf.ByteString;
@@ -28,6 +29,11 @@ class InternalCommitMetadata extends WrappedValueBean<CommitMetadata> {
 
   static InternalCommitMetadata of(ByteString value) {
     return new InternalCommitMetadata(null, value, DT.now());
+  }
+
+  @Override
+  ValueType<CommitMetadata> valueType() {
+    return ValueType.COMMIT_METADATA;
   }
 
   @Override

@@ -18,6 +18,7 @@ package org.projectnessie.versioned.impl;
 import java.util.stream.Stream;
 
 import org.projectnessie.versioned.store.Id;
+import org.projectnessie.versioned.store.ValueType;
 import org.projectnessie.versioned.tiered.L2;
 
 import com.google.common.base.Objects;
@@ -42,6 +43,10 @@ class InternalL2 extends PersistentBase<L2> {
     this(null, map, DT.now());
   }
 
+  @Override
+  ValueType<L2> valueType() {
+    return ValueType.L2;
+  }
 
   Id getId(int position) {
     return map.getId(position);

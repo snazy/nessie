@@ -15,6 +15,7 @@
  */
 package org.projectnessie.versioned.impl;
 
+import java.util.Map.Entry;
 import java.util.Optional;
 import java.util.TreeMap;
 import java.util.stream.Collectors;
@@ -26,6 +27,7 @@ import org.projectnessie.versioned.impl.KeyMutation.KeyAddition;
 import org.projectnessie.versioned.impl.KeyMutation.KeyRemoval;
 import org.projectnessie.versioned.store.Id;
 import org.projectnessie.versioned.store.KeyDelta;
+import org.projectnessie.versioned.store.ValueType;
 import org.projectnessie.versioned.tiered.L3;
 
 import com.google.common.base.Objects;
@@ -49,6 +51,19 @@ class InternalL3 extends PersistentBase<L3> {
     super(id, dt);
     this.map = keys;
     ensureConsistentId();
+  }
+
+  @Override
+  PersistentBase<L3> cleanup() {
+    TreeMap<InternalKey, PositionDelta> newMap = map.entrySet().stream()
+        .filter(e -> !e.getValue().getNewId().isEmpty())
+        .collect(Collectors.toMap(Entry::getKey, Entry::getValue, (a, b) -> a, TreeMap::new));
+    return new InternalL3(getId(), newMap, getDt());
+  }
+
+  @Override
+  ValueType<L3> valueType() {
+    return ValueType.L3;
   }
 
   Id getId(InternalKey key) {

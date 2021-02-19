@@ -107,4 +107,23 @@ public interface TieredVersionStoreConfig {
    */
   @ConfigProperty(name = "p2-commit-backoff.jitter", defaultValue = "1")
   double getP2CommitBackoffJitter();
+
+  /**
+   * Whether the tiered-version-store cache is enabled, defaults to {@code false}.
+   * @return {@code true} to enable the cache
+   */
+  @ConfigProperty(name = "cache.enabled", defaultValue = "false")
+  boolean isCacheEnabled();
+
+  /**
+   * Whether the cache records statistics, defaults to {@code true}.
+   */
+  @ConfigProperty(name = "cache.record-stats", defaultValue = "true")
+  boolean isCacheRecordStats();
+
+  /**
+   * Maximum number of cached items in the cache, defaults to {@code 1000}.
+   */
+  @ConfigProperty(name = "cache.max-size", defaultValue = "1000")
+  int getCacheMaxSize();
 }

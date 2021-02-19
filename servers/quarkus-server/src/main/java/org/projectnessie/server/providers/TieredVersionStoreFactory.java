@@ -21,6 +21,7 @@ import org.projectnessie.server.config.TieredVersionStoreConfig;
 import org.projectnessie.versioned.StoreWorker;
 import org.projectnessie.versioned.VersionStore;
 import org.projectnessie.versioned.impl.TieredVersionStore;
+import org.projectnessie.versioned.impl.TieredVersionStoreConfig.CacheConfig;
 import org.projectnessie.versioned.store.Store;
 import org.projectnessie.versioned.store.TracingStore;
 import org.projectnessie.versioned.util.BackoffConfig;
@@ -60,6 +61,11 @@ public abstract class TieredVersionStoreFactory implements VersionStoreFactory {
                 .maxTime(tieredVersionStoreConfig.getP2CommitBackoffMaxTime())
                 .jitter(tieredVersionStoreConfig.getP2CommitBackoffJitter())
                 .multiplier(tieredVersionStoreConfig.getP2CommitBackoffMultiplier())
+                .build())
+            .cache(CacheConfig.builder()
+                .enabled(tieredVersionStoreConfig.isCacheEnabled())
+                .maxSize(tieredVersionStoreConfig.getCacheMaxSize())
+                .recordStats(tieredVersionStoreConfig.isCacheRecordStats())
                 .build())
             .build());
   }

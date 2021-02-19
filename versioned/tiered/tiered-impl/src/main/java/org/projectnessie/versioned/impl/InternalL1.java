@@ -25,7 +25,7 @@ import java.util.stream.Stream;
 import org.projectnessie.versioned.Key;
 import org.projectnessie.versioned.impl.KeyList.IncrementalList;
 import org.projectnessie.versioned.store.Id;
-import org.projectnessie.versioned.store.Store;
+import org.projectnessie.versioned.store.ValueType;
 import org.projectnessie.versioned.tiered.L1;
 
 class InternalL1 extends PersistentBase<L1> {
@@ -58,14 +58,19 @@ class InternalL1 extends PersistentBase<L1> {
     }
   }
 
+  @Override
+  ValueType<L1> valueType() {
+    return ValueType.L1;
+  }
+
   InternalL1 getChildWithTree(Id metadataId, IdMap tree, KeyMutationList mutations) {
     KeyList keyList = this.keyList.plus(getId(), mutations.getMutations());
     ParentList parents = this.parentList.cloneWithAdditional(getId());
     return new InternalL1(metadataId, tree, null, keyList, parents, DT.now());
   }
 
-  InternalL1 withCheckpointAsNecessary(Store store, Map<Id, InternalL1> unsavedL1s) {
-    return keyList.createCheckpointIfNeeded(this, store, unsavedL1s)
+  InternalL1 withCheckpointAsNecessary(Persistence persistence, Map<Id, InternalL1> unsavedL1s) {
+    return keyList.createCheckpointIfNeeded(this, persistence, unsavedL1s)
         .map(keylist -> new InternalL1(metadataId, tree, null, keylist, parentList, DT.now())).orElse(this);
   }
 
@@ -99,8 +104,8 @@ class InternalL1 extends PersistentBase<L1> {
     });
   }
 
-  Stream<InternalKey> getKeys(Store store) {
-    return keyList.getKeys(this, store);
+  Stream<InternalKey> getKeys(Persistence persistence) {
+    return keyList.getKeys(this, persistence);
   }
 
   IdMap getMap() {

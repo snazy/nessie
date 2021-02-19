@@ -50,7 +50,7 @@ class TestVersionEquality {
       }
 
     };
-    UpdateState us = b.getUpdateState(store);
+    UpdateState us = b.getUpdateState(new Persistence(store, TieredVersionStoreConfig.testConfig()));
     us.ensureAvailable(null, null, BackoffConfig.NONE, true);
     assertEquals(InternalL1.EMPTY_ID, us.getL1().getId());
   }

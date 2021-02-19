@@ -28,7 +28,7 @@ import java.util.stream.Stream;
 import org.immutables.value.Value.Immutable;
 import org.projectnessie.versioned.impl.KeyMutation.MutationType;
 import org.projectnessie.versioned.store.Id;
-import org.projectnessie.versioned.store.Store;
+import org.projectnessie.versioned.store.ValueType;
 
 import com.google.common.base.Preconditions;
 import com.google.common.collect.ImmutableList;
@@ -49,7 +49,7 @@ abstract class KeyList {
 
   abstract KeyList plus(Id parent, List<KeyMutation> mutations);
 
-  abstract Optional<KeyList> createCheckpointIfNeeded(InternalL1 startingPoint, Store store, Map<Id, InternalL1> unsavedL1s);
+  abstract Optional<KeyList> createCheckpointIfNeeded(InternalL1 startingPoint, Persistence persistence, Map<Id, InternalL1> unsavedL1s);
 
   abstract Type getType();
 
@@ -63,7 +63,7 @@ abstract class KeyList {
         .mutations(mutations).build();
   }
 
-  abstract Stream<InternalKey> getKeys(InternalL1 startingPoint, Store store);
+  abstract Stream<InternalKey> getKeys(InternalL1 startingPoint, Persistence persistence);
 
 
   abstract List<KeyMutation> getMutations();
@@ -98,42 +98,42 @@ abstract class KeyList {
     }
 
     @Override
-    public Optional<KeyList> createCheckpointIfNeeded(InternalL1 startingPoint, Store store, Map<Id, InternalL1> unsavedL1s) {
+    public Optional<KeyList> createCheckpointIfNeeded(InternalL1 startingPoint, Persistence persistence, Map<Id, InternalL1> unsavedL1s) {
       if (getDistanceFromCheckpointCommits() < MAX_DELTAS) {
         return Optional.empty();
       }
 
 
-      return Optional.of(generateNewCheckpoint(startingPoint, store, unsavedL1s));
+      return Optional.of(generateNewCheckpoint(startingPoint, persistence, unsavedL1s));
     }
 
 
     @Override
-    Stream<InternalKey> getKeys(InternalL1 startingPoint, Store store) {
-      IterResult keys = getKeysIter(startingPoint, store, Collections.emptyMap());
+    Stream<InternalKey> getKeys(InternalL1 startingPoint, Persistence persistence) {
+      IterResult keys = getKeysIter(startingPoint, persistence, Collections.emptyMap());
       if (keys.isChanged()) {
         return keys.keyList;
       }
 
-      return keys.list.getKeys(startingPoint, store);
+      return keys.list.getKeys(startingPoint, persistence);
     }
 
-    private CompleteList generateNewCheckpoint(InternalL1 startingPoint, Store store, Map<Id, InternalL1> unsavedL1s) {
+    private CompleteList generateNewCheckpoint(InternalL1 startingPoint, Persistence persistence, Map<Id, InternalL1> unsavedL1s) {
 
-      IterResult result = getKeysIter(startingPoint, store, unsavedL1s);
+      IterResult result = getKeysIter(startingPoint, persistence, unsavedL1s);
       if (!result.isChanged()) {
         return result.list;
       }
 
-      final KeyAccumulator accum = new KeyAccumulator(store, result.previousFragmentIds);
+      final KeyAccumulator accum = new KeyAccumulator(persistence, result.previousFragmentIds);
       result.keyList.forEach(accum::addKey);
       accum.close();
 
       return accum.getCompleteList(getMutations());
     }
 
-    private IterResult getKeysIter(InternalL1 startingPoint, Store store, Map<Id, InternalL1> unsavedL1s) {
-      HistoryRetriever retriever = new HistoryRetriever(store, startingPoint, getPreviousCheckpoint(), true, false, true, unsavedL1s);
+    private IterResult getKeysIter(InternalL1 startingPoint, Persistence persistence, Map<Id, InternalL1> unsavedL1s) {
+      HistoryRetriever retriever = new HistoryRetriever(persistence, startingPoint, getPreviousCheckpoint(), true, false, true, unsavedL1s);
       final CompleteList complete;
       // incrementals, from oldest to newest.
       final List<KeyList> incrementals;
@@ -187,7 +187,7 @@ abstract class KeyList {
       return IterResult.changed(
           complete.fragmentIds.stream().collect(ImmutableSet.toImmutableSet()),
           Stream.concat(
-              complete.getKeys(startingPoint, store).filter(k -> !removals.contains(k)),
+              complete.getKeys(startingPoint, persistence).filter(k -> !removals.contains(k)),
               adds.stream()));
     }
 
@@ -257,7 +257,7 @@ abstract class KeyList {
     }
 
     @Override
-    public Optional<KeyList> createCheckpointIfNeeded(InternalL1 startingPoint, Store store, Map<Id, InternalL1> unsavedL1s) {
+    public Optional<KeyList> createCheckpointIfNeeded(InternalL1 startingPoint, Persistence persistence, Map<Id, InternalL1> unsavedL1s) {
       // checkpoint not needed, already a checkpoint.
       return Optional.empty();
     }
@@ -285,9 +285,9 @@ abstract class KeyList {
     }
 
     @Override
-    Stream<InternalKey> getKeys(InternalL1 startingPoint, Store store) {
+    Stream<InternalKey> getKeys(InternalL1 startingPoint, Persistence persistence) {
       return fragmentIds.stream().flatMap(f -> {
-        InternalFragment fragment = EntityType.KEY_FRAGMENT.loadSingle(store, f);
+        InternalFragment fragment = persistence.loadSingle(ValueType.KEY_FRAGMENT, f);
         return fragment.getKeys().stream();
       });
     }
@@ -313,15 +313,15 @@ abstract class KeyList {
    */
   static class KeyAccumulator {
     private static final int MAX_SIZE = 400_000 - 8096;
-    private final Store store;
+    private final Persistence persistence;
     private final Set<Id> presaved;
     private final List<InternalKey> currentList = new ArrayList<>();
     private final List<Id> fragmentIds = new ArrayList<>();
     private int currentListSize;
 
-    public KeyAccumulator(Store store, Set<Id> presaved) {
+    public KeyAccumulator(Persistence persistence, Set<Id> presaved) {
       super();
-      this.store = store;
+      this.persistence = persistence;
       this.presaved = presaved;
     }
 
@@ -340,7 +340,7 @@ abstract class KeyList {
         if (!presaved.contains(fragment.getId())) {
           // only save if we didn't save on the last checkpoint. This could still be a dupe of an older list but since the object
           // is hashed, the value will be a simple overwrite of the same data.
-          store.save(Collections.singletonList(EntityType.KEY_FRAGMENT.createSaveOpForEntity(fragment)));
+          persistence.save(Collections.singletonList(fragment));
           fragmentIds.add(fragment.getId());
         }
       }

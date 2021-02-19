@@ -31,13 +31,13 @@ import org.projectnessie.versioned.tiered.Value;
 
 public final class ValueType<C extends BaseValue<C>> {
 
-  public static final ValueType<Ref> REF = new ValueType<>(Ref.class, "r", "refs");
-  public static final ValueType<L1> L1 = new ValueType<>(L1.class, "l1", "l1");
-  public static final ValueType<L2> L2 = new ValueType<>(L2.class, "l2", "l2");
-  public static final ValueType<L3> L3 = new ValueType<>(L3.class, "l3", "l3");
-  public static final ValueType<Value> VALUE = new ValueType<>(Value.class, "v", "values");
-  public static final ValueType<Fragment> KEY_FRAGMENT = new ValueType<>(Fragment.class, "k", "key_lists");
-  public static final ValueType<CommitMetadata> COMMIT_METADATA = new ValueType<>(CommitMetadata.class, "m", "commit_metadata");
+  public static final ValueType<Ref> REF = new ValueType<>(Ref.class, "r", "refs", false);
+  public static final ValueType<L1> L1 = new ValueType<>(L1.class, "l1", "l1", true);
+  public static final ValueType<L2> L2 = new ValueType<>(L2.class, "l2", "l2", true);
+  public static final ValueType<L3> L3 = new ValueType<>(L3.class, "l3", "l3", true);
+  public static final ValueType<Value> VALUE = new ValueType<>(Value.class, "v", "values", true);
+  public static final ValueType<Fragment> KEY_FRAGMENT = new ValueType<>(Fragment.class, "k", "key_lists", true);
+  public static final ValueType<CommitMetadata> COMMIT_METADATA = new ValueType<>(CommitMetadata.class, "m", "commit_metadata", true);
 
   private static final ValueType<?>[] ALL = new ValueType[]{REF, L1, L2, L3, VALUE, KEY_FRAGMENT, COMMIT_METADATA};
 
@@ -57,11 +57,17 @@ public final class ValueType<C extends BaseValue<C>> {
   private final String valueName;
   private final String defaultTableSuffix;
   private final Class<C> clazz;
+  private final boolean immutable;
 
-  private ValueType(Class<C> clazz, String valueName, String defaultTableSuffix) {
+  private ValueType(Class<C> clazz, String valueName, String defaultTableSuffix, boolean immutable) {
     this.valueName = valueName;
     this.defaultTableSuffix = defaultTableSuffix;
     this.clazz = clazz;
+    this.immutable = immutable;
+  }
+
+  public boolean isImmutable() {
+    return immutable;
   }
 
   public Class<C> getValueClass() {

@@ -21,6 +21,7 @@ import java.util.stream.Stream;
 
 import org.projectnessie.versioned.Key;
 import org.projectnessie.versioned.store.Id;
+import org.projectnessie.versioned.store.ValueType;
 import org.projectnessie.versioned.tiered.Fragment;
 
 import com.google.common.base.Objects;
@@ -47,6 +48,11 @@ class InternalFragment extends PersistentBase<Fragment> {
 
   List<InternalKey> getKeys() {
     return keys;
+  }
+
+  @Override
+  ValueType<Fragment> valueType() {
+    return ValueType.KEY_FRAGMENT;
   }
 
   @Override

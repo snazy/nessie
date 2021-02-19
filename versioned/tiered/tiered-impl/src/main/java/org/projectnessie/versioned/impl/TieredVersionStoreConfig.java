@@ -71,10 +71,56 @@ public interface TieredVersionStoreConfig {
         .build();
   }
 
+  @Default
+  default CacheConfig cache() {
+    return CacheConfig.builder().build();
+  }
+
+  @Immutable
+  interface CacheConfig {
+
+    int DEFAULT_SIZE = 1000;
+
+    /**
+     * Whether the cache is enabled, defaults to {@code false}.
+     * @return Cache-enabled
+     */
+    @Default
+    default boolean enabled() {
+      return false;
+    }
+
+    /**
+     * Maximum number of items in the cache, defaults to {@value DEFAULT_SIZE}.
+     * @return Maximum number of items in the cache.
+     */
+    @Default
+    default int maxSize() {
+      return DEFAULT_SIZE;
+    }
+
+    /**
+     * Whether the cache records statistics, defaults to {@code true}.
+     * @return Cache-stats enabled
+     */
+    @Default
+    default boolean recordStats() {
+      return true;
+    }
+
+    static ImmutableCacheConfig.Builder builder() {
+      return ImmutableCacheConfig.builder();
+    }
+  }
+
   static Builder builder() {
     return ImmutableTieredVersionStoreConfig.builder();
   }
 
+  /**
+   * Configuration for <em>tests</em>: waits for "collapse" and no tiered-version-store-cache.
+   * @return configuration for tests
+   */
   static TieredVersionStoreConfig testConfig() {
     return builder().waitOnCollapse(true).build();
   }

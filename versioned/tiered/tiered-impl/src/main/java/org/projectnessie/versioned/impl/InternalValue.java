@@ -16,6 +16,7 @@
 package org.projectnessie.versioned.impl;
 
 import org.projectnessie.versioned.store.Id;
+import org.projectnessie.versioned.store.ValueType;
 import org.projectnessie.versioned.tiered.Value;
 
 import com.google.protobuf.ByteString;
@@ -31,6 +32,11 @@ class InternalValue extends WrappedValueBean<Value> {
 
   static InternalValue of(ByteString value) {
     return new InternalValue(null, value, DT.now());
+  }
+
+  @Override
+  ValueType<Value> valueType() {
+    return ValueType.VALUE;
   }
 
   @Override

@@ -18,6 +18,7 @@ package org.projectnessie.versioned.impl;
 import org.projectnessie.versioned.store.HasId;
 import org.projectnessie.versioned.store.Id;
 import org.projectnessie.versioned.store.SaveOp;
+import org.projectnessie.versioned.store.ValueType;
 import org.projectnessie.versioned.tiered.BaseValue;
 
 import com.google.common.base.Preconditions;
@@ -38,6 +39,12 @@ abstract class PersistentBase<C extends BaseValue<C>> implements HasId {
     this.id = id;
     this.dt = dt == null ? DT.UNKNOWN : dt;
   }
+
+  PersistentBase<C> cleanup() {
+    return this;
+  }
+
+  abstract ValueType<C> valueType();
 
   abstract Id generateId();
 

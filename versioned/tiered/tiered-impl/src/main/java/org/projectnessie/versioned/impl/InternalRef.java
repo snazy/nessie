@@ -27,6 +27,7 @@ import org.projectnessie.versioned.impl.condition.ExpressionFunction;
 import org.projectnessie.versioned.impl.condition.ExpressionPath;
 import org.projectnessie.versioned.store.Entity;
 import org.projectnessie.versioned.store.Id;
+import org.projectnessie.versioned.store.ValueType;
 import org.projectnessie.versioned.tiered.Ref;
 
 /**
@@ -82,6 +83,11 @@ abstract class InternalRef extends PersistentBase<Ref> {
         throw new IllegalArgumentException(String.format("Unknown identifier name [%s].", identifier));
       }
     }
+  }
+
+  @Override
+  ValueType<Ref> valueType() {
+    return ValueType.REF;
   }
 
   abstract Type getType();

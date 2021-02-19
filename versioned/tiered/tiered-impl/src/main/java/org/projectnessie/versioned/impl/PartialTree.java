@@ -43,7 +43,6 @@ import org.projectnessie.versioned.impl.condition.UpdateExpression;
 import org.projectnessie.versioned.store.Entity;
 import org.projectnessie.versioned.store.Id;
 import org.projectnessie.versioned.store.LoadStep;
-import org.projectnessie.versioned.store.SaveOp;
 
 import com.google.common.base.Preconditions;
 import com.google.common.collect.Streams;
@@ -131,13 +130,12 @@ class PartialTree<V> {
   /**
    * Gets value, l3 and l2 save ops. These ops are all non-conditional.
    */
-  public Stream<SaveOp<?>> getMostSaveOps() {
+  public Stream<PersistentBase<?>> getMostSaves() {
     checkMutable();
     return Streams.concat(
-        l2s.values().stream().filter(Pointer::isDirty).map(l2p -> EntityType.L2.createSaveOpForEntity(l2p.get())).distinct(),
-        l3s.values().stream().filter(Pointer::isDirty).map(l3p -> EntityType.L3.createSaveOpForEntity(l3p.get())).distinct(),
-        values.values().stream().map(v -> EntityType.VALUE.createSaveOpForEntity(
-            (InternalValue) v.getPersistentValue())).distinct()
+        l2s.values().stream().filter(Pointer::isDirty).map(Pointer::get).map(PersistentBase::cleanup).distinct(),
+        l3s.values().stream().filter(Pointer::isDirty).map(Pointer::get).map(PersistentBase::cleanup).distinct(),
+        values.values().stream().map(v -> (InternalValue) v.getPersistentValue()).map(PersistentBase::cleanup).distinct()
         );
   }
 
