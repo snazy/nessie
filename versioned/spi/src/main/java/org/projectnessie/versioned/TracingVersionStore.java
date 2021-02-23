@@ -17,7 +17,9 @@ package org.projectnessie.versioned;
 
 import java.util.Collection;
 import java.util.List;
+import java.util.Map;
 import java.util.Optional;
+import java.util.function.Supplier;
 import java.util.stream.Stream;
 
 import javax.annotation.Nonnull;
@@ -287,6 +289,11 @@ public class TracingVersionStore<VALUE, METADATA> implements VersionStore<VALUE,
         throw handleRuntimeException(scope, "collectGarbage", e);
       }
     }
+  }
+
+  @Override
+  public Map<String, Supplier<Number>> gauges() {
+    return delegate.gauges();
   }
 
   private static String safeToString(Object o) {

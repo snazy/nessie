@@ -17,6 +17,7 @@ package org.projectnessie.server.providers;
 
 import java.io.IOError;
 import java.io.IOException;
+import java.util.Collections;
 import java.util.Optional;
 import java.util.concurrent.TimeUnit;
 import java.util.stream.Stream;
@@ -35,6 +36,7 @@ import org.projectnessie.server.config.VersionStoreConfig.VersionStoreType;
 import org.projectnessie.server.store.TableCommitMetaStoreWorker;
 import org.projectnessie.services.config.ServerConfig;
 import org.projectnessie.versioned.BranchName;
+import org.projectnessie.versioned.MetricsVersionStore;
 import org.projectnessie.versioned.NamedRef;
 import org.projectnessie.versioned.ReferenceAlreadyExistsException;
 import org.projectnessie.versioned.ReferenceNotFoundException;
@@ -120,6 +122,10 @@ public class ConfigurableVersionStoreFactory {
 
       if (storeConfig.isTracingEnabled()) {
         versionStore = new TracingVersionStore<>(versionStore);
+      }
+      if (storeConfig.isMetricsEnabled()) {
+        versionStore = new MetricsVersionStore<>(versionStore, Collections
+            .singletonMap("application", "Nessie"));
       }
 
       lastUnsuccessfulStart = 0L;

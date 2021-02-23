@@ -26,7 +26,9 @@ import java.util.Spliterator;
 import java.util.Spliterators.AbstractSpliterator;
 import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
+import java.util.concurrent.atomic.AtomicLong;
 import java.util.function.Consumer;
+import java.util.function.Supplier;
 import java.util.stream.Collectors;
 import java.util.stream.Stream;
 import java.util.stream.StreamSupport;
@@ -81,6 +83,8 @@ import com.google.common.collect.ImmutableMap;
 import com.google.common.collect.Lists;
 import com.google.common.collect.Streams;
 
+import io.micrometer.core.instrument.Metrics;
+import io.micrometer.core.instrument.binder.jvm.ExecutorServiceMetrics;
 import io.opentracing.Scope;
 import io.opentracing.Tracer;
 import io.opentracing.Tracer.SpanBuilder;
@@ -103,6 +107,11 @@ public class TieredVersionStore<DATA, METADATA> implements VersionStore<DATA, ME
   private final Store store;
   private final TieredVersionStoreConfig config;
 
+  private final Map<String, Supplier<Number>> gauges;
+
+  private final AtomicLong commitRetries = new AtomicLong();
+  private final AtomicLong commitFailures = new AtomicLong();
+
   /**
    * Construct a TieredVersionStore.
    *
@@ -116,6 +125,13 @@ public class TieredVersionStore<DATA, METADATA> implements VersionStore<DATA, ME
     this.store = store;
     this.executor = Executors.newCachedThreadPool();
     this.config = config;
+
+    this.gauges = ImmutableMap.<String, Supplier<Number>>builder()
+        .put("commit-retries", () -> commitRetries.getAndSet(0))
+        .put("commit-failures", () -> commitFailures.getAndSet(0))
+        .build();
+
+    new ExecutorServiceMetrics(executor, "TieredVersionStore", Collections.emptyList()).bindTo(Metrics.globalRegistry);
   }
 
   @Nonnull
@@ -275,7 +291,7 @@ public class TieredVersionStore<DATA, METADATA> implements VersionStore<DATA, ME
         } catch (NotFoundException ex) {
           Tags.ERROR.set(scope.span().log(ImmutableMap.of(Fields.EVENT, Tags.ERROR.getKey(),
               Fields.ERROR_OBJECT, ex.toString())), true);
-
+          commitFailures.incrementAndGet();
           LOGGER.debug("Unable to find requested ref for commit. current={}, expected={}.", current, expected, ex);
           throw new ReferenceNotFoundException("Unable to find requested ref for commit.", ex);
         }
@@ -289,6 +305,7 @@ public class TieredVersionStore<DATA, METADATA> implements VersionStore<DATA, ME
         if (!mismatches.isEmpty()) {
           Tags.ERROR.set(scope.span().log(ImmutableMap.of(Fields.EVENT, Tags.ERROR.getKey(),
               Fields.ERROR_OBJECT, mismatches.toString())), true);
+          commitFailures.incrementAndGet();
           throw new InconsistentValue.InconsistentValueException(mismatches);
         }
 
@@ -321,6 +338,7 @@ public class TieredVersionStore<DATA, METADATA> implements VersionStore<DATA, ME
       } catch (IllegalArgumentException e) {
         throw e;
       } catch (RuntimeException e) {
+        commitFailures.incrementAndGet();
         throw unhandledException("commit", e);
       }
     }
@@ -336,9 +354,11 @@ public class TieredVersionStore<DATA, METADATA> implements VersionStore<DATA, ME
 
   private int maybeRetryCommit(Scope scope, int loop) throws ReferenceConflictException  {
     if (loop++ < config.commitRetryCount()) {
+      commitRetries.incrementAndGet();
       LOGGER.debug("Retrying commit due to unsuccessful update");
       return loop;
     }
+    commitFailures.incrementAndGet();
     LOGGER.debug("Failing commit after {} attempts, last reason: unsuccessful update", config.commitRetryCount());
     Tags.ERROR.set(scope.span().log(ImmutableMap.of(Fields.EVENT, Tags.ERROR.getKey(),
         Fields.ERROR_OBJECT, String.format("Give up after %d retries", config.commitRetryCount()))), true);
@@ -915,5 +935,10 @@ public class TieredVersionStore<DATA, METADATA> implements VersionStore<DATA, ME
     Tracer tracer = getTracer();
     return tracer.buildSpan(name)
         .asChildOf(tracer.activeSpan());
+  }
+
+  @Override
+  public Map<String, Supplier<Number>> gauges() {
+    return gauges;
   }
 }
