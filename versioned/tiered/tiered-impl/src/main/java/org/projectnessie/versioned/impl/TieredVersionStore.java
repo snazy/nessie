@@ -346,7 +346,7 @@ public class TieredVersionStore<DATA, METADATA> implements VersionStore<DATA, ME
     // Now we'll try to collapse the intention log. Note that this is done post official commit so we need to return
     // successfully even if this fails.
     try {
-      updatedBranch.getUpdateState(store).ensureAvailable(store, executor, config.p2CommitRetryCount(), config.waitOnCollapse());
+      updatedBranch.collapseIntentionLog(null, store, executor, config.p2CommitRetryCount(), config.waitOnCollapse());
     } catch (Exception ex) {
       LOGGER.debug("Failure while collapsing intention log after commit.", ex);
     }
