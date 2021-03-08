@@ -308,6 +308,7 @@ public class TieredVersionStore<DATA, METADATA> implements VersionStore<DATA, ME
           Tags.ERROR.set(scope.span().log(ImmutableMap.of(Fields.EVENT, Tags.ERROR.getKey(),
               Fields.ERROR_OBJECT, mismatches.toString())), true);
           commitFailures.incrementAndGet();
+          LOGGER.debug("Inconsistency during commit against '{}' w/ expected-hash={}: {}", branchName.getName(), expectedHash, mismatches);
           throw new InconsistentValue.InconsistentValueException(mismatches);
         }
 
