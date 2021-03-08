@@ -29,6 +29,8 @@ import org.immutables.value.Value.Immutable;
 import org.projectnessie.versioned.impl.KeyMutation.MutationType;
 import org.projectnessie.versioned.store.Id;
 import org.projectnessie.versioned.store.ValueType;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 
 import com.google.common.base.Preconditions;
 import com.google.common.collect.ImmutableList;
@@ -39,6 +41,8 @@ import com.google.common.collect.Lists;
  * Interface and implementations related to managing the key list within Dynamo.
  */
 abstract class KeyList {
+
+  private static final Logger LOGGER = LoggerFactory.getLogger(KeyList.class);
 
   public static final KeyList EMPTY = new CompleteList(Collections.emptyList(), ImmutableList.of());
 
@@ -333,21 +337,27 @@ abstract class KeyList {
     }
 
     private void rotate(boolean always) {
-      if (!currentList.isEmpty() && (always || aboveThreshold())) {
+      int estTotalSize = currentListSize;
+      if (!currentList.isEmpty() && (always || estTotalSize > MAX_SIZE)) {
         InternalFragment fragment = new InternalFragment(currentList);
         currentList.clear();
         currentListSize = 0;
         if (!presaved.contains(fragment.getId())) {
+          if (estTotalSize > MAX_SIZE) {
+            LOGGER.error("The size of the fragment to save ({} bytes) is too big, {} keys. "
+                    + "Failures when using DynamoDB are very likely to happen!",
+                estTotalSize, fragment.getKeys().size());
+          } else if (estTotalSize > MAX_SIZE / 2) {
+            LOGGER.warn("The size of the fragment to save ({} bytes) becomes quite big, {} keys. "
+                    + "Failures when using DynamoDB are likely to happen in the near future!",
+                estTotalSize, fragment.getKeys().size());
+          }
           // only save if we didn't save on the last checkpoint. This could still be a dupe of an older list but since the object
           // is hashed, the value will be a simple overwrite of the same data.
           persistence.save(Collections.singletonList(fragment));
           fragmentIds.add(fragment.getId());
         }
       }
-    }
-
-    private boolean aboveThreshold() {
-      return currentListSize > MAX_SIZE;
     }
 
     public void close() {
