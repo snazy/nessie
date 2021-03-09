@@ -184,7 +184,7 @@ public class JGitVersionStore<TABLE, METADATA> implements VersionStore<TABLE, ME
   }
 
   @Override
-  public void commit(BranchName branch, Optional<Hash> expectedHash, METADATA metadata,
+  public Hash commit(BranchName branch, Optional<Hash> expectedHash, METADATA metadata,
                      List<Operation<TABLE>> operations) throws ReferenceNotFoundException, ReferenceConflictException {
     toHash(branch);
     try {
@@ -209,12 +209,13 @@ public class JGitVersionStore<TABLE, METADATA> implements VersionStore<TABLE, ME
                                                                                                  Optional.of(currentCommitId)
                                                                                                          .map(ObjectId::name)
                                                                                                          .map(Hash::of)));
-      commitTree(branch,
+      ObjectId commitId = commitTree(branch,
                  mergedHash,
                  Optional.of(currentCommitId).map(ObjectId::name).map(Hash::of),
                  metadata,
                  ObjectId.isEqual(currentTreeId, mergedHash),
                  false);
+      return Hash.of(commitId.name());
     } catch (IOException e) {
       throw new RuntimeException("Unknown error", e);
     }
@@ -385,7 +386,7 @@ public class JGitVersionStore<TABLE, METADATA> implements VersionStore<TABLE, ME
 
 
   @Override
-  public void create(NamedRef ref, Optional<Hash> targetHash) throws ReferenceNotFoundException, ReferenceAlreadyExistsException {
+  public Hash create(NamedRef ref, Optional<Hash> targetHash) throws ReferenceNotFoundException, ReferenceAlreadyExistsException {
     if (!targetHash.isPresent() && ref instanceof TagName) {
       throw new IllegalArgumentException("You must provide a target hash to create a tag.");
     }
@@ -401,7 +402,8 @@ public class JGitVersionStore<TABLE, METADATA> implements VersionStore<TABLE, ME
         ObjectInserter inserter = repository.newObjectInserter();
         ObjectId newTreeId = inserter.insert(formatter);
         inserter.flush();
-        commitTree((BranchName) ref, newTreeId, Optional.empty(), null, false, true);
+        ObjectId commitId = commitTree((BranchName) ref, newTreeId, Optional.empty(), null, false, true);
+        return Hash.of(commitId.name());
       } else {
         ObjectId target = repository.resolve(targetHash.get().asString());
         RefUpdate createBranch = repository.updateRef((ref instanceof TagName ? Constants.R_TAGS : Constants.R_HEADS) + ref.getName());
@@ -412,6 +414,7 @@ public class JGitVersionStore<TABLE, METADATA> implements VersionStore<TABLE, ME
         } else if (!result.equals(Result.NEW)) {
           throw new IllegalStateException(String.format("result did not complete for create branch on %s with state %s", ref, result));
         }
+        return Hash.of(target.name());
       }
     } catch (IOException | ReferenceConflictException e) {
       throw new RuntimeException(String.format("Unknown error while creating %s", ref), e);
@@ -556,8 +559,8 @@ public class JGitVersionStore<TABLE, METADATA> implements VersionStore<TABLE, ME
     throw new IllegalStateException("Not yet implemented.");
   }
 
-  private void commitTree(BranchName branch, ObjectId newTree, Optional<Hash> expectedHash, METADATA metadata, boolean force, boolean empty)
-      throws IOException, ReferenceConflictException {
+  private ObjectId commitTree(BranchName branch, ObjectId newTree, Optional<Hash> expectedHash, METADATA metadata,
+      boolean force, boolean empty) throws IOException, ReferenceConflictException {
     ObjectInserter inserter = repository.newObjectInserter();
     CommitBuilder commitBuilder = fromUser(metadata, empty);
     commitBuilder.setTreeId(newTree);
@@ -568,6 +571,7 @@ public class JGitVersionStore<TABLE, METADATA> implements VersionStore<TABLE, ME
     ObjectId newCommitId = inserter.insert(commitBuilder);
     inserter.flush();
     updateRef(branch, newCommitId, expectedHash, force);
+    return newCommitId;
   }
 
   private void updateRef(NamedRef ref, Hash targetHash, Optional<Hash> expectedHash, boolean force)

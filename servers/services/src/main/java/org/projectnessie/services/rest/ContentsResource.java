@@ -29,6 +29,7 @@ import javax.inject.Inject;
 import org.projectnessie.api.ContentsApi;
 import org.projectnessie.error.NessieConflictException;
 import org.projectnessie.error.NessieNotFoundException;
+import org.projectnessie.model.Branch;
 import org.projectnessie.model.CommitMeta;
 import org.projectnessie.model.Contents;
 import org.projectnessie.model.ContentsKey;
@@ -36,6 +37,7 @@ import org.projectnessie.model.ImmutableMultiGetContentsResponse;
 import org.projectnessie.model.MultiGetContentsRequest;
 import org.projectnessie.model.MultiGetContentsResponse;
 import org.projectnessie.model.MultiGetContentsResponse.ContentsWithKey;
+import org.projectnessie.model.SetContentsResponse;
 import org.projectnessie.services.config.ServerConfig;
 import org.projectnessie.versioned.Delete;
 import org.projectnessie.versioned.Hash;
@@ -93,9 +95,10 @@ public class ContentsResource extends BaseResource implements ContentsApi {
   }
 
   @Override
-  public void setContents(ContentsKey key, String branch, String hash, String message, Contents contents)
+  public SetContentsResponse setContents(ContentsKey key, String branch, String hash, String message, Contents contents)
       throws NessieNotFoundException, NessieConflictException {
-    doOps(branch, hash, message, Arrays.asList(Put.of(toKey(key), contents)));
+    String newHash = doOps(branch, hash, message, Arrays.asList(Put.of(toKey(key), contents))).asString();
+    return SetContentsResponse.of(Branch.of(branch, newHash));
   }
 
   @Override

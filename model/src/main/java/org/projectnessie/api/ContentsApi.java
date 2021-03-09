@@ -39,6 +39,7 @@ import org.projectnessie.model.Contents;
 import org.projectnessie.model.ContentsKey;
 import org.projectnessie.model.MultiGetContentsRequest;
 import org.projectnessie.model.MultiGetContentsResponse;
+import org.projectnessie.model.SetContentsResponse;
 import org.projectnessie.model.Validation;
 
 @Consumes(value = MediaType.APPLICATION_JSON)
@@ -95,7 +96,7 @@ public interface ContentsApi {
       @APIResponse(responseCode = "204", description = "Contents updated successfully."),
       @APIResponse(responseCode = "404", description = "Provided ref doesn't exists"),
       @APIResponse(responseCode = "412", description = "Update conflict")})
-  public void setContents(
+  SetContentsResponse setContents(
       @Valid
       @NotNull
       @Parameter(description = "object name to search for")

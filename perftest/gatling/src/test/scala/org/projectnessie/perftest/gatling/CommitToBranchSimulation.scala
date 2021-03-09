@@ -138,10 +138,10 @@ class CommitToBranchSimulation extends Simulation {
         case BranchMode.SINGLE_BRANCH_SINGLE_TABLE => tablePrefix
       }
 
-      client.getContentsApi.setContents(ContentsKey.of("name", "space", tableName),
+      val result = client.getContentsApi.setContents(ContentsKey.of("name", "space", tableName),
         branch.getName, branch.getHash,
         s"test-commit $userId $commitNum", IcebergTable.of(s"path_on_disk_${tableName}_$commitNum"))
-      session
+      session.set("branch", result.getBranch)
     }.onException { (e, client, session) =>
       if (e.isInstanceOf[NessieConflictException]) {
         val branch = session("branch").as[Branch]

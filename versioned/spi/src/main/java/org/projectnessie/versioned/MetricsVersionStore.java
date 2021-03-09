@@ -86,12 +86,12 @@ public final class MetricsVersionStore<VALUE, METADATA> implements VersionStore<
   }
 
   @Override
-  public void commit(@Nonnull BranchName branch,
+  public Hash commit(@Nonnull BranchName branch,
       @Nonnull Optional<Hash> referenceHash,
       @Nonnull METADATA metadata,
       @Nonnull List<Operation<VALUE>> operations)
       throws ReferenceNotFoundException, ReferenceConflictException {
-    measureWithNotFoundAndConflict(() -> delegate.commit(branch, referenceHash, metadata, operations), "commit");
+    return measureWithNotFoundAndConflictR(() -> delegate.commit(branch, referenceHash, metadata, operations), "commit");
   }
 
   @Override
@@ -115,9 +115,9 @@ public final class MetricsVersionStore<VALUE, METADATA> implements VersionStore<
   }
 
   @Override
-  public void create(NamedRef ref, Optional<Hash> targetHash)
+  public Hash create(NamedRef ref, Optional<Hash> targetHash)
       throws ReferenceNotFoundException, ReferenceAlreadyExistsException {
-    measureWithNotFoundAndAlreadyExists(() -> delegate.create(ref, targetHash), "create");
+    return measureWithNotFoundAndAlreadyExists(() -> delegate.create(ref, targetHash), "create");
   }
 
   @Override
@@ -258,12 +258,30 @@ public final class MetricsVersionStore<VALUE, METADATA> implements VersionStore<
     }
   }
 
-  private void measureWithNotFoundAndAlreadyExists(WorkVoid work, String requestName)
+  private <R> R measureWithNotFoundAndConflictR(Work<R> work, String requestName)
+      throws ReferenceNotFoundException, ReferenceConflictException {
+    Sample sample = Timer.start();
+    try {
+      R r = work.work();
+      measure(requestName, sample, null);
+      return r;
+    } catch (ReferenceNotFoundException | ReferenceConflictException e) {
+      measure(requestName, sample, e);
+      throw e;
+    } catch (Exception e) {
+      measure(requestName, sample, e);
+      Throwables.throwIfUnchecked(e);
+      throw new RuntimeException(e);
+    }
+  }
+
+  private <R> R measureWithNotFoundAndAlreadyExists(Work<R> work, String requestName)
       throws ReferenceNotFoundException, ReferenceAlreadyExistsException {
     Sample sample = Timer.start();
     try {
-      work.work();
+      R r = work.work();
       measure(requestName, sample, null);
+      return r;
     } catch (ReferenceNotFoundException | ReferenceAlreadyExistsException e) {
       measure(requestName, sample, e);
       throw e;

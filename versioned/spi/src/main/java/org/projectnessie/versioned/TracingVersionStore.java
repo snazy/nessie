@@ -83,7 +83,7 @@ public class TracingVersionStore<VALUE, METADATA> implements VersionStore<VALUE,
   }
 
   @Override
-  public void commit(@Nonnull BranchName branch,
+  public Hash commit(@Nonnull BranchName branch,
       @Nonnull Optional<Hash> referenceHash,
       @Nonnull METADATA metadata,
       @Nonnull List<Operation<VALUE>> operations)
@@ -95,7 +95,7 @@ public class TracingVersionStore<VALUE, METADATA> implements VersionStore<VALUE,
         .withTag("nessie.version-store.num-ops", safeSize(operations))
         .startActive(true)) {
       try {
-        delegate.commit(branch, referenceHash, metadata, operations);
+        return delegate.commit(branch, referenceHash, metadata, operations);
       } catch (RuntimeException e) {
         throw handleRuntimeException(scope, "commit", e);
       }
@@ -156,7 +156,7 @@ public class TracingVersionStore<VALUE, METADATA> implements VersionStore<VALUE,
   }
 
   @Override
-  public void create(NamedRef ref, Optional<Hash> targetHash)
+  public Hash create(NamedRef ref, Optional<Hash> targetHash)
       throws ReferenceNotFoundException, ReferenceAlreadyExistsException {
     try (Scope scope = createSpan("VersionStore.create")
         .withTag("nessie.version-store.operation", "Create")
@@ -164,7 +164,7 @@ public class TracingVersionStore<VALUE, METADATA> implements VersionStore<VALUE,
         .withTag("nessie.version-store.target-hash", safeToString(targetHash))
         .startActive(true)) {
       try {
-        delegate.create(ref, targetHash);
+        return delegate.create(ref, targetHash);
       } catch (RuntimeException e) {
         throw handleRuntimeException(scope, "create", e);
       }

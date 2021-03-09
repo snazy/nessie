@@ -82,9 +82,12 @@ class NessieClient(object):
 
         :param branch: name of new branch
         :param ref: ref to fork from
+        :return: Nessie reference
         """
         ref_json = ReferenceSchema().dump(Branch(branch, ref))
-        create_reference(self._base_url, ref_json, self._ssl_verify)
+        ref_obj = create_reference(self._base_url, ref_json, self._ssl_verify)
+        ref = ReferenceSchema().load(ref_obj)
+        return ref
 
     def delete_branch(self: "NessieClient", branch: str, hash_: str) -> None:
         """Delete a branch.
@@ -134,9 +137,11 @@ class NessieClient(object):
         args: MultiContents,
         old_hash: str,
         reason: Optional[str] = None,
-    ) -> None:
+    ) -> dict:
         """Modify a set of Nessie tables."""
-        commit(self._base_url, branch, MultiContentsSchema().dumps(args), old_hash, reason)
+        ref_obj = commit(self._base_url, branch, MultiContentsSchema().dumps(args), old_hash, reason)
+        ref = ReferenceSchema().load(ref_obj)
+        return ref
 
     def assign_branch(self: "NessieClient", branch: str, to_ref: str, old_hash: Optional[str] = None) -> None:
         """Assign a hash to a branch."""

@@ -25,6 +25,8 @@ import java.util.concurrent.CompletionException;
 import java.util.concurrent.Executor;
 import java.util.stream.Collectors;
 
+import javax.annotation.Nonnull;
+
 import org.projectnessie.versioned.ReferenceConflictException;
 import org.projectnessie.versioned.ReferenceNotFoundException;
 import org.projectnessie.versioned.impl.condition.ConditionExpression;
@@ -404,7 +406,7 @@ class InternalBranch extends InternalRef {
    *                       against the same branch, saving some effort against the backend database.
    * @param executor The executor instance onto which async tasks are scheduled.
    */
-  void collapseIntentionLog(UpdateState initialState, Persistence persistence, Executor executor,
+  private void collapseIntentionLog(@Nonnull UpdateState initialState, Persistence persistence, Executor executor,
       BackoffConfig backoffConfig, boolean waitOnCollapse) {
     if (!waitOnCollapse) {
       branchCollapseSync.submitCollapse(executor, getId(), () -> collapseIntentionLogSync(initialState, persistence, backoffConfig));
@@ -419,7 +421,7 @@ class InternalBranch extends InternalRef {
     }
   }
 
-  private void collapseIntentionLogSync(UpdateState initialState, Persistence persistence, BackoffConfig backoffConfig) {
+  private void collapseIntentionLogSync(@Nonnull UpdateState initialState, Persistence persistence, BackoffConfig backoffConfig) {
     try {
       collapseIntentionLogInternal(initialState, persistence, this, backoffConfig);
     } catch (ReferenceNotFoundException | ReferenceConflictException e) {
@@ -443,16 +445,13 @@ class InternalBranch extends InternalRef {
    * @throws ReferenceNotFoundException when branch does not exist.
    * @throws ReferenceConflictException If attempts are depleted and operation cannot be applied due to heavy concurrency
    */
-  private static void collapseIntentionLogInternal(UpdateState initialState, Persistence persistence, InternalBranch branch,
+  private static void collapseIntentionLogInternal(@Nonnull UpdateState initialState, Persistence persistence, InternalBranch branch,
       BackoffConfig backoffConfig)
       throws ReferenceNotFoundException, ReferenceConflictException {
     try (Scope outerScope = createSpan("InternalBranch.collapseIntentionLog")
         .withTag("nessie.operation", "CollapseIntentionLog")
         .withTag("nessie.branch", branch.getName())
         .startActive(true)) {
-      if (initialState == null) {
-        initialState = branch.getUpdateState(persistence);
-      }
       UpdateState updateState = initialState;
       BackoffState backoff = new BackoffState(backoffConfig);
       while (true) {

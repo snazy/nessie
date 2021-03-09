@@ -26,6 +26,7 @@ import static org.hamcrest.Matchers.startsWith;
 import static org.junit.jupiter.api.Assertions.assertAll;
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertFalse;
+import static org.junit.jupiter.api.Assertions.assertNotEquals;
 import static org.junit.jupiter.api.Assertions.assertNotNull;
 import static org.junit.jupiter.api.Assertions.assertNull;
 import static org.junit.jupiter.api.Assertions.assertThrows;
@@ -191,9 +192,10 @@ class TestRest {
     for (int i = 0; i < commits; i++) {
       String msg = "message-for-" + i;
       allMessages.add(msg);
-      contents.setContents(ContentsKey.of("table"), branchName, currentHash, msg,
-          IcebergTable.of("some-file-" + i));
-      currentHash = tree.getReferenceByName(branchName).getHash();
+      String nextHash = contents.setContents(ContentsKey.of("table"), branchName, currentHash, msg,
+          IcebergTable.of("some-file-" + i)).getBranch().getHash();
+      assertNotEquals(currentHash, nextHash);;
+      currentHash = nextHash;
     }
     Collections.reverse(allMessages);
 

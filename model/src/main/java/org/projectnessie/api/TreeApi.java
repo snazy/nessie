@@ -42,6 +42,7 @@ import org.projectnessie.error.NessieConflictException;
 import org.projectnessie.error.NessieNotFoundException;
 import org.projectnessie.model.Branch;
 import org.projectnessie.model.CommitMeta;
+import org.projectnessie.model.CommitMultipleOperationsResponse;
 import org.projectnessie.model.EntriesResponse;
 import org.projectnessie.model.EntriesResponse.Entry;
 import org.projectnessie.model.LogResponse;
@@ -430,7 +431,7 @@ public interface TreeApi {
       @APIResponse(responseCode = "404", description = "Provided ref doesn't exists"),
       @APIResponse(responseCode = "412", description = "Update conflict")
   })
-  public void commitMultipleOperations(
+  public CommitMultipleOperationsResponse commitMultipleOperations(
       @NotNull
       @Pattern(regexp = Validation.REF_NAME_REGEX, message = Validation.REF_NAME_MESSAGE)
       @Parameter(description = "Branch to change, defaults to default branch.")

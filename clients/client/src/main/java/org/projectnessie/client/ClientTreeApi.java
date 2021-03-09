@@ -26,6 +26,7 @@ import org.projectnessie.client.http.HttpClient;
 import org.projectnessie.error.NessieConflictException;
 import org.projectnessie.error.NessieNotFoundException;
 import org.projectnessie.model.Branch;
+import org.projectnessie.model.CommitMultipleOperationsResponse;
 import org.projectnessie.model.EntriesResponse;
 import org.projectnessie.model.LogResponse;
 import org.projectnessie.model.Merge;
@@ -150,15 +151,16 @@ class ClientTreeApi implements TreeApi {
   }
 
   @Override
-  public void commitMultipleOperations(
+  public CommitMultipleOperationsResponse commitMultipleOperations(
       String branch,
       @NotNull String expectedHash,
       String message,
       @NotNull Operations operations) throws NessieNotFoundException, NessieConflictException {
-    client.newRequest().path("trees/branch/{branchName}/commit")
+    return client.newRequest().path("trees/branch/{branchName}/commit")
           .resolveTemplate("branchName", branch)
           .queryParam("expectedHash", expectedHash)
           .queryParam("message", message)
-          .post(operations);
+          .post(operations)
+          .readEntity(CommitMultipleOperationsResponse.class);
   }
 }

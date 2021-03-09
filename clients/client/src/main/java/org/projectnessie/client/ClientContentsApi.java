@@ -25,6 +25,7 @@ import org.projectnessie.model.Contents;
 import org.projectnessie.model.ContentsKey;
 import org.projectnessie.model.MultiGetContentsRequest;
 import org.projectnessie.model.MultiGetContentsResponse;
+import org.projectnessie.model.SetContentsResponse;
 
 class ClientContentsApi implements ContentsApi {
 
@@ -53,13 +54,14 @@ class ClientContentsApi implements ContentsApi {
 
 
   @Override
-  public void setContents(@NotNull ContentsKey key, String branch, @NotNull String hash, String message,
+  public SetContentsResponse setContents(@NotNull ContentsKey key, String branch, @NotNull String hash, String message,
                           @NotNull Contents contents) throws NessieNotFoundException, NessieConflictException {
-    client.newRequest().path("contents").path(key.toPathString())
+    return client.newRequest().path("contents").path(key.toPathString())
           .queryParam("branch", branch)
           .queryParam("hash", hash)
           .queryParam("message", message)
-          .post(contents);
+          .post(contents)
+          .readEntity(SetContentsResponse.class);
   }
 
   @Override

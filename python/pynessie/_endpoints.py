@@ -96,7 +96,7 @@ def get_reference(base_url: str, ref: str, ssl_verify: bool = True) -> dict:
     return cast(dict, _get(base_url + "/trees/tree/{}".format(ref), ssl_verify=ssl_verify))
 
 
-def create_reference(base_url: str, ref_json: dict, ssl_verify: bool = True) -> None:
+def create_reference(base_url: str, ref_json: dict, ssl_verify: bool = True) -> dict:
     """Create a reference.
 
     :param base_url: base Nessie url
@@ -104,7 +104,7 @@ def create_reference(base_url: str, ref_json: dict, ssl_verify: bool = True) -> 
     :param ssl_verify: ignore ssl errors if False
     :return: json Nessie branch
     """
-    _post(base_url + "/trees/tree", ref_json, ssl_verify=ssl_verify)
+    return cast(dict, _post(base_url + "/trees/tree", ref_json, ssl_verify=ssl_verify))
 
 
 def get_default_branch(base_url: str, ssl_verify: bool = True) -> dict:
@@ -278,7 +278,7 @@ def commit(
     expected_hash: str,
     reason: Optional[str],
     ssl_verify: bool = True,
-) -> None:
+) -> dict:
     """Commit a set of operations to a branch.
 
     :param base_url: base Nessie url
@@ -292,4 +292,4 @@ def commit(
     params = {"expectedHash": expected_hash}
     if reason:
         params["message"] = reason
-    _post(base_url + url, json=operations, ssl_verify=ssl_verify, params=params)
+    return cast(dict, _post(base_url + url, json=operations, ssl_verify=ssl_verify, params=params))

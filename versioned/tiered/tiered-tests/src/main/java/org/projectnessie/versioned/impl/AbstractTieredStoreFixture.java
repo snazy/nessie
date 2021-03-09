@@ -73,10 +73,10 @@ public abstract class AbstractTieredStoreFixture<S extends Store, C> implements 
   }
 
   @Override
-  public void commit(BranchName branch, Optional<Hash> expectedHash, String metadata,
+  public Hash commit(BranchName branch, Optional<Hash> expectedHash, String metadata,
       List<Operation<String>> operations)
       throws ReferenceNotFoundException, ReferenceConflictException {
-    impl.commit(branch, expectedHash, metadata, operations);
+    return impl.commit(branch, expectedHash, metadata, operations);
   }
 
   @Override
@@ -99,9 +99,9 @@ public abstract class AbstractTieredStoreFixture<S extends Store, C> implements 
   }
 
   @Override
-  public void create(NamedRef ref, Optional<Hash> targetHash)
+  public Hash create(NamedRef ref, Optional<Hash> targetHash)
       throws ReferenceNotFoundException, ReferenceAlreadyExistsException {
-    impl.create(ref, targetHash);
+    return impl.create(ref, targetHash);
   }
 
   @Override
