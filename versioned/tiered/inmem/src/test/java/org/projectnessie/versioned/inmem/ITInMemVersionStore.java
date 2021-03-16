@@ -43,7 +43,7 @@ public class ITInMemVersionStore extends AbstractITVersionStore {
   }
 
   @Override
-  protected VersionStore<String, String, StringSerializer.TestEnum> store() {
+  protected VersionStore<String, String, StringSerializer.TestEnum> versionStore() {
     return fixture;
   }
 

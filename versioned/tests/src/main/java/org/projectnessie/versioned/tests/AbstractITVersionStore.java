@@ -23,14 +23,17 @@ import static org.hamcrest.Matchers.notNullValue;
 import static org.hamcrest.Matchers.nullValue;
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertNotEquals;
+import static org.junit.jupiter.api.Assertions.assertNull;
 import static org.junit.jupiter.api.Assertions.assertThrows;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.Collections;
+import java.util.LinkedList;
 import java.util.List;
 import java.util.Optional;
+import java.util.Random;
 import java.util.function.IntFunction;
 import java.util.stream.Collectors;
 import java.util.stream.Stream;
@@ -45,10 +48,15 @@ import org.projectnessie.versioned.BranchName;
 import org.projectnessie.versioned.Delete;
 import org.projectnessie.versioned.Diff;
 import org.projectnessie.versioned.Hash;
+import org.projectnessie.versioned.ImmutableBranchName;
+import org.projectnessie.versioned.ImmutableKey;
+import org.projectnessie.versioned.ImmutablePut;
+import org.projectnessie.versioned.ImmutableTagName;
 import org.projectnessie.versioned.Key;
 import org.projectnessie.versioned.NamedRef;
 import org.projectnessie.versioned.Operation;
 import org.projectnessie.versioned.Put;
+import org.projectnessie.versioned.Ref;
 import org.projectnessie.versioned.ReferenceAlreadyExistsException;
 import org.projectnessie.versioned.ReferenceConflictException;
 import org.projectnessie.versioned.ReferenceNotFoundException;
@@ -61,14 +69,17 @@ import org.projectnessie.versioned.WithHash;
 import org.projectnessie.versioned.WithType;
 
 import com.google.common.collect.ImmutableList;
+import com.google.common.collect.ImmutableSet;
 import com.google.common.collect.Lists;
 
 /**
- * Base class used for integration tests against version store implementations.
+ * Base class used for integration tests against {@link VersionStore} implementations.
+ * Integration tests for {@code TieredVersionStore} implementations must extend
+ * {@code org.projectnessie.versioned.impl.AbstractITTieredVersionStore}.
  */
 public abstract class AbstractITVersionStore {
 
-  protected abstract VersionStore<String, String, StringSerializer.TestEnum> store();
+  protected abstract VersionStore<String, String, StringSerializer.TestEnum> versionStore();
 
   /**
    * Use case simulation: single branch, multiple users, each user updating a separate table.
@@ -94,7 +105,7 @@ public abstract class AbstractITVersionStore {
     int numCommits = 50;
 
     Hash[] hashesKnownByUser = new Hash[numUsers];
-    Hash createHash = store().create(branch, Optional.empty());
+    Hash createHash = versionStore().create(branch, Optional.empty());
     Arrays.fill(hashesKnownByUser, createHash);
 
     List<String> expectedValues = new ArrayList<>();
@@ -109,11 +120,11 @@ public abstract class AbstractITVersionStore {
 
         Hash commitHash;
         try {
-          commitHash = store().commit(branch, Optional.of(hashKnownByUser), msg, ImmutableList.of(put));
+          commitHash = versionStore().commit(branch, Optional.of(hashKnownByUser), msg, ImmutableList.of(put));
         } catch (ReferenceConflictException inconsistentValueException) {
           if (allowInconsistentValueException) {
-            hashKnownByUser = store().toHash(branch);
-            commitHash = store().commit(branch, Optional.of(hashKnownByUser), msg, ImmutableList.of(put));
+            hashKnownByUser = versionStore().toHash(branch);
+            commitHash = versionStore().commit(branch, Optional.of(hashKnownByUser), msg, ImmutableList.of(put));
           } else {
             throw inconsistentValueException;
           }
@@ -126,7 +137,7 @@ public abstract class AbstractITVersionStore {
     }
 
     // Verify that all commits are there and that the order of the commits is correct
-    List<String> committedValues = store().getCommits(branch)
+    List<String> committedValues = versionStore().getCommits(branch)
         .map(WithHash::getValue).collect(Collectors.toList());
     Collections.reverse(expectedValues);
     assertEquals(expectedValues, committedValues);
@@ -144,21 +155,21 @@ public abstract class AbstractITVersionStore {
   @Test
   public void createAndDeleteBranch() throws Exception {
     final BranchName branch = BranchName.of("foo");
-    store().create(branch, Optional.empty());
-    final Hash hash = store().toHash(branch);
+    versionStore().create(branch, Optional.empty());
+    final Hash hash = versionStore().toHash(branch);
     assertThat(hash, is(notNullValue()));
 
     final BranchName anotherBranch = BranchName.of("bar");
-    final Hash createHash = store().create(anotherBranch, Optional.of(hash));
+    final Hash createHash = versionStore().create(anotherBranch, Optional.of(hash));
     final Hash commitHash = commit("Some Commit").toBranch(anotherBranch);
     assertNotEquals(createHash, commitHash);
 
     final BranchName anotherAnotherBranch = BranchName.of("baz");
-    final Hash otherCreateHash = store().create(anotherAnotherBranch, Optional.of(commitHash));
+    final Hash otherCreateHash = versionStore().create(anotherAnotherBranch, Optional.of(commitHash));
     assertEquals(commitHash, otherCreateHash);
 
     List<WithHash<NamedRef>> namedRefs;
-    try (Stream<WithHash<NamedRef>> str = store().getNamedRefs()) {
+    try (Stream<WithHash<NamedRef>> str = versionStore().getNamedRefs()) {
       namedRefs = str.collect(Collectors.toList());
     }
     assertThat(namedRefs, containsInAnyOrder(
@@ -167,27 +178,27 @@ public abstract class AbstractITVersionStore {
         WithHash.of(commitHash, anotherAnotherBranch)
     ));
 
-    assertThat(store().getCommits(branch).count(), is(0L));
-    assertThat(store().getCommits(anotherBranch).count(), is(1L));
-    assertThat(store().getCommits(anotherAnotherBranch).count(), is(1L));
-    assertThat(store().getCommits(hash).count(), is(0L)); // empty commit should not be listed
-    assertThat(store().getCommits(commitHash).count(), is(1L)); // empty commit should not be listed
+    assertThat(versionStore().getCommits(branch).count(), is(0L));
+    assertThat(versionStore().getCommits(anotherBranch).count(), is(1L));
+    assertThat(versionStore().getCommits(anotherAnotherBranch).count(), is(1L));
+    assertThat(versionStore().getCommits(hash).count(), is(0L)); // empty commit should not be listed
+    assertThat(versionStore().getCommits(commitHash).count(), is(1L)); // empty commit should not be listed
 
-    assertThrows(ReferenceAlreadyExistsException.class, () -> store().create(branch, Optional.empty()));
-    assertThrows(ReferenceAlreadyExistsException.class, () -> store().create(branch, Optional.of(hash)));
+    assertThrows(ReferenceAlreadyExistsException.class, () -> versionStore().create(branch, Optional.empty()));
+    assertThrows(ReferenceAlreadyExistsException.class, () -> versionStore().create(branch, Optional.of(hash)));
 
-    store().delete(branch, Optional.of(hash));
-    assertThrows(ReferenceNotFoundException.class, () -> store().toHash(branch));
-    try (Stream<WithHash<NamedRef>> str = store().getNamedRefs()) {
+    versionStore().delete(branch, Optional.of(hash));
+    assertThrows(ReferenceNotFoundException.class, () -> versionStore().toHash(branch));
+    try (Stream<WithHash<NamedRef>> str = versionStore().getNamedRefs()) {
       assertThat(str.count(), is(2L)); // bar + baz
     }
-    assertThrows(ReferenceNotFoundException.class, () -> store().delete(branch, Optional.of(hash)));
+    assertThrows(ReferenceNotFoundException.class, () -> versionStore().delete(branch, Optional.of(hash)));
   }
 
   @Test
   public void commitLogPaging() throws Exception {
     BranchName branch = BranchName.of("commitLogPaging");
-    Hash createHash = store().create(branch, Optional.empty());
+    Hash createHash = versionStore().create(branch, Optional.empty());
 
     int commits = 95; // this should be enough
     Hash[] commitHashes = new Hash[commits];
@@ -195,14 +206,14 @@ public abstract class AbstractITVersionStore {
     for (int i = 0; i < commits; i++) {
       String msg = String.format("commit#%05d", i);
       messages.add(msg);
-      commitHashes[i] = store().commit(branch, Optional.of(i == 0 ? createHash : commitHashes[i - 1]),
+      commitHashes[i] = versionStore().commit(branch, Optional.of(i == 0 ? createHash : commitHashes[i - 1]),
           msg, ImmutableList.of(Put.of(Key.of("table"), String.format("value#%05d", i))));
     }
     Collections.reverse(messages);
 
-    Stream<WithHash<String>> justTwo = store().getCommits(branch).limit(2);
+    Stream<WithHash<String>> justTwo = versionStore().getCommits(branch).limit(2);
     assertEquals(messages.subList(0, 2), justTwo.map(WithHash::getValue).collect(Collectors.toList()));
-    Stream<WithHash<String>> justTen = store().getCommits(branch).limit(10);
+    Stream<WithHash<String>> justTen = versionStore().getCommits(branch).limit(10);
     assertEquals(messages.subList(0, 10), justTen.map(WithHash::getValue).collect(Collectors.toList()));
 
     int pageSize = 10;
@@ -212,7 +223,7 @@ public abstract class AbstractITVersionStore {
 
     Hash lastHash = null;
     for (int offset = 0; ; ) {
-      List<WithHash<String>> logPage = store().getCommits(lastHash == null ? branch : lastHash)
+      List<WithHash<String>> logPage = versionStore().getCommits(lastHash == null ? branch : lastHash)
           .limit(pageSize).collect(Collectors.toList());
 
       assertEquals(
@@ -225,7 +236,7 @@ public abstract class AbstractITVersionStore {
       if (offset >= commits) {
         // The "next after last page" should always return just a single commit, that's basically
         // the "end of commit-log"-condition.
-        logPage = store().getCommits(lastHash).limit(pageSize).collect(Collectors.toList());
+        logPage = versionStore().getCommits(lastHash).limit(pageSize).collect(Collectors.toList());
         assertEquals(
             Collections.singletonList(messages.get(commits - 1)),
             logPage.stream().map(WithHash::getValue).collect(Collectors.toList()));
@@ -249,25 +260,25 @@ public abstract class AbstractITVersionStore {
   @Test
   public void createAndDeleteTag() throws Exception {
     final BranchName branch = BranchName.of("foo");
-    store().create(branch, Optional.empty());
+    versionStore().create(branch, Optional.empty());
 
-    final Hash initialHash = store().toHash(branch);
+    final Hash initialHash = versionStore().toHash(branch);
     final Hash commitHash = commit("Some commit").toBranch(branch);
 
     final TagName tag = TagName.of("tag");
-    store().create(tag, Optional.of(initialHash));
+    versionStore().create(tag, Optional.of(initialHash));
 
     final TagName anotherTag = TagName.of("another-tag");
-    store().create(anotherTag, Optional.of(commitHash));
+    versionStore().create(anotherTag, Optional.of(commitHash));
 
-    assertThrows(ReferenceAlreadyExistsException.class, () -> store().create(tag, Optional.of(initialHash)));
-    assertThrows(IllegalArgumentException.class, () -> store().create(tag,  Optional.empty()));
+    assertThrows(ReferenceAlreadyExistsException.class, () -> versionStore().create(tag, Optional.of(initialHash)));
+    assertThrows(IllegalArgumentException.class, () -> versionStore().create(tag,  Optional.empty()));
 
-    assertThat(store().toHash(tag), is(initialHash));
-    assertThat(store().toHash(anotherTag), is(commitHash));
+    assertThat(versionStore().toHash(tag), is(initialHash));
+    assertThat(versionStore().toHash(anotherTag), is(commitHash));
 
     List<WithHash<NamedRef>> namedRefs;
-    try (Stream<WithHash<NamedRef>> str = store().getNamedRefs()) {
+    try (Stream<WithHash<NamedRef>> str = versionStore().getNamedRefs()) {
       namedRefs = str.collect(Collectors.toList());
     }
     assertThat(namedRefs, containsInAnyOrder(
@@ -275,18 +286,18 @@ public abstract class AbstractITVersionStore {
         WithHash.of(initialHash, tag),
         WithHash.of(commitHash, anotherTag)));
 
-    assertThat(store().getCommits(tag).count(), is(0L));
-    assertThat(store().getCommits(initialHash).count(), is(0L)); // empty commit should not be listed
+    assertThat(versionStore().getCommits(tag).count(), is(0L));
+    assertThat(versionStore().getCommits(initialHash).count(), is(0L)); // empty commit should not be listed
 
-    assertThat(store().getCommits(anotherTag).count(), is(1L));
-    assertThat(store().getCommits(commitHash).count(), is(1L)); // empty commit should not be listed
+    assertThat(versionStore().getCommits(anotherTag).count(), is(1L));
+    assertThat(versionStore().getCommits(commitHash).count(), is(1L)); // empty commit should not be listed
 
-    store().delete(tag, Optional.of(initialHash));
-    assertThrows(ReferenceNotFoundException.class, () -> store().toHash(tag));
-    try (Stream<WithHash<NamedRef>> str = store().getNamedRefs()) {
+    versionStore().delete(tag, Optional.of(initialHash));
+    assertThrows(ReferenceNotFoundException.class, () -> versionStore().toHash(tag));
+    try (Stream<WithHash<NamedRef>> str = versionStore().getNamedRefs()) {
       assertThat(str.count(), is(2L)); // foo + another-tag
     }
-    assertThrows(ReferenceNotFoundException.class, () -> store().delete(tag, Optional.of(initialHash)));
+    assertThrows(ReferenceNotFoundException.class, () -> versionStore().delete(tag, Optional.of(initialHash)));
   }
 
   /*
@@ -301,31 +312,31 @@ public abstract class AbstractITVersionStore {
   public void commitToBranch() throws Exception {
     final BranchName branch = BranchName.of("foo");
 
-    final Hash createHash = store().create(branch, Optional.empty());
-    final Hash initialHash = store().toHash(branch);
+    final Hash createHash = versionStore().create(branch, Optional.empty());
+    final Hash initialHash = versionStore().toHash(branch);
     assertEquals(createHash, initialHash);
 
-    final Hash commitHash0 = store().commit(branch, Optional.of(initialHash), "Some commit", Collections.emptyList());
-    final Hash commitHash = store().toHash(branch);
+    final Hash commitHash0 = versionStore().commit(branch, Optional.of(initialHash), "Some commit", Collections.emptyList());
+    final Hash commitHash = versionStore().toHash(branch);
     assertEquals(commitHash, commitHash0);
 
     assertThat(commitHash, is(Matchers.not(initialHash)));
-    store().commit(branch, Optional.of(initialHash), "Another commit", Collections.emptyList());
-    final Hash anotherCommitHash = store().toHash(branch);
+    versionStore().commit(branch, Optional.of(initialHash), "Another commit", Collections.emptyList());
+    final Hash anotherCommitHash = versionStore().toHash(branch);
 
-    assertThat(store().getCommits(branch).collect(Collectors.toList()), contains(
+    assertThat(versionStore().getCommits(branch).collect(Collectors.toList()), contains(
         WithHash.of(anotherCommitHash, "Another commit"),
         WithHash.of(commitHash, "Some commit")
     ));
-    assertThat(store().getCommits(commitHash).collect(Collectors.toList()), contains(WithHash.of(commitHash, "Some commit")));
+    assertThat(versionStore().getCommits(commitHash).collect(Collectors.toList()), contains(WithHash.of(commitHash, "Some commit")));
 
-    assertThrows(ReferenceConflictException.class, () -> store().delete(branch, Optional.of(initialHash)));
-    store().delete(branch, Optional.of(anotherCommitHash));
-    assertThrows(ReferenceNotFoundException.class, () -> store().toHash(branch));
-    try (Stream<WithHash<NamedRef>> str = store().getNamedRefs()) {
+    assertThrows(ReferenceConflictException.class, () -> versionStore().delete(branch, Optional.of(initialHash)));
+    versionStore().delete(branch, Optional.of(anotherCommitHash));
+    assertThrows(ReferenceNotFoundException.class, () -> versionStore().toHash(branch));
+    try (Stream<WithHash<NamedRef>> str = versionStore().getNamedRefs()) {
       assertThat(str.count(), is(0L));
     }
-    assertThrows(ReferenceNotFoundException.class, () -> store().delete(branch, Optional.of(commitHash)));
+    assertThrows(ReferenceNotFoundException.class, () -> versionStore().delete(branch, Optional.of(commitHash)));
   }
 
   /*
@@ -340,7 +351,7 @@ public abstract class AbstractITVersionStore {
   public void commitSomeOperations() throws Exception {
     final BranchName branch = BranchName.of("foo");
 
-    store().create(branch, Optional.empty());
+    versionStore().create(branch, Optional.empty());
 
     final Hash initialCommit = commit("Initial Commit")
         .put("t1", "v1_1")
@@ -360,30 +371,31 @@ public abstract class AbstractITVersionStore {
         .unchanged("t4")
         .toBranch(branch);
 
-    assertThat(store().getCommits(branch).collect(Collectors.toList()), contains(
+    assertThat(versionStore().getCommits(branch).collect(Collectors.toList()), contains(
         WithHash.of(thirdCommit, "Third Commit"),
         WithHash.of(secondCommit, "Second Commit"),
         WithHash.of(initialCommit, "Initial Commit")
         ));
 
-    assertThat(store().getKeys(branch).map(WithType::getValue).collect(Collectors.toList()), containsInAnyOrder(
+    assertThat(versionStore().getKeys(branch).map(WithType::getValue).collect(Collectors.toList()), containsInAnyOrder(
         Key.of("t1"),
         Key.of("t2"),
         Key.of("t4")
         ));
 
-    assertThat(store().getKeys(secondCommit).map(WithType::getValue).collect(Collectors.toList()), containsInAnyOrder(
+    assertThat(versionStore().getKeys(secondCommit).map(WithType::getValue).collect(Collectors.toList()), containsInAnyOrder(
         Key.of("t1"),
         Key.of("t4")
         ));
 
-    assertThat(store().getKeys(initialCommit).map(WithType::getValue).collect(Collectors.toList()), containsInAnyOrder(
+    assertThat(versionStore().getKeys(initialCommit).map(WithType::getValue).collect(Collectors.toList()), containsInAnyOrder(
         Key.of("t1"),
         Key.of("t2"),
         Key.of("t3")
         ));
 
-    assertThat(store().getValues(branch, Arrays.asList(Key.of("t1"), Key.of("t2"), Key.of("t3"), Key.of("t4"))),
+    assertThat(
+        versionStore().getValues(branch, Arrays.asList(Key.of("t1"), Key.of("t2"), Key.of("t3"), Key.of("t4"))),
         contains(
             Optional.of("v1_2"),
             Optional.of("v2_2"),
@@ -391,7 +403,7 @@ public abstract class AbstractITVersionStore {
             Optional.of("v4_1")
         ));
 
-    assertThat(store().getValues(secondCommit, Arrays.asList(Key.of("t1"), Key.of("t2"), Key.of("t3"), Key.of("t4"))),
+    assertThat(versionStore().getValues(secondCommit, Arrays.asList(Key.of("t1"), Key.of("t2"), Key.of("t3"), Key.of("t4"))),
         contains(
             Optional.of("v1_2"),
             Optional.empty(),
@@ -399,7 +411,7 @@ public abstract class AbstractITVersionStore {
             Optional.of("v4_1")
         ));
 
-    assertThat(store().getValues(initialCommit, Arrays.asList(Key.of("t1"), Key.of("t2"), Key.of("t3"), Key.of("t4"))),
+    assertThat(versionStore().getValues(initialCommit, Arrays.asList(Key.of("t1"), Key.of("t2"), Key.of("t3"), Key.of("t4"))),
         contains(
             Optional.of("v1_1"),
             Optional.of("v2_1"),
@@ -407,20 +419,20 @@ public abstract class AbstractITVersionStore {
             Optional.empty()
         ));
 
-    assertThat(store().getValue(branch, Key.of("t1")), is("v1_2"));
-    assertThat(store().getValue(branch, Key.of("t2")), is("v2_2"));
-    assertThat(store().getValue(branch, Key.of("t3")), is(nullValue()));
-    assertThat(store().getValue(branch, Key.of("t4")), is("v4_1"));
+    assertThat(versionStore().getValue(branch, Key.of("t1")), is("v1_2"));
+    assertThat(versionStore().getValue(branch, Key.of("t2")), is("v2_2"));
+    assertThat(versionStore().getValue(branch, Key.of("t3")), is(nullValue()));
+    assertThat(versionStore().getValue(branch, Key.of("t4")), is("v4_1"));
 
-    assertThat(store().getValue(secondCommit, Key.of("t1")), is("v1_2"));
-    assertThat(store().getValue(secondCommit, Key.of("t2")), is(nullValue()));
-    assertThat(store().getValue(secondCommit, Key.of("t3")), is(nullValue()));
-    assertThat(store().getValue(secondCommit, Key.of("t4")), is("v4_1"));
+    assertThat(versionStore().getValue(secondCommit, Key.of("t1")), is("v1_2"));
+    assertThat(versionStore().getValue(secondCommit, Key.of("t2")), is(nullValue()));
+    assertThat(versionStore().getValue(secondCommit, Key.of("t3")), is(nullValue()));
+    assertThat(versionStore().getValue(secondCommit, Key.of("t4")), is("v4_1"));
 
-    assertThat(store().getValue(initialCommit, Key.of("t1")), is("v1_1"));
-    assertThat(store().getValue(initialCommit, Key.of("t2")), is("v2_1"));
-    assertThat(store().getValue(initialCommit, Key.of("t3")), is("v3_1"));
-    assertThat(store().getValue(initialCommit, Key.of("t4")), is(nullValue()));
+    assertThat(versionStore().getValue(initialCommit, Key.of("t1")), is("v1_1"));
+    assertThat(versionStore().getValue(initialCommit, Key.of("t2")), is("v2_1"));
+    assertThat(versionStore().getValue(initialCommit, Key.of("t3")), is("v3_1"));
+    assertThat(versionStore().getValue(initialCommit, Key.of("t4")), is(nullValue()));
   }
 
   /*
@@ -438,7 +450,7 @@ public abstract class AbstractITVersionStore {
   public void commitNonConflictingOperations() throws Exception {
     final BranchName branch = BranchName.of("foo");
 
-    store().create(branch, Optional.empty());
+    versionStore().create(branch, Optional.empty());
 
     final Hash initialCommit = commit("Initial Commit")
         .put("t1", "v1_1")
@@ -452,7 +464,7 @@ public abstract class AbstractITVersionStore {
     final Hash extraCommit = commit("Extra Commit").fromReference(t1Commit).put("t1", "v1_3").put("t3", "v3_2").toBranch(branch);
     final Hash newT2Commit = commit("New T2 Commit").fromReference(t2Commit).put("t2", "new_v2_1").toBranch(branch);
 
-    assertThat(store().getCommits(branch).collect(Collectors.toList()), contains(
+    assertThat(versionStore().getCommits(branch).collect(Collectors.toList()), contains(
         WithHash.of(newT2Commit, "New T2 Commit"),
         WithHash.of(extraCommit, "Extra Commit"),
         WithHash.of(t3Commit, "T3 Commit"),
@@ -461,48 +473,48 @@ public abstract class AbstractITVersionStore {
         WithHash.of(initialCommit, "Initial Commit")
         ));
 
-    assertThat(store().getKeys(branch).map(WithType::getValue).collect(Collectors.toList()), containsInAnyOrder(
+    assertThat(versionStore().getKeys(branch).map(WithType::getValue).collect(Collectors.toList()), containsInAnyOrder(
         Key.of("t1"),
         Key.of("t2"),
         Key.of("t3")
         ));
 
-    assertThat(store().getValues(branch, Arrays.asList(Key.of("t1"), Key.of("t2"), Key.of("t3"))),
+    assertThat(versionStore().getValues(branch, Arrays.asList(Key.of("t1"), Key.of("t2"), Key.of("t3"))),
         contains(
             Optional.of("v1_3"),
             Optional.of("new_v2_1"),
             Optional.of("v3_2")
         ));
 
-    assertThat(store().getValues(newT2Commit, Arrays.asList(Key.of("t1"), Key.of("t2"), Key.of("t3"))),
+    assertThat(versionStore().getValues(newT2Commit, Arrays.asList(Key.of("t1"), Key.of("t2"), Key.of("t3"))),
         contains(
             Optional.of("v1_3"),
             Optional.of("new_v2_1"),
             Optional.of("v3_2")
         ));
 
-    assertThat(store().getValues(extraCommit, Arrays.asList(Key.of("t1"), Key.of("t2"), Key.of("t3"))),
+    assertThat(versionStore().getValues(extraCommit, Arrays.asList(Key.of("t1"), Key.of("t2"), Key.of("t3"))),
         contains(
             Optional.of("v1_3"),
             Optional.empty(),
             Optional.of("v3_2")
         ));
 
-    assertThat(store().getValues(t3Commit, Arrays.asList(Key.of("t1"), Key.of("t2"), Key.of("t3"))),
+    assertThat(versionStore().getValues(t3Commit, Arrays.asList(Key.of("t1"), Key.of("t2"), Key.of("t3"))),
         contains(
             Optional.of("v1_2"),
             Optional.empty(),
             Optional.of("v3_1")
         ));
 
-    assertThat(store().getValues(t2Commit, Arrays.asList(Key.of("t1"), Key.of("t2"), Key.of("t3"))),
+    assertThat(versionStore().getValues(t2Commit, Arrays.asList(Key.of("t1"), Key.of("t2"), Key.of("t3"))),
         contains(
             Optional.of("v1_2"),
             Optional.empty(),
             Optional.of("v3_1")
         ));
 
-    assertThat(store().getValues(t1Commit, Arrays.asList(Key.of("t1"), Key.of("t2"), Key.of("t3"))),
+    assertThat(versionStore().getValues(t1Commit, Arrays.asList(Key.of("t1"), Key.of("t2"), Key.of("t3"))),
         contains(
             Optional.of("v1_2"),
             Optional.of("v2_1"),
@@ -524,7 +536,7 @@ public abstract class AbstractITVersionStore {
   public void commitConflictingOperations() throws Exception {
     final BranchName branch = BranchName.of("foo");
 
-    store().create(branch, Optional.empty());
+    versionStore().create(branch, Optional.empty());
 
     final Hash initialCommit = commit("Initial Commit")
         .put("t1", "v1_1")
@@ -552,7 +564,7 @@ public abstract class AbstractITVersionStore {
         () -> commit("Conflicting Commit").fromReference(initialCommit).delete("t3").toBranch(branch));
 
     // Checking the state hasn't changed
-    assertThat(store().toHash(branch), is(secondCommit));
+    assertThat(versionStore().toHash(branch), is(secondCommit));
   }
 
   /*
@@ -570,7 +582,7 @@ public abstract class AbstractITVersionStore {
   public void forceCommitConflictingOperations() throws Exception {
     final BranchName branch = BranchName.of("foo");
 
-    store().create(branch, Optional.empty());
+    versionStore().create(branch, Optional.empty());
 
     commit("Initial Commit")
         .put("t1", "v1_1")
@@ -589,8 +601,8 @@ public abstract class AbstractITVersionStore {
         .put("t3", "v3_2")
         .toBranch(branch);
 
-    assertThat(store().toHash(branch), is(putCommit));
-    assertThat(store().getValues(branch, Arrays.asList(Key.of("t1"), Key.of("t2"), Key.of("t3"))),
+    assertThat(versionStore().toHash(branch), is(putCommit));
+    assertThat(versionStore().getValues(branch, Arrays.asList(Key.of("t1"), Key.of("t2"), Key.of("t3"))),
         contains(
             Optional.of("v1_3"),
             Optional.of("v2_2"),
@@ -602,8 +614,8 @@ public abstract class AbstractITVersionStore {
         .unchanged("t2")
         .unchanged("t3")
         .toBranch(branch);
-    assertThat(store().toHash(branch), is(unchangedCommit));
-    assertThat(store().getValues(branch, Arrays.asList(Key.of("t1"), Key.of("t2"), Key.of("t3"))),
+    assertThat(versionStore().toHash(branch), is(unchangedCommit));
+    assertThat(versionStore().getValues(branch, Arrays.asList(Key.of("t1"), Key.of("t2"), Key.of("t3"))),
         contains(
             Optional.of("v1_3"),
             Optional.of("v2_2"),
@@ -615,8 +627,8 @@ public abstract class AbstractITVersionStore {
         .delete("t2")
         .delete("t3")
         .toBranch(branch);
-    assertThat(store().toHash(branch), is(deleteCommit));
-    assertThat(store().getValues(branch, Arrays.asList(Key.of("t1"), Key.of("t2"), Key.of("t3"))),
+    assertThat(versionStore().toHash(branch), is(deleteCommit));
+    assertThat(versionStore().getValues(branch, Arrays.asList(Key.of("t1"), Key.of("t2"), Key.of("t3"))),
         contains(
             Optional.empty(),
             Optional.empty(),
@@ -631,14 +643,14 @@ public abstract class AbstractITVersionStore {
   @Test
   public void commitDuplicateValues() throws Exception {
     BranchName branch = BranchName.of("dupe-values");
-    store().create(branch, Optional.empty());
-    store().commit(branch, Optional.empty(), "metadata", ImmutableList.of(
+    versionStore().create(branch, Optional.empty());
+    versionStore().commit(branch, Optional.empty(), "metadata", ImmutableList.of(
         put("keyA", "foo"),
         put("keyB", "foo"))
     );
 
-    assertThat(store().getValue(branch, Key.of("keyA")), is("foo"));
-    assertThat(store().getValue(branch, Key.of("keyB")), is("foo"));
+    assertThat(versionStore().getValue(branch, Key.of("keyA")), is("foo"));
+    assertThat(versionStore().getValue(branch, Key.of("keyB")), is("foo"));
   }
 
   /*
@@ -650,7 +662,7 @@ public abstract class AbstractITVersionStore {
     final BranchName branch = BranchName.of("unknown");
 
     assertThrows(ReferenceNotFoundException.class,
-        () -> store().commit(branch, Optional.empty(), "New commit", Collections.emptyList()));
+        () -> versionStore().commit(branch, Optional.empty(), "New commit", Collections.emptyList()));
   }
 
   /*
@@ -660,10 +672,10 @@ public abstract class AbstractITVersionStore {
   @Test
   public void commitWithUnknownReference() throws ReferenceNotFoundException, ReferenceAlreadyExistsException {
     final BranchName branch = BranchName.of("foo");
-    store().create(branch, Optional.empty());
+    versionStore().create(branch, Optional.empty());
 
     assertThrows(ReferenceNotFoundException.class,
-        () -> store().commit(branch, Optional.of(Hash.of("1234567890abcdef")), "New commit", Collections.emptyList()));
+        () -> versionStore().commit(branch, Optional.of(Hash.of("1234567890abcdef")), "New commit", Collections.emptyList()));
   }
 
   /*
@@ -673,72 +685,72 @@ public abstract class AbstractITVersionStore {
   @Test
   public void commitWithInvalidReference() throws ReferenceNotFoundException, ReferenceConflictException, ReferenceAlreadyExistsException {
     final BranchName branch = BranchName.of("foo");
-    store().create(branch, Optional.empty());
+    versionStore().create(branch, Optional.empty());
 
 
-    final Hash initialHash = store().toHash(branch);
-    store().commit(branch, Optional.of(initialHash), "Some commit", Collections.emptyList());
+    final Hash initialHash = versionStore().toHash(branch);
+    versionStore().commit(branch, Optional.of(initialHash), "Some commit", Collections.emptyList());
 
-    final Hash commitHash = store().toHash(branch);
+    final Hash commitHash = versionStore().toHash(branch);
 
     final BranchName branch2 = BranchName.of("bar");
-    store().create(branch2, Optional.empty());
+    versionStore().create(branch2, Optional.empty());
 
     assertThrows(ReferenceNotFoundException.class,
-        () -> store().commit(branch2, Optional.of(commitHash), "Another commit", Collections.emptyList()));
+        () -> versionStore().commit(branch2, Optional.of(commitHash), "Another commit", Collections.emptyList()));
   }
 
   @Test
   public void getValueForEmptyBranch() throws ReferenceNotFoundException, ReferenceAlreadyExistsException {
     BranchName branch = BranchName.of("empty-branch");
-    store().create(branch, Optional.empty());
-    final Hash hash = store().toHash(branch);
+    versionStore().create(branch, Optional.empty());
+    final Hash hash = versionStore().toHash(branch);
 
-    assertThat(store().getValue(hash, Key.of("arbitrary")), is(nullValue()));
+    assertThat(versionStore().getValue(hash, Key.of("arbitrary")), is(nullValue()));
   }
 
   @Test
   public void assign() throws VersionStoreException {
     final BranchName branch = BranchName.of("foo");
-    store().create(branch, Optional.empty());
-    final Hash initialHash = store().toHash(branch);
+    versionStore().create(branch, Optional.empty());
+    final Hash initialHash = versionStore().toHash(branch);
 
     final Hash commit = commit("Some commit").toBranch(branch);
-    store().create(BranchName.of("bar"), Optional.of(commit));
-    store().create(TagName.of("tag1"),  Optional.of(commit));
-    store().create(TagName.of("tag2"),  Optional.of(commit));
-    store().create(TagName.of("tag3"),  Optional.of(commit));
+    versionStore().create(BranchName.of("bar"), Optional.of(commit));
+    versionStore().create(TagName.of("tag1"),  Optional.of(commit));
+    versionStore().create(TagName.of("tag2"),  Optional.of(commit));
+    versionStore().create(TagName.of("tag3"),  Optional.of(commit));
 
     final Hash anotherCommit = commit("Another commit").toBranch(branch);
-    store().assign(TagName.of("tag2"), Optional.of(commit), anotherCommit);
-    store().assign(TagName.of("tag3"), Optional.empty(), anotherCommit);
+    versionStore().assign(TagName.of("tag2"), Optional.of(commit), anotherCommit);
+    versionStore().assign(TagName.of("tag3"), Optional.empty(), anotherCommit);
 
     assertThrows(ReferenceNotFoundException.class,
-        () -> store().assign(BranchName.of("baz"), Optional.empty(), anotherCommit));
+        () -> versionStore().assign(BranchName.of("baz"), Optional.empty(), anotherCommit));
     assertThrows(ReferenceNotFoundException.class,
-        () -> store().assign(TagName.of("unknowon-tag"), Optional.empty(), anotherCommit));
+        () -> versionStore().assign(TagName.of("unknowon-tag"), Optional.empty(), anotherCommit));
 
     assertThrows(ReferenceConflictException.class,
-        () -> store().assign(TagName.of("tag1"), Optional.of(initialHash), commit));
+        () -> versionStore().assign(TagName.of("tag1"), Optional.of(initialHash), commit));
     assertThrows(ReferenceConflictException.class,
-        () -> store().assign(TagName.of("tag1"), Optional.of(initialHash), anotherCommit));
+        () -> versionStore().assign(TagName.of("tag1"), Optional.of(initialHash), anotherCommit));
     assertThrows(ReferenceNotFoundException.class,
-        () -> store().assign(TagName.of("tag1"), Optional.of(commit), Hash.of("1234567890abcdef")));
+        () -> versionStore().assign(TagName.of("tag1"), Optional.of(commit), Hash.of("1234567890abcdef")));
 
-    assertThat(store().getCommits(branch).collect(Collectors.toList()), contains(
+    assertThat(versionStore().getCommits(branch).collect(Collectors.toList()), contains(
         WithHash.of(anotherCommit, "Another commit"),
         WithHash.of(commit, "Some commit")
     ));
 
-    assertThat(store().getCommits(BranchName.of("bar")).collect(Collectors.toList()), contains(
+    assertThat(versionStore().getCommits(BranchName.of("bar")).collect(Collectors.toList()), contains(
         WithHash.of(commit, "Some commit")
     ));
 
-    assertThat(store().getCommits(TagName.of("tag1")).collect(Collectors.toList()), contains(
+    assertThat(versionStore().getCommits(TagName.of("tag1")).collect(Collectors.toList()), contains(
         WithHash.of(commit, "Some commit")
     ));
 
-    assertThat(store().getCommits(TagName.of("tag2")).collect(Collectors.toList()), contains(
+    assertThat(versionStore().getCommits(TagName.of("tag2")).collect(Collectors.toList()), contains(
         WithHash.of(anotherCommit, "Another commit"),
         WithHash.of(commit, "Some commit")
     ));
@@ -755,9 +767,9 @@ public abstract class AbstractITVersionStore {
     @BeforeEach
     protected void setupCommits() throws VersionStoreException {
       final BranchName branch = BranchName.of("foo");
-      store().create(branch, Optional.empty());
+      versionStore().create(branch, Optional.empty());
 
-      initialHash = store().toHash(branch);
+      initialHash = versionStore().toHash(branch);
 
       firstCommit = commit("Initial Commit")
           .put("t1", "v1_1")
@@ -781,10 +793,10 @@ public abstract class AbstractITVersionStore {
     @Test
     protected void checkTransplantOnEmptyBranch() throws VersionStoreException {
       final BranchName newBranch = BranchName.of("bar_1");
-      store().create(newBranch, Optional.empty());
+      versionStore().create(newBranch, Optional.empty());
 
-      store().transplant(newBranch, Optional.of(initialHash), Arrays.asList(firstCommit, secondCommit, thirdCommit));
-      assertThat(store().getValues(newBranch, Arrays.asList(Key.of("t1"), Key.of("t2"), Key.of("t3"), Key.of("t4"))),
+      versionStore().transplant(newBranch, Optional.of(initialHash), Arrays.asList(firstCommit, secondCommit, thirdCommit));
+      assertThat(versionStore().getValues(newBranch, Arrays.asList(Key.of("t1"), Key.of("t2"), Key.of("t3"), Key.of("t4"))),
           contains(
               Optional.of("v1_2"),
               Optional.of("v2_2"),
@@ -796,11 +808,11 @@ public abstract class AbstractITVersionStore {
     @Test
     protected void checkTransplantWithPreviousCommit() throws VersionStoreException {
       final BranchName newBranch = BranchName.of("bar_2");
-      store().create(newBranch, Optional.empty());
+      versionStore().create(newBranch, Optional.empty());
       commit("Unrelated commit").put("t5", "v5_1").toBranch(newBranch);
 
-      store().transplant(newBranch, Optional.of(initialHash), Arrays.asList(firstCommit, secondCommit, thirdCommit));
-      assertThat(store().getValues(newBranch, Arrays.asList(Key.of("t1"), Key.of("t2"), Key.of("t3"), Key.of("t4"), Key.of("t5"))),
+      versionStore().transplant(newBranch, Optional.of(initialHash), Arrays.asList(firstCommit, secondCommit, thirdCommit));
+      assertThat(versionStore().getValues(newBranch, Arrays.asList(Key.of("t1"), Key.of("t2"), Key.of("t3"), Key.of("t4"), Key.of("t5"))),
           contains(
               Optional.of("v1_2"),
               Optional.of("v2_2"),
@@ -813,22 +825,22 @@ public abstract class AbstractITVersionStore {
     @Test
     protected void checkTransplantWitConflictingCommit() throws VersionStoreException {
       final BranchName newBranch = BranchName.of("bar_3");
-      store().create(newBranch, Optional.empty());
+      versionStore().create(newBranch, Optional.empty());
       commit("Another commit").put("t1", "v1_4").toBranch(newBranch);
 
       assertThrows(ReferenceConflictException.class,
-          () -> store().transplant(newBranch, Optional.of(initialHash), Arrays.asList(firstCommit, secondCommit, thirdCommit)));
+          () -> versionStore().transplant(newBranch, Optional.of(initialHash), Arrays.asList(firstCommit, secondCommit, thirdCommit)));
     }
 
     @Test
     protected void checkTransplantWithDelete() throws VersionStoreException {
       final BranchName newBranch = BranchName.of("bar_4");
-      store().create(newBranch, Optional.empty());
+      versionStore().create(newBranch, Optional.empty());
       commit("Another commit").put("t1", "v1_4").toBranch(newBranch);
       commit("Another commit").delete("t1").toBranch(newBranch);
 
-      store().transplant(newBranch, Optional.of(initialHash), Arrays.asList(firstCommit, secondCommit, thirdCommit));
-      assertThat(store().getValues(newBranch, Arrays.asList(Key.of("t1"), Key.of("t2"), Key.of("t3"), Key.of("t4"))),
+      versionStore().transplant(newBranch, Optional.of(initialHash), Arrays.asList(firstCommit, secondCommit, thirdCommit));
+      assertThat(versionStore().getValues(newBranch, Arrays.asList(Key.of("t1"), Key.of("t2"), Key.of("t3"), Key.of("t4"))),
           contains(
               Optional.of("v1_2"),
               Optional.of("v2_2"),
@@ -841,26 +853,26 @@ public abstract class AbstractITVersionStore {
     protected void checkTransplantOnNonExistingBranch() throws VersionStoreException {
       final BranchName newBranch = BranchName.of("bar_5");
       assertThrows(ReferenceNotFoundException.class,
-          () -> store().transplant(newBranch, Optional.of(initialHash), Arrays.asList(firstCommit, secondCommit, thirdCommit)));
+          () -> versionStore().transplant(newBranch, Optional.of(initialHash), Arrays.asList(firstCommit, secondCommit, thirdCommit)));
     }
 
     @Test
     protected void checkTransplantWithNonExistingCommit() throws VersionStoreException {
       final BranchName newBranch = BranchName.of("bar_6");
-      store().create(newBranch, Optional.empty());
+      versionStore().create(newBranch, Optional.empty());
       assertThrows(ReferenceNotFoundException.class,
-          () -> store().transplant(newBranch, Optional.of(initialHash), Arrays.asList(Hash.of("1234567890abcdef"))));
+          () -> versionStore().transplant(newBranch, Optional.of(initialHash), Arrays.asList(Hash.of("1234567890abcdef"))));
     }
 
     @Test
     protected void checkTransplantWithNoExpectedHash() throws VersionStoreException {
       final BranchName newBranch = BranchName.of("bar_7");
-      store().create(newBranch, Optional.empty());
+      versionStore().create(newBranch, Optional.empty());
       commit("Another commit").put("t5", "v5_1").toBranch(newBranch);
       commit("Another commit").put("t1", "v1_4").toBranch(newBranch);
 
-      store().transplant(newBranch, Optional.empty(), Arrays.asList(firstCommit, secondCommit, thirdCommit));
-      assertThat(store().getValues(newBranch, Arrays.asList(Key.of("t1"), Key.of("t2"), Key.of("t3"), Key.of("t4"), Key.of("t5"))),
+      versionStore().transplant(newBranch, Optional.empty(), Arrays.asList(firstCommit, secondCommit, thirdCommit));
+      assertThat(versionStore().getValues(newBranch, Arrays.asList(Key.of("t1"), Key.of("t2"), Key.of("t3"), Key.of("t4"), Key.of("t5"))),
           contains(
               Optional.of("v1_2"),
               Optional.of("v2_2"),
@@ -873,16 +885,16 @@ public abstract class AbstractITVersionStore {
     @Test
     protected void checkTransplantWithCommitsInWrongOrder() throws VersionStoreException {
       final BranchName newBranch = BranchName.of("bar_8");
-      store().create(newBranch, Optional.empty());
+      versionStore().create(newBranch, Optional.empty());
 
       assertThrows(IllegalArgumentException.class,
-          () -> store().transplant(newBranch, Optional.empty(), Arrays.asList(secondCommit, firstCommit, thirdCommit)));
+          () -> versionStore().transplant(newBranch, Optional.empty(), Arrays.asList(secondCommit, firstCommit, thirdCommit)));
     }
 
     @Test
     protected void checkInvalidBranchHash() throws VersionStoreException {
       final BranchName anotherBranch = BranchName.of("bar");
-      store().create(anotherBranch, Optional.empty());
+      versionStore().create(anotherBranch, Optional.empty());
       final Hash unrelatedCommit = commit("Another Commit")
           .put("t1", "v1_1")
           .put("t2", "v2_1")
@@ -890,20 +902,20 @@ public abstract class AbstractITVersionStore {
           .toBranch(anotherBranch);
 
       final BranchName newBranch = BranchName.of("bar_1");
-      store().create(newBranch, Optional.empty());
+      versionStore().create(newBranch, Optional.empty());
 
       assertThrows(ReferenceNotFoundException.class,
-          () -> store().transplant(newBranch, Optional.of(unrelatedCommit), Arrays.asList(firstCommit, secondCommit, thirdCommit)));
+          () -> versionStore().transplant(newBranch, Optional.of(unrelatedCommit), Arrays.asList(firstCommit, secondCommit, thirdCommit)));
     }
 
     @Test
     protected void transplantBasic() throws VersionStoreException {
       final BranchName newBranch = BranchName.of("bar_2");
-      store().create(newBranch, Optional.empty());
+      versionStore().create(newBranch, Optional.empty());
       commit("Unrelated commit").put("t5", "v5_1").toBranch(newBranch);
 
-      store().transplant(newBranch, Optional.of(initialHash), Arrays.asList(firstCommit, secondCommit));
-      assertThat(store().getValues(newBranch, Arrays.asList(Key.of("t1"), Key.of("t4"), Key.of("t5"))),
+      versionStore().transplant(newBranch, Optional.of(initialHash), Arrays.asList(firstCommit, secondCommit));
+      assertThat(versionStore().getValues(newBranch, Arrays.asList(Key.of("t1"), Key.of("t4"), Key.of("t5"))),
                  contains(
                    Optional.of("v1_2"),
                    Optional.of("v4_1"),
@@ -923,9 +935,9 @@ public abstract class AbstractITVersionStore {
     @BeforeEach
     protected void setupCommits() throws VersionStoreException {
       final BranchName branch = BranchName.of("foo");
-      store().create(branch, Optional.empty());
+      versionStore().create(branch, Optional.empty());
 
-      initialHash = store().toHash(branch);
+      initialHash = versionStore().toHash(branch);
 
       firstCommit = commit("First Commit").put("t1", "v1_1").put("t2", "v2_1").put("t3", "v3_1").toBranch(branch);
       secondCommit = commit("Second Commit").put("t1", "v1_2").delete("t2").delete("t3").put("t4", "v4_1").toBranch(branch);
@@ -935,10 +947,10 @@ public abstract class AbstractITVersionStore {
     @Test
     protected void mergeIntoEmptyBranch() throws VersionStoreException {
       final BranchName newBranch = BranchName.of("bar_1");
-      store().create(newBranch, Optional.empty());
+      versionStore().create(newBranch, Optional.empty());
 
-      store().merge(thirdCommit, newBranch, Optional.of(initialHash));
-      assertThat(store().getValues(newBranch, Arrays.asList(Key.of("t1"), Key.of("t2"), Key.of("t3"), Key.of("t4"))),
+      versionStore().merge(thirdCommit, newBranch, Optional.of(initialHash));
+      assertThat(versionStore().getValues(newBranch, Arrays.asList(Key.of("t1"), Key.of("t2"), Key.of("t3"), Key.of("t4"))),
                  contains(
                    Optional.of("v1_2"),
                    Optional.of("v2_2"),
@@ -946,17 +958,17 @@ public abstract class AbstractITVersionStore {
                    Optional.of("v4_1")
                  ));
 
-      assertThat(store().toHash(newBranch), is(thirdCommit));
+      assertThat(versionStore().toHash(newBranch), is(thirdCommit));
     }
 
     @Test
     protected void mergeIntoNonConflictingBranch() throws VersionStoreException {
       final BranchName newBranch = BranchName.of("bar_2");
-      store().create(newBranch, Optional.empty());
+      versionStore().create(newBranch, Optional.empty());
       final Hash newCommit = commit("Unrelated commit").put("t5", "v5_1").toBranch(newBranch);
 
-      store().merge(thirdCommit, newBranch, Optional.empty());
-      assertThat(store().getValues(newBranch, Arrays.asList(Key.of("t1"), Key.of("t2"), Key.of("t3"), Key.of("t4"), Key.of("t5"))),
+      versionStore().merge(thirdCommit, newBranch, Optional.empty());
+      assertThat(versionStore().getValues(newBranch, Arrays.asList(Key.of("t1"), Key.of("t2"), Key.of("t3"), Key.of("t4"), Key.of("t5"))),
                  contains(
                    Optional.of("v1_2"),
                    Optional.of("v2_2"),
@@ -965,7 +977,7 @@ public abstract class AbstractITVersionStore {
                    Optional.of("v5_1")
                  ));
 
-      final List<WithHash<String>> commits = store().getCommits(newBranch).collect(Collectors.toList());
+      final List<WithHash<String>> commits = versionStore().getCommits(newBranch).collect(Collectors.toList());
       assertThat(commits.size(), is(4));
       assertThat(commits.get(3).getHash(), is(newCommit));
       assertThat(commits.get(2).getValue(), is("First Commit"));
@@ -978,24 +990,24 @@ public abstract class AbstractITVersionStore {
       final Key key = Key.of("t1");
       final BranchName etl = BranchName.of("etl");
       final BranchName review = BranchName.of("review");
-      store().create(etl, Optional.empty());
-      store().create(review, Optional.empty());
-      store().commit(etl, Optional.empty(), "commit 1", Arrays.<Operation<String>>asList(Put.of(key, "value1")));
-      store().merge(store().toHash(etl), review, Optional.empty());
-      store().commit(etl, Optional.empty(), "commit 2", Arrays.<Operation<String>>asList(Put.of(key, "value2")));
-      store().merge(store().toHash(etl), review, Optional.empty());
-      assertEquals(store().getValue(review, key), "value2");
+      versionStore().create(etl, Optional.empty());
+      versionStore().create(review, Optional.empty());
+      versionStore().commit(etl, Optional.empty(), "commit 1", Arrays.<Operation<String>>asList(Put.of(key, "value1")));
+      versionStore().merge(versionStore().toHash(etl), review, Optional.empty());
+      versionStore().commit(etl, Optional.empty(), "commit 2", Arrays.<Operation<String>>asList(Put.of(key, "value2")));
+      versionStore().merge(versionStore().toHash(etl), review, Optional.empty());
+      assertEquals(versionStore().getValue(review, key), "value2");
     }
 
     @Test
     protected void mergeWithCommonAncestor() throws VersionStoreException {
       final BranchName newBranch = BranchName.of("bar_2");
-      store().create(newBranch, Optional.of(firstCommit));
+      versionStore().create(newBranch, Optional.of(firstCommit));
 
       final Hash newCommit = commit("Unrelated commit").put("t5", "v5_1").toBranch(newBranch);
 
-      store().merge(thirdCommit, newBranch, Optional.empty());
-      assertThat(store().getValues(newBranch, Arrays.asList(Key.of("t1"), Key.of("t2"), Key.of("t3"), Key.of("t4"), Key.of("t5"))),
+      versionStore().merge(thirdCommit, newBranch, Optional.empty());
+      assertThat(versionStore().getValues(newBranch, Arrays.asList(Key.of("t1"), Key.of("t2"), Key.of("t3"), Key.of("t4"), Key.of("t5"))),
                  contains(
                    Optional.of("v1_2"),
                    Optional.of("v2_2"),
@@ -1004,7 +1016,7 @@ public abstract class AbstractITVersionStore {
                    Optional.of("v5_1")
                  ));
 
-      final List<WithHash<String>> commits = store().getCommits(newBranch).collect(Collectors.toList());
+      final List<WithHash<String>> commits = versionStore().getCommits(newBranch).collect(Collectors.toList());
       assertThat(commits.size(), is(4));
       assertThat(commits.get(3).getHash(), is(firstCommit));
       assertThat(commits.get(2).getHash(), is(newCommit));
@@ -1015,103 +1027,472 @@ public abstract class AbstractITVersionStore {
     @Test
     protected void mergeIntoConflictingBranch() throws VersionStoreException {
       final BranchName newBranch = BranchName.of("bar_3");
-      store().create(newBranch, Optional.empty());
+      versionStore().create(newBranch, Optional.empty());
       commit("Another commit").put("t1", "v1_4").toBranch(newBranch);
 
       assertThrows(ReferenceConflictException.class,
-          () -> store().merge(thirdCommit, newBranch, Optional.of(initialHash)));
+          () -> versionStore().merge(thirdCommit, newBranch, Optional.of(initialHash)));
     }
 
     @Test
     protected void mergeIntoNonExistingBranch() throws VersionStoreException {
       final BranchName newBranch = BranchName.of("bar_5");
       assertThrows(ReferenceNotFoundException.class,
-          () -> store().merge(thirdCommit, newBranch, Optional.of(initialHash)));
+          () -> versionStore().merge(thirdCommit, newBranch, Optional.of(initialHash)));
     }
 
     @Test
     protected void mergeIntoNonExistingReference() throws VersionStoreException {
       final BranchName newBranch = BranchName.of("bar_6");
-      store().create(newBranch, Optional.empty());
+      versionStore().create(newBranch, Optional.empty());
       assertThrows(ReferenceNotFoundException.class,
-          () -> store().merge(Hash.of("1234567890abcdef"), newBranch, Optional.of(initialHash)));
+          () -> versionStore().merge(Hash.of("1234567890abcdef"), newBranch, Optional.of(initialHash)));
     }
   }
 
   @Test
   void toRef() throws VersionStoreException {
     final BranchName branch = BranchName.of("main");
-    store().create(branch, Optional.empty());
-    store().toHash(branch);
+    versionStore().create(branch, Optional.empty());
+    versionStore().toHash(branch);
 
     final Hash firstCommit = commit("First Commit").toBranch(branch);
     final Hash secondCommit = commit("Second Commit").toBranch(branch);
     final Hash thirdCommit = commit("Third Commit").toBranch(branch);
 
-    store().create(BranchName.of(thirdCommit.asString()), Optional.of(firstCommit));
-    store().create(TagName.of(secondCommit.asString()), Optional.of(firstCommit));
+    versionStore().create(BranchName.of(thirdCommit.asString()), Optional.of(firstCommit));
+    versionStore().create(TagName.of(secondCommit.asString()), Optional.of(firstCommit));
 
-    assertThat(store().toRef(firstCommit.asString()), is(WithHash.of(firstCommit, firstCommit)));
-    assertThat(store().toRef(secondCommit.asString()), is(WithHash.of(firstCommit, TagName.of(secondCommit.asString()))));
-    assertThat(store().toRef(thirdCommit.asString()), is(WithHash.of(firstCommit, BranchName.of(thirdCommit.asString()))));
+    assertThat(versionStore().toRef(firstCommit.asString()), is(WithHash.of(firstCommit, firstCommit)));
+    assertThat(versionStore().toRef(secondCommit.asString()), is(WithHash.of(firstCommit, TagName.of(secondCommit.asString()))));
+    assertThat(versionStore().toRef(thirdCommit.asString()), is(WithHash.of(firstCommit, BranchName.of(thirdCommit.asString()))));
     // Is it correct to allow a reference with the sentinel reference?
     //assertThat(store().toRef(initialCommit.asString()), is(WithHash.of(initialCommit, initialCommit)));
-    assertThrows(ReferenceNotFoundException.class, () -> store().toRef("unknown-ref"));
-    assertThrows(ReferenceNotFoundException.class, () -> store().toRef("1234567890abcdef"));
+    assertThrows(ReferenceNotFoundException.class, () -> versionStore().toRef("unknown-ref"));
+    assertThrows(ReferenceNotFoundException.class, () -> versionStore().toRef("1234567890abcdef"));
   }
 
   @Test
   protected void checkDiff() throws VersionStoreException {
     final BranchName branch = BranchName.of("main");
-    store().create(branch, Optional.empty());
-    final Hash initial = store().toHash(branch);
+    versionStore().create(branch, Optional.empty());
+    final Hash initial = versionStore().toHash(branch);
 
     final Hash firstCommit = commit("First Commit").put("k1", "v1").put("k2", "v2").toBranch(branch);
     final Hash secondCommit = commit("Second Commit").put("k2", "v2a").put("k3", "v3").toBranch(branch);
 
-    List<Diff<String>> startToSecond = store().getDiffs(initial, secondCommit).collect(Collectors.toList());
+    List<Diff<String>> startToSecond = versionStore().getDiffs(initial, secondCommit).collect(Collectors.toList());
     assertThat(startToSecond, containsInAnyOrder(
         Diff.of(Key.of("k1"), Optional.empty(), Optional.of("v1")),
         Diff.of(Key.of("k2"), Optional.empty(), Optional.of("v2a")),
         Diff.of(Key.of("k3"), Optional.empty(), Optional.of("v3"))
     ));
 
-    List<Diff<String>> secondToStart = store().getDiffs(secondCommit, initial).collect(Collectors.toList());
+    List<Diff<String>> secondToStart = versionStore().getDiffs(secondCommit, initial).collect(Collectors.toList());
     assertThat(secondToStart, containsInAnyOrder(
         Diff.of(Key.of("k1"), Optional.of("v1"), Optional.empty()),
         Diff.of(Key.of("k2"), Optional.of("v2a"), Optional.empty()),
         Diff.of(Key.of("k3"), Optional.of("v3"), Optional.empty())
     ));
 
-    List<Diff<String>> firstToSecond = store().getDiffs(firstCommit, secondCommit).collect(Collectors.toList());
+    List<Diff<String>> firstToSecond = versionStore().getDiffs(firstCommit, secondCommit).collect(Collectors.toList());
     assertThat(firstToSecond, containsInAnyOrder(
         Diff.of(Key.of("k2"), Optional.of("v2"), Optional.of("v2a")),
         Diff.of(Key.of("k3"), Optional.empty(), Optional.of("v3"))
     ));
 
-    List<Diff<String>> firstToFirst = store().getDiffs(firstCommit, firstCommit).collect(Collectors.toList());
+    List<Diff<String>> firstToFirst = versionStore().getDiffs(firstCommit, firstCommit).collect(Collectors.toList());
     assertTrue(firstToFirst.isEmpty());
+  }
+
+  @Test
+  void checkDuplicateValueCommit() throws Exception {
+    BranchName branch = BranchName.of("dupe-values");
+    versionStore().create(branch, Optional.empty());
+    versionStore().commit(branch, Optional.empty(), "metadata", ImmutableList.of(
+        Put.of(Key.of("hi"), "world"),
+        Put.of(Key.of("no"), "world"))
+    );
+
+    assertEquals("world", versionStore().getValue(branch, Key.of("hi")));
+    assertEquals("world", versionStore().getValue(branch, Key.of("no")));
+  }
+
+  @Test
+  void mergeToEmpty() throws Exception {
+    BranchName branch1 = BranchName.of("b1");
+    BranchName branch2 = BranchName.of("b2");
+    versionStore().create(branch1, Optional.empty());
+    versionStore().create(branch2, Optional.empty());
+    versionStore().commit(branch2, Optional.empty(), "metadata", ImmutableList.of(
+        Put.of(Key.of("hi"), "world"),
+        Put.of(Key.of("no"), "world")));
+    versionStore().merge(versionStore().toHash(branch2), branch1, Optional.of(versionStore().toHash(branch1)));
+  }
+
+  @Test
+  void mergeNoConflict() throws Exception {
+    BranchName branch1 = BranchName.of("b1");
+    BranchName branch2 = BranchName.of("b2");
+    Hash initial1 = versionStore().create(branch1, Optional.empty());
+    Hash commit1 = versionStore().commit(branch1, Optional.empty(), "metadata", ImmutableList.of(
+        Put.of(Key.of("foo"), "world1"),
+        Put.of(Key.of("bar"), "world2")));
+    assertNotEquals(initial1, commit1);
+
+    Hash initial2 = versionStore().create(branch2, Optional.empty());
+    Hash commit2 = versionStore().commit(branch2, Optional.empty(), "metadata", ImmutableList.of(
+        Put.of(Key.of("hi"), "world3"),
+        Put.of(Key.of("no"), "world4")));
+    assertNotEquals(initial2, commit2);
+    versionStore().merge(versionStore().toHash(branch2), branch1, Optional.of(versionStore().toHash(branch1)));
+
+    assertEquals("world1", versionStore().getValue(branch1, Key.of("foo")));
+    assertEquals("world2", versionStore().getValue(branch1, Key.of("bar")));
+    assertEquals("world3", versionStore().getValue(branch1, Key.of("hi")));
+    assertEquals("world4", versionStore().getValue(branch1, Key.of("no")));
+  }
+
+  @Test
+  protected void mergeConflict() throws Exception {
+    BranchName branch1 = BranchName.of("b1");
+    BranchName branch2 = BranchName.of("b2");
+    Hash initial1 = versionStore().create(branch1, Optional.empty());
+    Hash commit1 = versionStore().commit(branch1, Optional.empty(), "metadata",
+        ImmutableList.of(Put.of(Key.of("conflictKey"), "world1")));
+    assertNotEquals(initial1, commit1);
+
+    Hash initial2 = versionStore().create(branch2, Optional.empty());
+    Hash commit2 = versionStore().commit(branch2, Optional.empty(), "metadata2",
+        ImmutableList.of(Put.of(Key.of("conflictKey"), "world2")));
+    assertNotEquals(initial2, commit2);
+
+    ReferenceConflictException ex = assertThrows(ReferenceConflictException.class, () ->
+        versionStore().merge(versionStore().toHash(branch2), branch1, Optional.of(versionStore().toHash(branch1))));
+    assertThat(ex.getMessage(), Matchers.containsString("conflictKey"));
+  }
+
+  @Test
+  void checkKeyList() throws Exception {
+    BranchName branch = BranchName.of("my-key-list");
+    versionStore().create(branch, Optional.empty());
+    versionStore().commit(branch, Optional.empty(), "metadata", ImmutableList.of(
+        Put.of(Key.of("hi"), "world"),
+        Put.of(Key.of("no"), "world"),
+        Put.of(Key.of("mad mad"), "world")));
+    assertThat(versionStore().getKeys(branch).map(WithType::getValue).map(Key::toString).collect(ImmutableSet.toImmutableSet()),
+        Matchers.containsInAnyOrder("hi", "no", "mad mad"));
+  }
+
+  @Test
+  void ensureKeyCheckpointsAndMultiFragmentsWork() throws Exception {
+    BranchName branch = BranchName.of("lots-of-keys");
+    Hash initial = versionStore().create(branch, Optional.empty());
+    Hash current = versionStore().toHash(branch);
+    assertEquals(current, initial);
+    Random r = new Random(1234);
+    char[] longName = new char[4096];
+    Arrays.fill(longName, 'a');
+    String prefix = new String(longName);
+    List<Key> names = new LinkedList<>();
+    Hash last = current;
+    for (int i = 1; i < 200; i++) {
+      Hash commitHash;
+      if (i % 5 == 0) {
+        // every so often, remove a key.
+        Key removal = names.remove(r.nextInt(names.size()));
+        commitHash = versionStore().commit(branch, Optional.of(current), "commit " + i, Collections.singletonList(Delete.of(removal)));
+      } else {
+        Key name = Key.of(prefix + i);
+        names.add(name);
+        commitHash = versionStore().commit(branch, Optional.of(current), "commit " + i, Collections.singletonList(Put.of(name, "bar")));
+      }
+      current = versionStore().toHash(branch);
+      assertEquals(current, commitHash);
+      assertNotEquals(last, current);
+      last = current;
+    }
+
+    List<Key> keysFromStore = versionStore().getKeys(branch).map(WithType::getValue).collect(Collectors.toList());
+
+    // ensure that our total key size is greater than a single dynamo page.
+    assertThat(keysFromStore.size() * longName.length, Matchers.greaterThan(400000));
+
+    // ensure that keys stored match those expected.
+    assertThat(keysFromStore, Matchers.containsInAnyOrder(names.toArray(new Key[0])));
+  }
+
+  @Test
+  void multiload() throws Exception {
+    BranchName branch = BranchName.of("my-key-list");
+    Hash initialHash = versionStore().create(branch, Optional.empty());
+    Hash commitHash = versionStore().commit(branch, Optional.empty(), "metadata", ImmutableList.of(
+        Put.of(Key.of("hi"), "world1"),
+        Put.of(Key.of("no"), "world2"),
+        Put.of(Key.of("mad mad"), "world3")));
+    assertNotEquals(initialHash, commitHash);
+
+    assertEquals(
+        Arrays.asList("world1", "world2", "world3"),
+        versionStore().getValues(branch, Arrays.asList(Key.of("hi"), Key.of("no"), Key.of("mad mad")))
+          .stream()
+          .map(Optional::get)
+          .collect(Collectors.toList()));
+  }
+
+  @Test
+  void ensureValidEmptyBranchState() throws ReferenceNotFoundException, ReferenceAlreadyExistsException {
+    BranchName branch = BranchName.of("empty_branch");
+    versionStore().create(branch, Optional.empty());
+    Hash hash = versionStore().toHash(branch);
+    assertNull(versionStore().getValue(hash, Key.of("arbitrary")));
+  }
+
+  @Test
+  void conflictingCommit() throws Exception {
+    BranchName branch = BranchName.of("conflictingCommit");
+    Hash createHash = versionStore().create(branch, Optional.empty());
+
+    // first commit.
+    Hash initialHash = versionStore().commit(branch, Optional.empty(), "metadata",
+        ImmutableList.of(Put.of(Key.of("hi"), "hello world")));
+    assertNotEquals(createHash, initialHash);
+
+    //first hash.
+    Hash originalHash = versionStore().getCommits(branch).findFirst().get().getHash();
+    assertEquals(initialHash, originalHash);
+
+    //second commit.
+    Hash firstHash = versionStore().commit(branch, Optional.empty(), "metadata",
+        ImmutableList.of(Put.of(Key.of("hi"), "goodbye world")));
+    assertNotEquals(originalHash, firstHash);
+
+    // do an extra commit to make sure it has a different hash even though it has the same value.
+    Hash secondHash = versionStore().commit(branch, Optional.empty(), "metadata",
+        ImmutableList.of(Put.of(Key.of("hi"), "goodbye world")));
+    assertNotEquals(originalHash, secondHash);
+    assertNotEquals(firstHash, secondHash);
+
+    //attempt commit using first hash which has conflicting key change.
+    assertThrows(ReferenceConflictException.class, () -> versionStore().commit(branch, Optional.of(originalHash),
+        "metadata", ImmutableList.of(Put.of(Key.of("hi"), "my world"))));
+  }
+
+  @Test
+  void conflictingCommitWithHash() throws Exception {
+    BranchName branch = BranchName.of("conflictingCommitWithHash");
+    Hash createHash = versionStore().create(branch, Optional.empty());
+
+    // first commit.
+    Hash initialHash = versionStore().commit(branch, Optional.of(createHash), "metadata",
+        ImmutableList.of(Put.of(Key.of("hi"), "hello world")));
+    assertNotEquals(createHash, initialHash);
+
+    //first hash.
+    Hash originalHash = versionStore().getCommits(branch).findFirst().get().getHash();
+    assertEquals(initialHash, originalHash);
+
+    //second commit.
+    Hash firstHash = versionStore().commit(branch, Optional.of(originalHash), "metadata",
+        ImmutableList.of(Put.of(Key.of("hi"), "goodbye world")));
+    assertNotEquals(originalHash, firstHash);
+
+    // do an extra commit to make sure it has a different hash even though it has the same value.
+    Hash secondHash = versionStore().commit(branch, Optional.of(firstHash), "metadata",
+        ImmutableList.of(Put.of(Key.of("hi"), "goodbye world")));
+    assertNotEquals(originalHash, secondHash);
+    assertNotEquals(firstHash, secondHash);
+
+    //attempt commit using first hash which has conflicting key change.
+    assertThrows(ReferenceConflictException.class, () -> versionStore().commit(branch, Optional.of(originalHash),
+        "metadata", ImmutableList.of(Put.of(Key.of("hi"), "my world"))));
+  }
+
+  @Test
+  void assignments() throws Exception {
+    BranchName branch = BranchName.of("foo");
+    final Key k1 = Key.of("p1");
+    versionStore().create(branch, Optional.empty());
+    versionStore().commit(branch, Optional.empty(), "c1", ImmutableList.of(Put.of(k1, "v1")));
+    Hash c1 = versionStore().toHash(branch);
+    versionStore().commit(branch, Optional.empty(), "c1", ImmutableList.of(Put.of(k1, "v2")));
+    Hash c2 = versionStore().toHash(branch);
+    TagName t1 = TagName.of("t1");
+    BranchName b2 = BranchName.of("b2");
+
+    // ensure tag create assignment is correct.
+    versionStore().create(t1, Optional.of(c1));
+    assertEquals("v1", versionStore().getValue(t1, k1));
+
+    // ensure branch create non-assignment works
+    versionStore().create(b2, Optional.empty());
+    assertEquals(null, versionStore().getValue(b2, k1));
+
+    // ensure tag reassignment is correct.
+    versionStore().assign(t1, Optional.of(c1), c2);
+    assertEquals("v2", versionStore().getValue(t1, k1));
+
+    // ensure branch assignment (no current) is correct
+    versionStore().assign(b2, Optional.empty(), c1);
+    assertEquals("v1", versionStore().getValue(b2, k1));
+
+    // ensure branch assignment (with current) is current
+    versionStore().assign(b2, Optional.of(c1), c2);
+    assertEquals("v2", versionStore().getValue(b2, k1));
+
+  }
+
+  @Test
+  void delete() throws Exception {
+    BranchName branch = BranchName.of("foo");
+    final Key k1 = Key.of("p1");
+    versionStore().create(branch, Optional.empty());
+    versionStore().commit(branch, Optional.empty(), "c1", ImmutableList.of(Put.of(k1, "v1")));
+    assertEquals("v1", versionStore().getValue(branch, k1));
+
+    versionStore().commit(branch, Optional.empty(), "c1", ImmutableList.of(Delete.of(k1)));
+    assertEquals(null, versionStore().getValue(branch, k1));
+  }
+
+  @Test
+  void unchangedOperation() throws Exception {
+    BranchName branch = BranchName.of("foo");
+    versionStore().create(branch, Optional.empty());
+    // first commit.
+    versionStore().commit(branch, Optional.empty(), "metadata", ImmutableList.of(Put.of(Key.of("hi"), "hello world")));
+
+    //first hash.
+    Hash originalHash = versionStore().getCommits(branch).findFirst().get().getHash();
+
+    //second commit.
+    versionStore().commit(branch, Optional.empty(), "metadata", ImmutableList.of(Put.of(Key.of("hi"), "goodbye world")));
+
+    versionStore().commit(branch, Optional.empty(), "metadata", ImmutableList.of(Put.of(Key.of("hi"), "goodbye world")));
+
+    //attempt commit using first hash which has conflicting key change.
+    assertThrows(ReferenceConflictException.class, () -> versionStore().commit(branch, Optional.of(originalHash),
+        "metadata", ImmutableList.of(Put.of(Key.of("hi"), "my world"))));
+
+    // attempt commit using first hash, put on on-conflicting key, unchanged on conflicting key.
+    assertThrows(ReferenceConflictException.class,
+        () -> versionStore().commit(branch, Optional.of(originalHash), "metadata",
+            ImmutableList.of(Put.of(Key.of("bar"), "mellow"), Unchanged.of(Key.of("hi")))));
+  }
+
+  @Test
+  void checkEmptyHistory() throws Exception {
+    BranchName branch = BranchName.of("foo");
+    versionStore().create(branch, Optional.empty());
+    assertEquals(0L, versionStore().getCommits(branch).count());
+  }
+
+  @Test
+  void completeFlow() throws Exception {
+    final BranchName branch = ImmutableBranchName.builder().name("main").build();
+    final BranchName branch2 = ImmutableBranchName.builder().name("b2").build();
+    final TagName tag = ImmutableTagName.builder().name("t1").build();
+    final Key p1 = ImmutableKey.builder().addElements("my.path").build();
+    final String commit1 = "my commit 1";
+    final String commit2 = "my commit 2";
+    final String v1 = "my.value";
+    final String v2 = "my.value2";
+
+    // create a branch
+    versionStore().create(branch, Optional.empty());
+
+    assertThrows(ReferenceAlreadyExistsException.class, () -> versionStore().create(branch, Optional.empty()));
+
+    versionStore().commit(branch, Optional.empty(), commit1, ImmutableList.of(
+        ImmutablePut.<String>builder().key(p1)
+            .shouldMatchHash(false)
+            .value(v1)
+            .build()
+        )
+    );
+
+    assertEquals(v1, versionStore().getValue(branch, p1));
+
+    versionStore().create(tag, Optional.of(versionStore().toHash(branch)));
+
+    versionStore().commit(branch, Optional.empty(), commit2, ImmutableList.of(
+        ImmutablePut.<String>builder().key(
+            p1
+            )
+        .shouldMatchHash(false)
+        .value(v2)
+        .build()
+        )
+    );
+
+    assertEquals(v2, versionStore().getValue(branch, p1));
+    assertEquals(v1, versionStore().getValue(tag, p1));
+
+    List<WithHash<String>> commits = versionStore().getCommits(branch).collect(Collectors.toList());
+
+    assertEquals(v1, versionStore().getValue(commits.get(1).getHash(), p1));
+    assertEquals(commit1, commits.get(1).getValue());
+    assertEquals(v2, versionStore().getValue(commits.get(0).getHash(), p1));
+    assertEquals(commit2, commits.get(0).getValue());
+
+    versionStore().assign(tag, Optional.of(commits.get(1).getHash()), commits.get(0).getHash());
+
+    assertEquals(commits, versionStore().getCommits(tag).collect(Collectors.toList()));
+    assertEquals(commits, versionStore().getCommits(commits.get(0).getHash()).collect(Collectors.toList()));
+
+    try (Stream<WithHash<NamedRef>> str = versionStore().getNamedRefs()) {
+      assertEquals(2, str.count());
+    }
+
+    versionStore().create(branch2, Optional.of(commits.get(1).getHash()));
+
+    versionStore().delete(branch, Optional.of(commits.get(0).getHash()));
+
+    try (Stream<WithHash<NamedRef>> str = versionStore().getNamedRefs()) {
+      assertEquals(2, str.count());
+    }
+
+    assertEquals(v1, versionStore().getValue(branch2, p1));
+  }
+
+  @Test
+  void unknownRef() throws Exception {
+    BranchName branch = BranchName.of("bar");
+    versionStore().create(branch, Optional.empty());
+    versionStore().commit(branch, Optional.empty(), "metadata", ImmutableList.of(Put.of(Key.of("hi"), "hello world")));
+    TagName tag = TagName.of("foo");
+    Hash expected = versionStore().toHash(branch);
+    versionStore().create(tag, Optional.of(expected));
+
+    testRefMatchesToRef(branch, expected, branch.getName());
+    testRefMatchesToRef(tag, expected, tag.getName());
+    testRefMatchesToRef(expected, expected, expected.asString());
+  }
+
+  private void testRefMatchesToRef(Ref ref, Hash hash, String name) throws ReferenceNotFoundException {
+    WithHash<Ref> val = versionStore().toRef(name);
+    assertEquals(ref, val.getValue());
+    assertEquals(hash, val.getHash());
   }
 
   @Test
   void checkValueEntityType() throws Exception {
     BranchName branch = BranchName.of("entity-types");
-    store().create(branch, Optional.empty());
+    versionStore().create(branch, Optional.empty());
 
     // have to do this here as tiered store stores payload at commit time
     Mockito.doReturn(StringSerializer.TestEnum.NO).when(StringSerializer.getInstance()).getType("world");
-    store().commit(branch, Optional.empty(), "metadata", ImmutableList.of(
+    versionStore().commit(branch, Optional.empty(), "metadata", ImmutableList.of(
         Put.of(Key.of("hi"), "world"))
     );
 
-    assertEquals("world", store().getValue(branch, Key.of("hi")));
-    List<Optional<String>> values = store().getValues(branch, Lists.newArrayList(Key.of("hi")));
+    assertEquals("world", versionStore().getValue(branch, Key.of("hi")));
+    List<Optional<String>> values = versionStore().getValues(branch, Lists.newArrayList(Key.of("hi")));
     assertEquals(1, values.size());
     assertTrue(values.get(0).isPresent());
 
     // have to do this here as non-tiered store reads payload when getKeys is called
     Mockito.doReturn(StringSerializer.TestEnum.NO).when(StringSerializer.getInstance()).getType("world");
-    List<WithType<Key, StringSerializer.TestEnum>> keys = store().getKeys(branch).collect(Collectors.toList());
+    List<WithType<Key, StringSerializer.TestEnum>> keys = versionStore().getKeys(branch).collect(Collectors.toList());
 
     assertEquals(1, keys.size());
     assertEquals(Key.of("hi"), keys.get(0).getValue());
@@ -1120,22 +1501,14 @@ public abstract class AbstractITVersionStore {
 
 
   protected CommitBuilder<String, String, StringSerializer.TestEnum> forceCommit(String message) {
-    return new CommitBuilder<>(store()).withMetadata(message);
+    return new CommitBuilder<>(versionStore()).withMetadata(message);
   }
 
   protected CommitBuilder<String, String, StringSerializer.TestEnum> commit(String message) {
-    return new CommitBuilder<>(store()).withMetadata(message).fromLatest();
+    return new CommitBuilder<>(versionStore()).withMetadata(message).fromLatest();
   }
 
   protected Put<String> put(String key, String value) {
     return Put.of(Key.of(key), value);
-  }
-
-  protected Delete<String> delete(String key) {
-    return Delete.of(Key.of(key));
-  }
-
-  protected Unchanged<String> unchanged(String key) {
-    return Unchanged.of(Key.of(key));
   }
 }
