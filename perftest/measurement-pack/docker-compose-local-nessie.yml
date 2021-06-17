@@ -1,0 +1,90 @@
+#
+# Copyright (C) 2020 Dremio
+#
+# Licensed under the Apache License, Version 2.0 (the "License");
+# you may not use this file except in compliance with the License.
+# You may obtain a copy of the License at
+#
+# http://www.apache.org/licenses/LICENSE-2.0
+#
+# Unless required by applicable law or agreed to in writing, software
+# distributed under the License is distributed on an "AS IS" BASIS,
+# WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+# See the License for the specific language governing permissions and
+# limitations under the License.
+#
+
+version: '3.3'
+services:
+  grafana:
+    image: grafana/grafana
+    container_name: grafana
+    depends_on:
+      - prometheus
+    ports:
+      - 3000:3000
+    volumes:
+      - ./configs/grafana/grafana.ini:/etc/grafana/grafana.ini:ro
+      - ./configs/grafana/provisioning:/etc/grafana/provisioning:ro
+      - ./configs/grafana/dashboards:/var/lib/grafana/dashboards:ro
+  prometheus:
+    image: prom/prometheus
+    container_name: prometheus
+    ports:
+      - 9090:9090
+    command:
+      - --config.file=/etc/prometheus/prometheus.yml
+      - --storage.tsdb.retention.time=1y
+    volumes:
+      - ./configs/prometheus/prometheus.yml:/etc/prometheus/prometheus.yml:ro
+      - ./configs/prometheus/alert-rules.yml:/etc/prometheus/alert-rules.yml:ro
+      - ./prometheus-data:/prometheus:rw
+    depends_on:
+      - cadvisor
+      - docker-host
+  push-gateway:
+    image: prom/pushgateway
+    container_name: push-gateway
+    ports:
+      - 9091:9091
+    depends_on:
+      - prometheus
+  cadvisor:
+    image: gcr.io/google-containers/cadvisor
+    container_name: cadvisor
+    ports:
+      - 8080:8080
+    volumes:
+      - /:/rootfs:ro
+      - /var/run:/var/run:rw
+      - /sys:/sys:ro
+      - /var/lib/docker/:/var/lib/docker:ro
+  jaeger:
+    image: jaegertracing/all-in-one:1.22.0
+    container_name: jaeger
+    ports:
+      - 5775:5775/udp
+      - 6831:6831/udp
+      - 6832:6832/udp
+      - 5778:5778
+      - 16686:16686
+      - 14268:14268
+      - 14250:14250
+      - 9411:9411
+    environment:
+      - COLLECTOR_ZIPKIN_HTTP_PORT=9411
+  dynamodb:
+    image: amazon/dynamodb-local
+    container_name: dynamodb
+    ports:
+      - 8000:8000
+  # docker-host is an image that forwards traffic to the host running the Docker containers.
+  # This container is needed to let e.g. Prometheus scrape the metrics from the Nessie server
+  # running on the Docker host (your machine). Make sure, your firewall doesn't block that traffic.
+  docker-host:
+    hostname: nessie
+    image: qoomon/docker-host
+    container_name: docker-host
+    cap_add:
+      - NET_ADMIN
+      - NET_RAW
