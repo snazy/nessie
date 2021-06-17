@@ -90,11 +90,13 @@ class CreateManyBranchesSimulation extends Simulation {
     */
   private def doSetUp(): SetUp = {
     val nessieProtocol: NessieProtocol = nessie()
+      .prometheusPush(params.setupPrometheusPush)
       .client(
         NessieClient
           .builder()
           .withUri("http://127.0.0.1:19120/api/v1")
           .fromSystemProperties()
+          .withTracing(params.prometheusPushURL.isDefined)
           .build()
       )
 

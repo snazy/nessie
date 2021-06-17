@@ -20,14 +20,19 @@ package org.projectnessie.perftest.gatling
   * @param numberOfBranches number of branches that each simulated user creates (defaults to 100)
   * @param numUsers see [[BaseParams.numUsers]]
   * @param opRate see [[BaseParams.opRate]]
+  * @param prometheusPushURL see [[BaseParams.prometheusPushURL]]
   * @param note see [[BaseParams.note]]
   */
 case class CreateManyBranchesParams(
     numberOfBranches: Int,
     override val numUsers: Int,
     override val opRate: Double,
+    override val prometheusPushURL: Option[String],
     override val note: String
 ) extends BaseParams {
+
+  /** Should be overridden. */
+  override def nameForPrometheus: String = "create_many_branches"
 
   override def asPrintableString(): String = {
     s"""${super.asPrintableString().trim}
@@ -44,6 +49,7 @@ object CreateManyBranchesParams {
       numberOfBranches,
       base.numUsers,
       base.opRate,
+      base.prometheusPushURL,
       base.note
     )
   }

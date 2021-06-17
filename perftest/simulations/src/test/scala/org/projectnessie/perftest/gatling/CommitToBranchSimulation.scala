@@ -80,6 +80,15 @@ class CommitToBranchSimulation extends Simulation {
             session
           }
         }
+        .trace((scope, session) => {
+          // add user-id and commit-number to the Jaeger tracing tags
+          val userId = session.userId
+          val commitNum = session("commitNum").asOption[Int].get
+          scope
+            .span()
+            .setTag("sim.user-id", userId)
+            .setTag("sim.commit-num", commitNum)
+        })
     )
 
     if (params.opRate > 0) {
@@ -149,11 +158,13 @@ class CommitToBranchSimulation extends Simulation {
     */
   private def doSetUp(): SetUp = {
     val nessieProtocol: NessieProtocol = nessie()
+      .prometheusPush(params.setupPrometheusPush)
       .client(
         NessieClient
           .builder()
           .withUri("http://127.0.0.1:19120/api/v1")
           .fromSystemProperties()
+          .withTracing(params.prometheusPushURL.isDefined)
           .build()
       )
 

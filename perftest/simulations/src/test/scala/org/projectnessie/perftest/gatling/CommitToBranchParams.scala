@@ -16,6 +16,7 @@
 package org.projectnessie.perftest.gatling
 
 import io.gatling.core.Predef.Session
+import io.micrometer.core.instrument.Tag
 import org.projectnessie.model.IcebergTable
 
 import java.util.concurrent.ThreadLocalRandom
@@ -38,6 +39,7 @@ import java.util.concurrent.ThreadLocalRandom
   *                        System property: `sim.duration.seconds`, defaults to `0`.
   * @param numUsers see [[BaseParams.numUsers]]
   * @param opRate see [[BaseParams.opRate]]
+  * @param prometheusPushURL see [[BaseParams.prometheusPushURL]]
   * @param note see [[BaseParams.note]]
   */
 case class CommitToBranchParams(
@@ -49,6 +51,7 @@ case class CommitToBranchParams(
     durationSeconds: Int,
     override val numUsers: Int,
     override val opRate: Double,
+    override val prometheusPushURL: Option[String],
     override val note: String
 ) extends BaseParams {
 
@@ -89,6 +92,16 @@ case class CommitToBranchParams(
         s"$branch-${session.userId}"
     }
   }
+
+  override def nameForPrometheus: String = "commit_to_branch_simulation"
+
+  override def globalPrometheusTags: Seq[Tag] = Seq(
+    Tag.of(
+      "benchmark_description",
+      s"users=$numUsers commits=$numberOfCommits branchMode=$mode " +
+        s"table=$tablePrefix branch=$branch rate=$opRate duration=${durationSeconds}s note=$note"
+    )
+  )
 }
 
 object CommitToBranchParams {
@@ -121,6 +134,7 @@ object CommitToBranchParams {
       durationSeconds,
       base.numUsers,
       base.opRate,
+      base.prometheusPushURL,
       base.note
     )
   }

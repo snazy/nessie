@@ -23,7 +23,14 @@ import io.gatling.core.session.Session
 import io.gatling.core.stats.StatsEngine
 import io.gatling.core.structure.ScenarioContext
 import io.gatling.core.util.NameGen
+import io.micrometer.core.instrument.{MeterRegistry, Timer}
+import io.opentracing.Scope
+import io.opentracing.log.Fields
+import io.opentracing.tag.Tags
 import org.projectnessie.client.NessieClient
+
+import java.time.Duration
+import scala.jdk.CollectionConverters._
 
 /**
   * Builder created via [[NessieDsl.nessie]] for Nessie-Gatling-Actions.
@@ -34,12 +41,16 @@ import org.projectnessie.client.NessieClient
   * @param nessieExec         the action to be executed, takes the NessieClient and Gatling Session
   * @param ignoreExceptions   whether exceptions are ignored
   * @param dontLogResponse    whether responses are not logged against Gatling and don't appear in the output
+  * @param withTracing        whether the action shall be traced against Jaeger
+  * @param traceScopeEnricher code to add custom data to the trace-scope
   */
 case class NessieActionBuilder(
     tag: String,
     nessieExec: Option[(NessieClient, Session) => Session] = None,
     ignoreExceptions: Boolean = false,
     dontLogResponse: Boolean = false,
+    withTracing: Boolean = false,
+    traceScopeEnricher: (Scope, Session) => Unit = (_, _) => {},
     exceptionHandler: (Exception, NessieClient, Session) => Session =
       (_, _, session) => session
 ) extends ActionBuilder
@@ -53,6 +64,8 @@ case class NessieActionBuilder(
       nessieExec,
       ignoreExceptions = true,
       dontLogResponse,
+      withTracing,
+      traceScopeEnricher,
       exceptionHandler
     )
 
@@ -65,7 +78,21 @@ case class NessieActionBuilder(
       nessieExec,
       ignoreExceptions,
       dontLogResponse,
+      withTracing,
+      traceScopeEnricher,
       handler
+    )
+
+  /** Callback to add more information to an OpenTracing [[Scope]]. */
+  def trace(scopeEnricher: (Scope, Session) => Unit): NessieActionBuilder =
+    NessieActionBuilder(
+      tag,
+      nessieExec,
+      ignoreExceptions,
+      dontLogResponse,
+      withTracing = true,
+      scopeEnricher,
+      exceptionHandler
     )
 
   /** Do not push the measurement for this action to Gatling nor to Prometheus. */
@@ -75,6 +102,8 @@ case class NessieActionBuilder(
       nessieExec,
       ignoreExceptions,
       dontLogResponse = true,
+      withTracing,
+      traceScopeEnricher,
       exceptionHandler
     )
 
@@ -87,6 +116,8 @@ case class NessieActionBuilder(
       Some(nessieExec),
       ignoreExceptions,
       dontLogResponse,
+      withTracing,
+      traceScopeEnricher,
       exceptionHandler
     )
 
@@ -111,6 +142,8 @@ case class NessieActionBuilder(
       exec,
       ignoreExceptions,
       dontLogResponse,
+      withTracing,
+      traceScopeEnricher,
       exceptionHandler
     )
   }
@@ -124,6 +157,8 @@ private case class NessieAction(
     nessieExec: (NessieClient, Session) => Session,
     ignoreExceptions: Boolean,
     dontLogResponse: Boolean,
+    withTracing: Boolean,
+    traceScopeEnricher: (Scope, Session) => Unit,
     exceptionHandler: (Exception, NessieClient, Session) => Session
 ) extends ExitableAction {
   override def clock: Clock = nessieComponents.coreComponents.clock
@@ -131,14 +166,58 @@ private case class NessieAction(
   override def statsEngine: StatsEngine =
     nessieComponents.coreComponents.statsEngine
 
+  private def startTrace: Option[Scope] = {
+    if (withTracing && nessieComponents.tracer.isDefined) {
+      Some(
+        nessieComponents.tracer
+          .map(tracer => tracer.buildSpan(name).startActive(true))
+          .get
+      )
+    } else {
+      None
+    }
+  }
+
+  private def metric(
+      sample: Timer.Sample,
+      session: Session,
+      status: String,
+      error: Boolean,
+      registry: MeterRegistry
+  ): Unit = {
+    sample.stop(
+      Timer
+        .builder("nessie.benchmark.action")
+        .tags(
+          nessieComponents.nessieProtocol.prometheusPush.get.commonTags.asJava
+        )
+        .tag("action", name)
+        .tag("scenario", session.scenario)
+        .tag("status", status)
+        .tag("error", error.toString)
+        .publishPercentileHistogram()
+        .distributionStatisticBufferLength(3)
+        .distributionStatisticExpiry(Duration.ofMinutes(1))
+        .register(registry)
+    )
+  }
+
   override protected def execute(session: Session): Unit = {
 
+    val scope = startTrace
+    scope.foreach(s => traceScopeEnricher(s, session))
+
+    val sample = Timer.start()
+    val registry = session("prometheus.registry").asOption[MeterRegistry]
     val start = clock.nowMillis
     try {
       val sess = nessieExec(nessieComponents.nessieProtocol.client, session)
       val end = clock.nowMillis
 
       if (!dontLogResponse) {
+        // Measure in Prometheus
+        registry.foreach(r => metric(sample, session, "OK", error = false, r))
+
         // Tell Gatling...
         statsEngine.logResponse(
           sess.scenario,
@@ -152,6 +231,9 @@ private case class NessieAction(
         )
       }
 
+      // close tracing scope
+      scope.foreach(s => s.close())
+
       next ! sess.markAsSucceeded
     } catch {
       case e: Exception =>
@@ -159,6 +241,18 @@ private case class NessieAction(
 
         // Measure in Prometheus
         if (!dontLogResponse) {
+          // Measure in Prometheus, do not add the exception message (Prometheus size restrictions)
+          registry.foreach(
+            r =>
+              metric(
+                sample,
+                session,
+                if (ignoreExceptions) "OK" else "Fail",
+                error = true,
+                r
+              )
+          )
+
           // Tell Gatling...
           statsEngine.logResponse(
             session.scenario,
@@ -171,6 +265,20 @@ private case class NessieAction(
             Some(e.toString)
           )
         }
+
+        // add exception information to trace + close tracing scope
+        scope.foreach(s => {
+          Tags.ERROR.set(
+            s.span.log(
+              Map(
+                Fields.EVENT -> Tags.ERROR.getKey,
+                Fields.ERROR_OBJECT -> e.toString
+              ).asJava
+            ),
+            true
+          )
+          s.close()
+        })
 
         if (ignoreExceptions) {
           next ! exceptionHandler(
