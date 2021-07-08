@@ -750,6 +750,11 @@
           <artifactId>dependency-check-maven</artifactId>
           <version>6.2.2</version>
         </plugin>
+        <plugin>
+          <groupId>org.openapitools</groupId>
+          <artifactId>openapi-generator-maven-plugin</artifactId>
+          <version>5.1.1</version>
+        </plugin>
       </plugins>
     </pluginManagement>
     <plugins>

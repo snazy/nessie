@@ -35,5 +35,6 @@
     <module>quarkus-server</module>
     <module>services</module>
     <module>store</module>
+    <module>grpc</module>
   </modules>
 </project>
