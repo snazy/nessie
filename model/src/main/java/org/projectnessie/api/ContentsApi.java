@@ -36,6 +36,7 @@ import org.eclipse.microprofile.openapi.annotations.responses.APIResponse;
 import org.eclipse.microprofile.openapi.annotations.responses.APIResponses;
 import org.projectnessie.error.NessieNotFoundException;
 import org.projectnessie.model.Contents;
+import org.projectnessie.model.ContentsAndState;
 import org.projectnessie.model.ContentsKey;
 import org.projectnessie.model.MultiGetContentsRequest;
 import org.projectnessie.model.MultiGetContentsResponse;
@@ -49,7 +50,11 @@ public interface ContentsApi {
   @GET
   @Produces(MediaType.APPLICATION_JSON)
   @Path("{key}")
-  @Operation(summary = "Get object content associated with key")
+  @Operation(
+      summary = "Get object content associated with key.",
+      description =
+          "This operation returns a consistent view of both the global and per-branch (or per-tag)"
+              + " information for the requested key.")
   @APIResponses({
     @APIResponse(
         responseCode = "200",
@@ -62,7 +67,7 @@ public interface ContentsApi {
     @APIResponse(responseCode = "400", description = "Invalid input, ref name not valid"),
     @APIResponse(responseCode = "404", description = "Table not found on ref")
   })
-  Contents getContents(
+  ContentsAndState getContents(
       @Valid
           @Parameter(
               description = "object name to search for",
@@ -81,7 +86,11 @@ public interface ContentsApi {
 
   @POST
   @Consumes(MediaType.APPLICATION_JSON)
-  @Operation(summary = "Get multiple objects' content")
+  @Operation(
+      summary = "Get multiple objects' content.",
+      description =
+          "Similar to 'getContents', this operation returns a consistent view of both the global"
+              + " and per-branch (or per-tag) information for the requested keys.")
   @APIResponses({
     @APIResponse(
         responseCode = "200",

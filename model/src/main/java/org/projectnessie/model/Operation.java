@@ -33,6 +33,7 @@ import org.immutables.value.Value;
     oneOf = {Operation.Put.class, Operation.Unchanged.class, Operation.Delete.class},
     discriminatorMapping = {
       @DiscriminatorMapping(value = "PUT", schema = Operation.Put.class),
+      @DiscriminatorMapping(value = "PUT_GLOBAL", schema = Operation.PutGlobal.class),
       @DiscriminatorMapping(value = "UNCHANGED", schema = Operation.Unchanged.class),
       @DiscriminatorMapping(value = "DELETE", schema = Operation.Delete.class)
     },
@@ -58,6 +59,27 @@ public interface Operation {
 
     public static Put of(ContentsKey key, Contents contents) {
       return ImmutablePut.builder().key(key).contents(contents).build();
+    }
+  }
+
+  @Value.Immutable(prehash = true)
+  @JsonSerialize(as = ImmutablePutGlobal.class)
+  @JsonDeserialize(as = ImmutablePutGlobal.class)
+  @JsonTypeName("PUT_GLOBAL")
+  interface PutGlobal extends Operation {
+    @NotNull
+    GlobalContents getContents();
+
+    @NotNull
+    GlobalContents getExpectedContents();
+
+    public static PutGlobal of(
+        ContentsKey key, GlobalContents contents, GlobalContents expectedContents) {
+      return ImmutablePutGlobal.builder()
+          .key(key)
+          .contents(contents)
+          .expectedContents(expectedContents)
+          .build();
     }
   }
 

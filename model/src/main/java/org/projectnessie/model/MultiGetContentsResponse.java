@@ -47,8 +47,18 @@ public interface MultiGetContentsResponse {
     @NotNull
     Contents getContents();
 
+    GlobalContents getGlobalContents();
+
     static ContentsWithKey of(ContentsKey key, Contents contents) {
       return ImmutableContentsWithKey.builder().key(key).contents(contents).build();
+    }
+
+    static ContentsWithKey of(ContentsKey key, Contents contents, GlobalContents globalContents) {
+      return ImmutableContentsWithKey.builder()
+          .key(key)
+          .contents(contents)
+          .globalContents(globalContents)
+          .build();
     }
   }
 }
