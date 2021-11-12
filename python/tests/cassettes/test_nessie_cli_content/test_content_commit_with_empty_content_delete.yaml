@@ -132,12 +132,12 @@ interactions:
       code: 404
       message: Not Found
 - request:
-    body: '{"commitMeta": {"commitTime": null, "author": "nessie test", "authorTime":
-      null, "hash": null, "properties": null, "committer": null, "message": "test
-      message", "signedOffBy": null}, "operations": [{"expectedContent": null, "key":
-      {"elements": ["this", "is", "iceberg", "foo"]}, "content": {"idGenerators":
-      "xyz", "metadataLocation": "/a/b/c", "id": "test_contents_with_empty_content_delete",
-      "type": "ICEBERG_TABLE"}, "type": "PUT"}]}'
+    body: '{"commitMeta": {"committer": null, "hash": null, "commitTime": null, "authorTime":
+      null, "signedOffBy": null, "properties": null, "message": "test message", "author":
+      "nessie test"}, "operations": [{"key": {"elements": ["this", "is", "iceberg",
+      "foo"]}, "expectedContent": null, "content": {"id": "test_contents_with_empty_content_delete",
+      "metadataLocation": "/a/b/c", "idGenerators": "xyz", "type": "ICEBERG_TABLE"},
+      "type": "PUT"}]}'
     headers:
       Accept:
       - '*/*'
@@ -156,7 +156,7 @@ interactions:
   response:
     body:
       string: "{\n  \"type\" : \"BRANCH\",\n  \"name\" : \"contents_commit_with_empty_content_delete_dev\",\n
-        \ \"hash\" : \"dedb1c862008e6a486e64e86da2163f386b6f2a43692c4ca06ef4a6ebd1d0fab\"\n}"
+        \ \"hash\" : \"44e45f45ed4c4651669f756619d7f4bbdfc65227006db60949af83e3679231d1\"\n}"
     headers:
       Content-Type:
       - application/json
@@ -209,7 +209,7 @@ interactions:
       string: "{\n  \"token\" : null,\n  \"references\" : [ {\n    \"type\" : \"BRANCH\",\n
         \   \"name\" : \"main\",\n    \"hash\" : \"2e1cfa82b035c26cbbbdae632cea070514eb8b773f616aaeaf668e2f0be8f10d\"\n
         \ }, {\n    \"type\" : \"BRANCH\",\n    \"name\" : \"contents_commit_with_empty_content_delete_dev\",\n
-        \   \"hash\" : \"dedb1c862008e6a486e64e86da2163f386b6f2a43692c4ca06ef4a6ebd1d0fab\"\n
+        \   \"hash\" : \"44e45f45ed4c4651669f756619d7f4bbdfc65227006db60949af83e3679231d1\"\n
         \ } ],\n  \"hasMore\" : false\n}"
     headers:
       Content-Type:
@@ -245,10 +245,10 @@ interactions:
       code: 200
       message: OK
 - request:
-    body: '{"commitMeta": {"commitTime": null, "author": null, "authorTime": null,
-      "hash": null, "properties": null, "committer": null, "message": "delete table",
-      "signedOffBy": null}, "operations": [{"key": {"elements": ["this", "is", "iceberg",
-      "foo"]}, "type": "DELETE"}]}'
+    body: '{"commitMeta": {"committer": null, "hash": null, "commitTime": null, "authorTime":
+      null, "signedOffBy": null, "properties": null, "message": "delete table", "author":
+      null}, "operations": [{"key": {"elements": ["this", "is", "iceberg", "foo"]},
+      "type": "DELETE"}]}'
     headers:
       Accept:
       - '*/*'
@@ -263,11 +263,11 @@ interactions:
       User-Agent:
       - python-requests/2.26.0
     method: POST
-    uri: http://localhost:19120/api/v1/trees/branch/contents_commit_with_empty_content_delete_dev/commit?expectedHash=dedb1c862008e6a486e64e86da2163f386b6f2a43692c4ca06ef4a6ebd1d0fab
+    uri: http://localhost:19120/api/v1/trees/branch/contents_commit_with_empty_content_delete_dev/commit?expectedHash=44e45f45ed4c4651669f756619d7f4bbdfc65227006db60949af83e3679231d1
   response:
     body:
       string: "{\n  \"type\" : \"BRANCH\",\n  \"name\" : \"contents_commit_with_empty_content_delete_dev\",\n
-        \ \"hash\" : \"5e113967dad18e5d905c85e3f9e90f31c5a3bea37308bded237cc68a2cfbef72\"\n}"
+        \ \"hash\" : \"d49b2fe51dd5850781d0784386305a054378f499ea5f89cac6694a5d4a5676b0\"\n}"
     headers:
       Content-Type:
       - application/json

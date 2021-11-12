@@ -131,12 +131,11 @@ interactions:
       code: 404
       message: Not Found
 - request:
-    body: '{"commitMeta": {"commitTime": null, "author": "nessie test", "authorTime":
-      null, "hash": null, "properties": null, "committer": null, "message": "test
-      message", "signedOffBy": null}, "operations": [{"expectedContent": null, "key":
-      {"elements": ["transplant", "foo", "bar"]}, "content": {"idGenerators": "xyz",
-      "metadataLocation": "/a/b/c", "id": "test_transplant_1", "type": "ICEBERG_TABLE"},
-      "type": "PUT"}]}'
+    body: '{"commitMeta": {"committer": null, "hash": null, "commitTime": null, "authorTime":
+      null, "signedOffBy": null, "properties": null, "message": "test message", "author":
+      "nessie test"}, "operations": [{"key": {"elements": ["transplant", "foo", "bar"]},
+      "expectedContent": null, "content": {"id": "test_transplant_1", "metadataLocation":
+      "/a/b/c", "idGenerators": "xyz", "type": "ICEBERG_TABLE"}, "type": "PUT"}]}'
     headers:
       Accept:
       - '*/*'
@@ -154,7 +153,7 @@ interactions:
     uri: http://localhost:19120/api/v1/trees/branch/dev/commit?expectedHash=2e1cfa82b035c26cbbbdae632cea070514eb8b773f616aaeaf668e2f0be8f10d
   response:
     body:
-      string: "{\n  \"type\" : \"BRANCH\",\n  \"name\" : \"dev\",\n  \"hash\" : \"361fcc55fa0489aa62c931d1e3a83f85703142eef392b020420bdcb881353a87\"\n}"
+      string: "{\n  \"type\" : \"BRANCH\",\n  \"name\" : \"dev\",\n  \"hash\" : \"3b03f1bc8c7c1f26448aef111631eaaa2402fb637459a2962491d62261469c91\"\n}"
     headers:
       Content-Type:
       - application/json
@@ -181,7 +180,7 @@ interactions:
       string: "{\n  \"token\" : null,\n  \"references\" : [ {\n    \"type\" : \"BRANCH\",\n
         \   \"name\" : \"main\",\n    \"hash\" : \"2e1cfa82b035c26cbbbdae632cea070514eb8b773f616aaeaf668e2f0be8f10d\"\n
         \ }, {\n    \"type\" : \"BRANCH\",\n    \"name\" : \"dev\",\n    \"hash\"
-        : \"361fcc55fa0489aa62c931d1e3a83f85703142eef392b020420bdcb881353a87\"\n  }
+        : \"3b03f1bc8c7c1f26448aef111631eaaa2402fb637459a2962491d62261469c91\"\n  }
         ],\n  \"hasMore\" : false\n}"
     headers:
       Content-Type:
@@ -218,11 +217,11 @@ interactions:
       code: 404
       message: Not Found
 - request:
-    body: '{"commitMeta": {"commitTime": null, "author": "nessie test", "authorTime":
-      null, "hash": null, "properties": null, "committer": null, "message": "test
-      message", "signedOffBy": null}, "operations": [{"expectedContent": null, "key":
-      {"elements": ["bar", "bar"]}, "content": {"idGenerators": "xyz", "metadataLocation":
-      "/a/b/c", "id": "test_transplant_2", "type": "ICEBERG_TABLE"}, "type": "PUT"}]}'
+    body: '{"commitMeta": {"committer": null, "hash": null, "commitTime": null, "authorTime":
+      null, "signedOffBy": null, "properties": null, "message": "test message", "author":
+      "nessie test"}, "operations": [{"key": {"elements": ["bar", "bar"]}, "expectedContent":
+      null, "content": {"id": "test_transplant_2", "metadataLocation": "/a/b/c", "idGenerators":
+      "xyz", "type": "ICEBERG_TABLE"}, "type": "PUT"}]}'
     headers:
       Accept:
       - '*/*'
@@ -237,10 +236,10 @@ interactions:
       User-Agent:
       - python-requests/2.26.0
     method: POST
-    uri: http://localhost:19120/api/v1/trees/branch/dev/commit?expectedHash=361fcc55fa0489aa62c931d1e3a83f85703142eef392b020420bdcb881353a87
+    uri: http://localhost:19120/api/v1/trees/branch/dev/commit?expectedHash=3b03f1bc8c7c1f26448aef111631eaaa2402fb637459a2962491d62261469c91
   response:
     body:
-      string: "{\n  \"type\" : \"BRANCH\",\n  \"name\" : \"dev\",\n  \"hash\" : \"60689f38c5e1dcfbc03223926a49b5d79f3798cd60a7b4d3701e2ae5257c266d\"\n}"
+      string: "{\n  \"type\" : \"BRANCH\",\n  \"name\" : \"dev\",\n  \"hash\" : \"6273ffb16f2cd8817c2f9ffabaf4e2c0522cd0a6ab30d74cf8bdd30aa6e97623\"\n}"
     headers:
       Content-Type:
       - application/json
@@ -267,7 +266,7 @@ interactions:
       string: "{\n  \"token\" : null,\n  \"references\" : [ {\n    \"type\" : \"BRANCH\",\n
         \   \"name\" : \"main\",\n    \"hash\" : \"2e1cfa82b035c26cbbbdae632cea070514eb8b773f616aaeaf668e2f0be8f10d\"\n
         \ }, {\n    \"type\" : \"BRANCH\",\n    \"name\" : \"dev\",\n    \"hash\"
-        : \"60689f38c5e1dcfbc03223926a49b5d79f3798cd60a7b4d3701e2ae5257c266d\"\n  }
+        : \"6273ffb16f2cd8817c2f9ffabaf4e2c0522cd0a6ab30d74cf8bdd30aa6e97623\"\n  }
         ],\n  \"hasMore\" : false\n}"
     headers:
       Content-Type:
@@ -304,11 +303,11 @@ interactions:
       code: 404
       message: Not Found
 - request:
-    body: '{"commitMeta": {"commitTime": null, "author": "nessie test", "authorTime":
-      null, "hash": null, "properties": null, "committer": null, "message": "test
-      message", "signedOffBy": null}, "operations": [{"expectedContent": null, "key":
-      {"elements": ["foo", "baz"]}, "content": {"idGenerators": "xyz", "metadataLocation":
-      "/a/b/c", "id": "test_transplant_3", "type": "ICEBERG_TABLE"}, "type": "PUT"}]}'
+    body: '{"commitMeta": {"committer": null, "hash": null, "commitTime": null, "authorTime":
+      null, "signedOffBy": null, "properties": null, "message": "test message", "author":
+      "nessie test"}, "operations": [{"key": {"elements": ["foo", "baz"]}, "expectedContent":
+      null, "content": {"id": "test_transplant_3", "metadataLocation": "/a/b/c", "idGenerators":
+      "xyz", "type": "ICEBERG_TABLE"}, "type": "PUT"}]}'
     headers:
       Accept:
       - '*/*'
@@ -323,10 +322,10 @@ interactions:
       User-Agent:
       - python-requests/2.26.0
     method: POST
-    uri: http://localhost:19120/api/v1/trees/branch/dev/commit?expectedHash=60689f38c5e1dcfbc03223926a49b5d79f3798cd60a7b4d3701e2ae5257c266d
+    uri: http://localhost:19120/api/v1/trees/branch/dev/commit?expectedHash=6273ffb16f2cd8817c2f9ffabaf4e2c0522cd0a6ab30d74cf8bdd30aa6e97623
   response:
     body:
-      string: "{\n  \"type\" : \"BRANCH\",\n  \"name\" : \"dev\",\n  \"hash\" : \"c33ffb75a555d105bcad6b3219825a41e887676d54f4be1a2390c3974df3ed82\"\n}"
+      string: "{\n  \"type\" : \"BRANCH\",\n  \"name\" : \"dev\",\n  \"hash\" : \"28ab436a4ed8f2c8dbea888cc0972208d9a349ce4858672799f1b3f1d1884b83\"\n}"
     headers:
       Content-Type:
       - application/json
@@ -353,7 +352,7 @@ interactions:
       string: "{\n  \"token\" : null,\n  \"references\" : [ {\n    \"type\" : \"BRANCH\",\n
         \   \"name\" : \"main\",\n    \"hash\" : \"2e1cfa82b035c26cbbbdae632cea070514eb8b773f616aaeaf668e2f0be8f10d\"\n
         \ }, {\n    \"type\" : \"BRANCH\",\n    \"name\" : \"dev\",\n    \"hash\"
-        : \"c33ffb75a555d105bcad6b3219825a41e887676d54f4be1a2390c3974df3ed82\"\n  }
+        : \"28ab436a4ed8f2c8dbea888cc0972208d9a349ce4858672799f1b3f1d1884b83\"\n  }
         ],\n  \"hasMore\" : false\n}"
     headers:
       Content-Type:
@@ -378,18 +377,18 @@ interactions:
     uri: http://localhost:19120/api/v1/trees/tree/dev/log
   response:
     body:
-      string: "{\n  \"token\" : null,\n  \"operations\" : [ {\n    \"hash\" : \"c33ffb75a555d105bcad6b3219825a41e887676d54f4be1a2390c3974df3ed82\",\n
+      string: "{\n  \"token\" : null,\n  \"operations\" : [ {\n    \"hash\" : \"28ab436a4ed8f2c8dbea888cc0972208d9a349ce4858672799f1b3f1d1884b83\",\n
         \   \"committer\" : \"\",\n    \"author\" : \"nessie test\",\n    \"signedOffBy\"
-        : null,\n    \"message\" : \"test message\",\n    \"commitTime\" : \"2021-11-08T16:11:48.622931Z\",\n
-        \   \"authorTime\" : \"2021-11-08T16:11:48.622931Z\",\n    \"properties\"
-        : { }\n  }, {\n    \"hash\" : \"60689f38c5e1dcfbc03223926a49b5d79f3798cd60a7b4d3701e2ae5257c266d\",\n
+        : null,\n    \"message\" : \"test message\",\n    \"commitTime\" : \"2021-11-12T07:54:33.745146Z\",\n
+        \   \"authorTime\" : \"2021-11-12T07:54:33.745146Z\",\n    \"properties\"
+        : { }\n  }, {\n    \"hash\" : \"6273ffb16f2cd8817c2f9ffabaf4e2c0522cd0a6ab30d74cf8bdd30aa6e97623\",\n
         \   \"committer\" : \"\",\n    \"author\" : \"nessie test\",\n    \"signedOffBy\"
-        : null,\n    \"message\" : \"test message\",\n    \"commitTime\" : \"2021-11-08T16:11:48.571268Z\",\n
-        \   \"authorTime\" : \"2021-11-08T16:11:48.571268Z\",\n    \"properties\"
-        : { }\n  }, {\n    \"hash\" : \"361fcc55fa0489aa62c931d1e3a83f85703142eef392b020420bdcb881353a87\",\n
+        : null,\n    \"message\" : \"test message\",\n    \"commitTime\" : \"2021-11-12T07:54:33.696337Z\",\n
+        \   \"authorTime\" : \"2021-11-12T07:54:33.696337Z\",\n    \"properties\"
+        : { }\n  }, {\n    \"hash\" : \"3b03f1bc8c7c1f26448aef111631eaaa2402fb637459a2962491d62261469c91\",\n
         \   \"committer\" : \"\",\n    \"author\" : \"nessie test\",\n    \"signedOffBy\"
-        : null,\n    \"message\" : \"test message\",\n    \"commitTime\" : \"2021-11-08T16:11:48.533002Z\",\n
-        \   \"authorTime\" : \"2021-11-08T16:11:48.533002Z\",\n    \"properties\"
+        : null,\n    \"message\" : \"test message\",\n    \"commitTime\" : \"2021-11-12T07:54:33.657651Z\",\n
+        \   \"authorTime\" : \"2021-11-12T07:54:33.657651Z\",\n    \"properties\"
         : { }\n  } ],\n  \"hasMore\" : false\n}"
     headers:
       Content-Type:
@@ -424,8 +423,8 @@ interactions:
       code: 200
       message: OK
 - request:
-    body: '{"hashesToTransplant": ["60689f38c5e1dcfbc03223926a49b5d79f3798cd60a7b4d3701e2ae5257c266d",
-      "c33ffb75a555d105bcad6b3219825a41e887676d54f4be1a2390c3974df3ed82"], "fromRefName":
+    body: '{"hashesToTransplant": ["6273ffb16f2cd8817c2f9ffabaf4e2c0522cd0a6ab30d74cf8bdd30aa6e97623",
+      "28ab436a4ed8f2c8dbea888cc0972208d9a349ce4858672799f1b3f1d1884b83"], "fromRefName":
       "dev"}'
     headers:
       Accept:
@@ -464,7 +463,7 @@ interactions:
     uri: http://localhost:19120/api/v1/trees/tree
   response:
     body:
-      string: "{\n  \"type\" : \"BRANCH\",\n  \"name\" : \"main\",\n  \"hash\" : \"d575bf1f9967fe77bb12dde178a91c7395f273de0892a39f19a43af0a62e656d\"\n}"
+      string: "{\n  \"type\" : \"BRANCH\",\n  \"name\" : \"main\",\n  \"hash\" : \"873e29d2e69db320eb1892dc3e1fbd32c516dadb911e68ae4cdf172225b1dd69\"\n}"
     headers:
       Content-Type:
       - application/json
@@ -488,14 +487,14 @@ interactions:
     uri: http://localhost:19120/api/v1/trees/tree/main/log
   response:
     body:
-      string: "{\n  \"token\" : null,\n  \"operations\" : [ {\n    \"hash\" : \"d575bf1f9967fe77bb12dde178a91c7395f273de0892a39f19a43af0a62e656d\",\n
+      string: "{\n  \"token\" : null,\n  \"operations\" : [ {\n    \"hash\" : \"873e29d2e69db320eb1892dc3e1fbd32c516dadb911e68ae4cdf172225b1dd69\",\n
         \   \"committer\" : \"\",\n    \"author\" : \"nessie test\",\n    \"signedOffBy\"
-        : null,\n    \"message\" : \"test message\",\n    \"commitTime\" : \"2021-11-08T16:11:48.622931Z\",\n
-        \   \"authorTime\" : \"2021-11-08T16:11:48.622931Z\",\n    \"properties\"
-        : { }\n  }, {\n    \"hash\" : \"90034ae2ef5dfb16c129fe0257ca73e35d7ce5021fbf2295f889164beb2a08d8\",\n
+        : null,\n    \"message\" : \"test message\",\n    \"commitTime\" : \"2021-11-12T07:54:33.745146Z\",\n
+        \   \"authorTime\" : \"2021-11-12T07:54:33.745146Z\",\n    \"properties\"
+        : { }\n  }, {\n    \"hash\" : \"13bd58065a700d3db6e014594d4afe6cf9288e8935df2d6836bdbb5b234a4110\",\n
         \   \"committer\" : \"\",\n    \"author\" : \"nessie test\",\n    \"signedOffBy\"
-        : null,\n    \"message\" : \"test message\",\n    \"commitTime\" : \"2021-11-08T16:11:48.571268Z\",\n
-        \   \"authorTime\" : \"2021-11-08T16:11:48.571268Z\",\n    \"properties\"
+        : null,\n    \"message\" : \"test message\",\n    \"commitTime\" : \"2021-11-12T07:54:33.696337Z\",\n
+        \   \"authorTime\" : \"2021-11-12T07:54:33.696337Z\",\n    \"properties\"
         : { }\n  } ],\n  \"hasMore\" : false\n}"
     headers:
       Content-Type:

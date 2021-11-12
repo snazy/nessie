@@ -133,12 +133,11 @@ interactions:
       code: 404
       message: Not Found
 - request:
-    body: '{"commitMeta": {"commitTime": null, "author": "nessie test", "authorTime":
-      null, "hash": null, "properties": null, "committer": null, "message": "commit
-      1", "signedOffBy": null}, "operations": [{"expectedContent": null, "key": {"elements":
-      ["commit", "expected", "contents"]}, "content": {"idGenerators": "xyz", "metadataLocation":
-      "/a/b/c", "id": "test_expected_contents", "type": "ICEBERG_TABLE"}, "type":
-      "PUT"}]}'
+    body: '{"commitMeta": {"committer": null, "hash": null, "commitTime": null, "authorTime":
+      null, "signedOffBy": null, "properties": null, "message": "commit 1", "author":
+      "nessie test"}, "operations": [{"key": {"elements": ["commit", "expected", "contents"]},
+      "expectedContent": null, "content": {"id": "test_expected_contents", "metadataLocation":
+      "/a/b/c", "idGenerators": "xyz", "type": "ICEBERG_TABLE"}, "type": "PUT"}]}'
     headers:
       Accept:
       - '*/*'
@@ -157,7 +156,7 @@ interactions:
   response:
     body:
       string: "{\n  \"type\" : \"BRANCH\",\n  \"name\" : \"contents_commit_with_expected_state\",\n
-        \ \"hash\" : \"d878236e630948097c6db2c2f303a0d40558d3397bb66a83b1164d082aadcd1f\"\n}"
+        \ \"hash\" : \"ca8b23e0ea84e01b8824d5643b0c3fbdf0cc5a690ab52aafb7ab99b7b8a986c0\"\n}"
     headers:
       Content-Type:
       - application/json
@@ -184,7 +183,7 @@ interactions:
       string: "{\n  \"token\" : null,\n  \"references\" : [ {\n    \"type\" : \"BRANCH\",\n
         \   \"name\" : \"main\",\n    \"hash\" : \"2e1cfa82b035c26cbbbdae632cea070514eb8b773f616aaeaf668e2f0be8f10d\"\n
         \ }, {\n    \"type\" : \"BRANCH\",\n    \"name\" : \"contents_commit_with_expected_state\",\n
-        \   \"hash\" : \"d878236e630948097c6db2c2f303a0d40558d3397bb66a83b1164d082aadcd1f\"\n
+        \   \"hash\" : \"ca8b23e0ea84e01b8824d5643b0c3fbdf0cc5a690ab52aafb7ab99b7b8a986c0\"\n
         \ } ],\n  \"hasMore\" : false\n}"
     headers:
       Content-Type:

@@ -1,26 +1,52 @@
 interactions:
-    - request:
-          body: null
-          headers:
-              Accept:
-                  - application/json
-              Accept-Encoding:
-                  - gzip, deflate
-              Connection:
-                  - keep-alive
-              User-Agent:
-                  - python-requests/2.26.0
-          method: GET
-          uri: http://localhost:19120/api/v1/trees/tree
-      response:
-          body:
-              string: "<html/>"
-          headers:
-              Content-Length:
-                  - '7'
-              Content-Type:
-                  - text/html
-          status:
-              code: 500
-              message: Internal Server Error
+- request:
+    body: null
+    headers:
+      Accept:
+      - application/json
+      Accept-Encoding:
+      - gzip, deflate
+      Connection:
+      - keep-alive
+      User-Agent:
+      - python-requests/2.26.0
+    method: GET
+    uri: http://localhost:19120/api/v1/trees/tree
+  response:
+    body:
+      string: "{\n  \"type\" : \"BRANCH\",\n  \"name\" : \"main\",\n  \"hash\" : \"2e1cfa82b035c26cbbbdae632cea070514eb8b773f616aaeaf668e2f0be8f10d\"\n}"
+    headers:
+      Content-Type:
+      - application/json
+      content-length:
+      - '121'
+    status:
+      code: 200
+      message: OK
+- request:
+    body: null
+    headers:
+      Accept:
+      - application/json
+      Accept-Encoding:
+      - gzip, deflate
+      Connection:
+      - keep-alive
+      User-Agent:
+      - python-requests/2.26.0
+    method: GET
+    uri: http://localhost:19120/api/v1/trees
+  response:
+    body:
+      string: "{\n  \"token\" : null,\n  \"references\" : [ {\n    \"type\" : \"BRANCH\",\n
+        \   \"name\" : \"main\",\n    \"hash\" : \"2e1cfa82b035c26cbbbdae632cea070514eb8b773f616aaeaf668e2f0be8f10d\"\n
+        \ } ],\n  \"hasMore\" : false\n}"
+    headers:
+      Content-Type:
+      - application/json
+      content-length:
+      - '193'
+    status:
+      code: 200
+      message: OK
 version: 1

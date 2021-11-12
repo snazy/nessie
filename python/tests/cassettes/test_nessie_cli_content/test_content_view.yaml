@@ -132,12 +132,11 @@ interactions:
       code: 404
       message: Not Found
 - request:
-    body: '{"commitMeta": {"author": "nessie test", "signedOffBy": null, "properties":
-      null, "message": "test message", "committer": null, "hash": null, "commitTime":
-      null, "authorTime": null}, "operations": [{"key": {"elements": ["this", "is",
-      "iceberg", "foo"]}, "expectedContent": null, "content": {"idGenerators": "xyz",
-      "metadataLocation": "/a/b/c", "id": "test_contents_view", "type": "ICEBERG_TABLE"},
-      "type": "PUT"}]}'
+    body: '{"commitMeta": {"committer": null, "hash": null, "commitTime": null, "authorTime":
+      null, "signedOffBy": null, "properties": null, "message": "test message", "author":
+      "nessie test"}, "operations": [{"key": {"elements": ["this", "is", "iceberg",
+      "foo"]}, "expectedContent": null, "content": {"id": "test_contents_view", "metadataLocation":
+      "/a/b/c", "idGenerators": "xyz", "type": "ICEBERG_TABLE"}, "type": "PUT"}]}'
     headers:
       Accept:
       - '*/*'
@@ -156,7 +155,7 @@ interactions:
   response:
     body:
       string: "{\n  \"type\" : \"BRANCH\",\n  \"name\" : \"contents_view_dev\",\n
-        \ \"hash\" : \"68f5ecfaf5bdc76d417b60cb8531613ebef2c07cbd8e9499f7a21655f57b89ce\"\n}"
+        \ \"hash\" : \"06835dad0874b416216100028355a9e001ed710d44cf3d8de8a8d68acdc7405e\"\n}"
     headers:
       Content-Type:
       - application/json
@@ -183,7 +182,7 @@ interactions:
       string: "{\n  \"token\" : null,\n  \"references\" : [ {\n    \"type\" : \"BRANCH\",\n
         \   \"name\" : \"main\",\n    \"hash\" : \"2e1cfa82b035c26cbbbdae632cea070514eb8b773f616aaeaf668e2f0be8f10d\"\n
         \ }, {\n    \"type\" : \"BRANCH\",\n    \"name\" : \"contents_view_dev\",\n
-        \   \"hash\" : \"68f5ecfaf5bdc76d417b60cb8531613ebef2c07cbd8e9499f7a21655f57b89ce\"\n
+        \   \"hash\" : \"06835dad0874b416216100028355a9e001ed710d44cf3d8de8a8d68acdc7405e\"\n
         \ } ],\n  \"hasMore\" : false\n}"
     headers:
       Content-Type:
@@ -220,12 +219,12 @@ interactions:
       code: 404
       message: Not Found
 - request:
-    body: '{"commitMeta": {"author": "nessie test", "signedOffBy": null, "properties":
-      null, "message": "test message", "committer": null, "hash": null, "commitTime":
-      null, "authorTime": null}, "operations": [{"key": {"elements": ["this", "is",
-      "delta", "bar"]}, "expectedContent": null, "content": {"metadataLocationHistory":
-      ["asd"], "checkpointLocationHistory": ["def"], "lastCheckpoint": "x", "id":
-      "uuid2", "type": "DELTA_LAKE_TABLE"}, "type": "PUT"}]}'
+    body: '{"commitMeta": {"committer": null, "hash": null, "commitTime": null, "authorTime":
+      null, "signedOffBy": null, "properties": null, "message": "test message", "author":
+      "nessie test"}, "operations": [{"key": {"elements": ["this", "is", "delta",
+      "bar"]}, "expectedContent": null, "content": {"id": "uuid2", "metadataLocationHistory":
+      ["asd"], "checkpointLocationHistory": ["def"], "lastCheckpoint": "x", "type":
+      "DELTA_LAKE_TABLE"}, "type": "PUT"}]}'
     headers:
       Accept:
       - '*/*'
@@ -240,11 +239,11 @@ interactions:
       User-Agent:
       - python-requests/2.26.0
     method: POST
-    uri: http://localhost:19120/api/v1/trees/branch/contents_view_dev/commit?expectedHash=68f5ecfaf5bdc76d417b60cb8531613ebef2c07cbd8e9499f7a21655f57b89ce
+    uri: http://localhost:19120/api/v1/trees/branch/contents_view_dev/commit?expectedHash=06835dad0874b416216100028355a9e001ed710d44cf3d8de8a8d68acdc7405e
   response:
     body:
       string: "{\n  \"type\" : \"BRANCH\",\n  \"name\" : \"contents_view_dev\",\n
-        \ \"hash\" : \"f0d992864be441e83687256b39bc1f996cfbf81ea6b42c1e107f8c68f2310555\"\n}"
+        \ \"hash\" : \"06e9796ca1fdf5d4a7701108e741d2e3d5245c9562e23a49021c330a956ae5f5\"\n}"
     headers:
       Content-Type:
       - application/json
@@ -271,7 +270,7 @@ interactions:
       string: "{\n  \"token\" : null,\n  \"references\" : [ {\n    \"type\" : \"BRANCH\",\n
         \   \"name\" : \"main\",\n    \"hash\" : \"2e1cfa82b035c26cbbbdae632cea070514eb8b773f616aaeaf668e2f0be8f10d\"\n
         \ }, {\n    \"type\" : \"BRANCH\",\n    \"name\" : \"contents_view_dev\",\n
-        \   \"hash\" : \"f0d992864be441e83687256b39bc1f996cfbf81ea6b42c1e107f8c68f2310555\"\n
+        \   \"hash\" : \"06e9796ca1fdf5d4a7701108e741d2e3d5245c9562e23a49021c330a956ae5f5\"\n
         \ } ],\n  \"hasMore\" : false\n}"
     headers:
       Content-Type:
@@ -308,11 +307,11 @@ interactions:
       code: 404
       message: Not Found
 - request:
-    body: '{"commitMeta": {"author": "nessie test", "signedOffBy": null, "properties":
-      null, "message": "test message", "committer": null, "hash": null, "commitTime":
-      null, "authorTime": null}, "operations": [{"key": {"elements": ["this", "is",
-      "sql.baz"]}, "expectedContent": null, "content": {"sqlText": "SELECT * FROM
-      foo", "dialect": "SPARK", "id": "uuid3", "type": "VIEW"}, "type": "PUT"}]}'
+    body: '{"commitMeta": {"committer": null, "hash": null, "commitTime": null, "authorTime":
+      null, "signedOffBy": null, "properties": null, "message": "test message", "author":
+      "nessie test"}, "operations": [{"key": {"elements": ["this", "is", "sql.baz"]},
+      "expectedContent": null, "content": {"id": "uuid3", "dialect": "SPARK", "sqlText":
+      "SELECT * FROM foo", "type": "VIEW"}, "type": "PUT"}]}'
     headers:
       Accept:
       - '*/*'
@@ -327,11 +326,11 @@ interactions:
       User-Agent:
       - python-requests/2.26.0
     method: POST
-    uri: http://localhost:19120/api/v1/trees/branch/contents_view_dev/commit?expectedHash=f0d992864be441e83687256b39bc1f996cfbf81ea6b42c1e107f8c68f2310555
+    uri: http://localhost:19120/api/v1/trees/branch/contents_view_dev/commit?expectedHash=06e9796ca1fdf5d4a7701108e741d2e3d5245c9562e23a49021c330a956ae5f5
   response:
     body:
       string: "{\n  \"type\" : \"BRANCH\",\n  \"name\" : \"contents_view_dev\",\n
-        \ \"hash\" : \"18af029596bcaf748ca002cae0fae5ec312bdf85ebe1a3f14089a35ab8707024\"\n}"
+        \ \"hash\" : \"22865fd0cbde68a9f701ba594f3eea34861d0d39b32220d2f9815580d6880e99\"\n}"
     headers:
       Content-Type:
       - application/json
