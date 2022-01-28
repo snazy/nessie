@@ -48,6 +48,7 @@ import picocli.CommandLine.Option;
 import picocli.CommandLine.ParameterException;
 import picocli.CommandLine.Spec;
 
+/** NEW CONTENT. */
 @Command(name = "generate", mixinStandardHelpOptions = true, description = "Generate commits")
 public class GenerateContent extends AbstractCommand {
 
