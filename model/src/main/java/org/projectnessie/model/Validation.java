@@ -23,7 +23,7 @@ import java.util.Set;
 import java.util.regex.Matcher;
 import java.util.regex.Pattern;
 
-/** Collection of validation rules. */
+/** Collection of validation rules. ADD SOME DOCS. */
 public final class Validation {
   public static final String HASH_REGEX = "^[0-9a-fA-F]{8,64}$";
   public static final String REF_NAME_REGEX =
