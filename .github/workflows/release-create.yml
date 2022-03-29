@@ -135,7 +135,9 @@ jobs:
         cat /tmp/nessie-ui-package-lock.json | jq ".version = \"${RELEASE_VERSION}\" | .packages[\"\"].version = \"${RELEASE_VERSION}\"" > package-lock.json
 
     - name: Bump Maven release version ${{ github.event.inputs.releaseVersion }}
-      run: ./mvnw versions:set -DgenerateBackupPoms=false -DnewVersion=${RELEASE_VERSION}
+      run: |
+        ./mvnw versions:set -DgenerateBackupPoms=false -DnewVersion=${RELEASE_VERSION}
+        (cd integ-test-suite/tests && ./mvnw versions:set -DgenerateBackupPoms=false -DnewVersion=${RELEASE_VERSION})
 
     - name: Configure release-bot-user in git config
       run: |
@@ -174,7 +176,9 @@ jobs:
     - name: Bump Maven next development version version
       env:
         NEXT_VERSION: ${{ steps.next_version.outputs.NEXT_VERSION }}
-      run: ./mvnw versions:set -DgenerateBackupPoms=false -DnewVersion=${NEXT_VERSION}-SNAPSHOT
+      run: |
+        ./mvnw versions:set -DgenerateBackupPoms=false -DnewVersion=${NEXT_VERSION}-SNAPSHOT
+        (cd integ-test-suite/tests && ./mvnw versions:set -DgenerateBackupPoms=false -DnewVersion=${NEXT_VERSION}-SNAPSHOT
 
     # Record the next development iteration in git
     - name: Record next development version in git

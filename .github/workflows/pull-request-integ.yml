@@ -28,6 +28,61 @@ jobs:
     name: Integrations Tests
     runs-on: ubuntu-latest
     if: contains(github.event.pull_request.labels.*.name, 'pr-integrations')
+    env:
+      NESSIE_DIR: ${{ github.workspace }}
+      ICEBERG_DIR: ${{ github.workspace }}/integ-test-suite/target/git/iceberg
+      TRINO_DIR: ${{ github.workspace }}/integ-test-suite/target/git/trino
+
+      # The following settings make up the whole setup:
+      # - Git commit in Nessie source tree (via the GH checkout action)
+      # - configuration name as used in integ-test-suite/config.in.sh
+      #
+      # See integ-test-suite/setup_for_config.sh for instructions how to provide a custom
+      # configuration that is not in config.in.sh.
+      config_name: HEAD
 
     steps:
-      - uses: actions/checkout@v3
+    - uses: actions/checkout@v3
+    - name: Setup runner
+      uses: ./.github/actions/setup-runner
+    - name: Setup Java, Maven
+      uses: ./.github/actions/dev-tool-java
+
+    - name: Initialize tools integration tests
+      run: integ-test-suite/scripts/init.sh
+
+    - name: Configure
+      run: integ-test-suite/scripts/setup_for_config.sh
+
+    - name: Cache Gradle packages
+      uses: actions/cache@v3
+      with:
+        path: |
+          ~/.gradle/caches
+          ~/.gradle/wrapper
+        key: gradle-${{ hashFiles('**/*.gradle') }}-${{ hashFiles('**/versions.props') }}
+        restore-keys: gradle-
+
+    - name: Build Nessie w/o Clients
+      run: integ-test-suite/scripts/build-nessie.sh
+
+    - name: Build Iceberg
+      run: integ-test-suite/scripts/build-iceberg.sh
+
+    #- name: Build Trino
+    #  run: integ-test-suite/scripts/build-trino.sh
+
+    - name: Build Nessie Clients
+      run: integ-test-suite/scripts/build-nessie-2.sh
+
+    - name: Test Nessie
+      run: integ-test-suite/scripts/test-nessie.sh
+
+    - name: Test Iceberg
+      run: integ-test-suite/scripts/test-iceberg.sh
+
+    #- name: Test Trino
+    #  run: integ-test-suite/scripts/test-trino.sh
+
+    - name: Integration Tests
+      run: integ-test-suite/scripts/test-integrations.sh
