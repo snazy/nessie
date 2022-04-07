@@ -5,7 +5,10 @@ on:
     types:
       - "completed"
     workflows:
-      - "Integrate"
+      - "PR Build Check"
+      - "PR Build Check Jackson"
+      - "PR Build Check Native"
+      - "PR Integrations Tests"
 
 jobs:
   merge:
