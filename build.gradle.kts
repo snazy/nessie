@@ -37,7 +37,7 @@ To use dependencies (without versions) from a "bom", import the bom using e.g.
 The following declarations also contain some build dependencies.
 */
 
-val versionAgroalPool = "1.16"
+val versionAgroalPool = "2.0"
 val versionAgrona = "1.15.2"
 val versionAntlr = "4.10.1"
 val versionAssertJ = "3.23.1"
