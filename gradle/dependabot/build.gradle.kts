@@ -33,7 +33,7 @@ plugins {
   id("org.projectnessie.buildsupport.jacoco") version "0.1.5"
   id("org.projectnessie.buildsupport.jacoco-aggregator") version "0.1.5"
   id("org.projectnessie.buildsupport.jandex") version "0.1.5"
-  id("org.projectnessie.buildsupport.protobuf") version "0.1.5"
+  id("org.projectnessie.buildsupport.protobuf") version "0.1.6"
   id("org.projectnessie.buildsupport.publishing") version "0.1.5"
   id("org.projectnessie.buildsupport.reflectionconfig") version "0.1.5"
   id("org.projectnessie.buildsupport.spotless") version "0.1.5"
