@@ -26,17 +26,16 @@ plugins {
   id("net.ltgt.errorprone") version "2.0.2"
   id("org.jetbrains.gradle.plugin.idea-ext") version "1.1.4"
   id("org.projectnessie") version "0.27.3"
-  val nessieBuildPlugins = "0.1.5"
-  id("org.projectnessie.buildsupport.attach-test-jar") version nessieBuildPlugins
-  id("org.projectnessie.buildsupport.checkstyle") version nessieBuildPlugins
-  id("org.projectnessie.buildsupport.errorprone") version nessieBuildPlugins
-  id("org.projectnessie.buildsupport.ide-integration") version nessieBuildPlugins
-  id("org.projectnessie.buildsupport.jacoco") version nessieBuildPlugins
-  id("org.projectnessie.buildsupport.jacoco-aggregator") version nessieBuildPlugins
-  id("org.projectnessie.buildsupport.jandex") version nessieBuildPlugins
-  id("org.projectnessie.buildsupport.protobuf") version nessieBuildPlugins
-  id("org.projectnessie.buildsupport.publishing") version nessieBuildPlugins
-  id("org.projectnessie.buildsupport.reflectionconfig") version nessieBuildPlugins
-  id("org.projectnessie.buildsupport.spotless") version nessieBuildPlugins
-  id("org.projectnessie.smallrye-open-api") version nessieBuildPlugins
+  id("org.projectnessie.buildsupport.attach-test-jar") version "0.1.5"
+  id("org.projectnessie.buildsupport.checkstyle") version "0.1.5"
+  id("org.projectnessie.buildsupport.errorprone") version "0.1.5"
+  id("org.projectnessie.buildsupport.ide-integration") version "0.1.5"
+  id("org.projectnessie.buildsupport.jacoco") version "0.1.5"
+  id("org.projectnessie.buildsupport.jacoco-aggregator") version "0.1.5"
+  id("org.projectnessie.buildsupport.jandex") version "0.1.5"
+  id("org.projectnessie.buildsupport.protobuf") version "0.1.5"
+  id("org.projectnessie.buildsupport.publishing") version "0.1.5"
+  id("org.projectnessie.buildsupport.reflectionconfig") version "0.1.5"
+  id("org.projectnessie.buildsupport.spotless") version "0.1.5"
+  id("org.projectnessie.smallrye-open-api") version "0.1.5"
 }
