@@ -26,7 +26,7 @@ plugins {
   id("net.ltgt.errorprone") version "2.0.2"
   id("org.jetbrains.gradle.plugin.idea-ext") version "1.1.4"
   id("org.projectnessie") version "0.27.3"
-  id("org.projectnessie.buildsupport.attach-test-jar") version "0.1.5"
+  id("org.projectnessie.buildsupport.attach-test-jar") version "0.1.6"
   id("org.projectnessie.buildsupport.checkstyle") version "0.1.5"
   id("org.projectnessie.buildsupport.errorprone") version "0.1.5"
   id("org.projectnessie.buildsupport.ide-integration") version "0.1.5"
