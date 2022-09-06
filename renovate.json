@@ -3,7 +3,6 @@
   "extends": [
     "config:base"
   ],
-  "prHourlyLimit": 50,
   "packageRules": [
     {
       "matchManagers": ["maven", "gradle", "gradle-wrapper", "npm", "pip_requirements", "pip_setup"],
