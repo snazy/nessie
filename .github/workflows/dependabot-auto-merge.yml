@@ -12,8 +12,8 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-# GitHub workflow to automatically approve and merge dependabot-PRs that
-# have passed CI.
+# GitHub workflow to automatically approve and merge
+# dependabot/renovate-PRs that have passed CI.
 
 name: Dependabot Auto Merge
 
@@ -32,15 +32,17 @@ jobs:
     name: "Dependabot Auto Merge"
     runs-on: ubuntu-20.04
 
-    # Note: the check `github.actor == 'dependabot[bot]'` ensures that auto-approve-and-merge
-    # only happens when dependabot triggers the workflow runs - but not when another user pushes.
+    # Note: the check `github.actor == 'dependabot[bot]'`/`renovate` ensures that
+    # auto-approve-and-merge only happens when dependabot/renovate triggers the
+    # workflow runs - but not when another user pushes.
 
     if: >
       github.event.workflow_run.event == 'pull_request' &&
       github.event.workflow_run.conclusion == 'success' &&
-      github.actor == 'dependabot[bot]' && (
-        contains(github.event.workflow_run.head_commit.message, 'ump ')
-      ) &&
+      (github.actor == 'renovate' ||
+        github.actor == 'dependabot[bot]' && (
+          contains(github.event.workflow_run.head_commit.message, 'ump ')
+      )) &&
       github.repository == 'projectnessie/nessie'
 
     steps:
