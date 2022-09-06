@@ -1,0 +1,38 @@
+{
+  "$schema": "https://docs.renovatebot.com/renovate-schema.json",
+  "extends": [
+    "config:base"
+  ],
+  "packageRules": [
+    {
+      "matchManagers": ["maven", "gradle", "gradle-wrapper", "npm", "pip_requirements", "pip_setup"],
+      "matchUpdateTypes": ["minor", "patch", "pin", "digest"],
+      "automerge": true
+    },
+    {
+      "matchManagers": ["maven", "gradle", "gradle-wrapper", "npm", "pip_requirements", "pip_setup"],
+      "matchUpdateTypes": ["major"],
+      "automerge": false
+    },
+    {
+      "matchManagers": ["maven", "gradle"],
+      "matchPackageNames": [
+        "io.delta:delta-core_2.12",
+        "jakarta.validation:jakarta.validation-api",
+        "jakarta.enterprise:jakarta.enterprise.cdi-api",
+        "org.glassfish.jersey:jersey-bom"
+      ],
+      "matchUpdateTypes": ["minor", "patch", "pin", "digest"]
+    },
+    {
+      "matchManagers": ["npm"],
+      "matchPackageNames": [
+        "camelcase"
+      ],
+      "matchUpdateTypes": ["minor", "patch", "pin", "digest"]
+    }
+  ],
+  "rebaseWhen": "conflicted",
+  "prConcurrentLimit": 50,
+  "prHourlyLimit": 10
+}
