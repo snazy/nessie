@@ -9,5 +9,6 @@
       "matchManagers": ["maven", "gradle", "gradle-wrapper", "npm", "pip_requirements", "pip_setup"],
       "automerge": true
     }
-  ]
+  ],
+  "rebaseWhen": "conflicted"
 }
