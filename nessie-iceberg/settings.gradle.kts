@@ -44,7 +44,7 @@ pluginManagement {
   val versionIdeaExtPlugin = "1.1.6"
   val versionJandexPlugin = "1.82"
   val versionNessiePlugins = "0.2.11"
-  val versionQuarkus = "2.12.0.Final"
+  val versionQuarkus = "2.12.1.Final"
   val versionShadowPlugin = "7.1.2"
   val versionSpotlessPlugin = "6.10.0"
 
