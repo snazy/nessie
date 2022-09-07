@@ -20,7 +20,7 @@ confuse==2.0.0
 desert==2020.11.18
 marshmallow==3.17.1
 marshmallow_oneofschema==3.0.1
-python-dateutil>=2.8.0
+python-dateutil==2.8.2
 requests==2.28.1
 requests-aws4auth==1.1.2
 simplejson==3.17.6
