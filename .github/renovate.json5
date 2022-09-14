@@ -15,7 +15,8 @@
     {
       matchManagers: ["maven", "gradle", "gradle-wrapper", "npm", "pip_requirements", "pip_setup"],
       matchUpdateTypes: ["minor", "patch"],
-      automerge: true
+      automerge: true,
+      platformAutomerge: true
     },
 
     // Check for major updates, but do not merge automatically
