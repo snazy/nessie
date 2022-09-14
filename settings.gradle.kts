@@ -42,7 +42,7 @@ pluginManagement {
   val versionNessieBuildPlugins = "0.2.12"
   val versionQuarkus = "2.12.2.Final"
   val versionShadowPlugin = "7.1.2"
-  val versionSpotlessPlugin = "6.10.0"
+  val versionSpotlessPlugin = "6.11.0"
 
   plugins {
     id("com.diffplug.spotless") version versionSpotlessPlugin
