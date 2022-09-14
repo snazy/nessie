@@ -53,7 +53,7 @@ pluginManagement {
     id("com.github.johnrengelman.plugin-shadow") version versionShadowPlugin
     id("com.github.node-gradle.node") version "3.4.0"
     id("com.github.vlsi.jandex") version versionJandexPlugin
-    id("io.gatling.gradle") version "3.8.3.2"
+    id("io.gatling.gradle") version "3.8.4"
     id("io.github.gradle-nexus.publish-plugin") version "1.1.0"
     id("io.quarkus") version versionQuarkus
     id("me.champeau.jmh") version "0.6.7"
