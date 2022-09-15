@@ -60,6 +60,11 @@ class NessieJavaPlugin : Plugin<Project> {
         // https://github.com/immutables/immutables/pull/858 and
         // https://github.com/immutables/immutables/issues/804#issuecomment-487366544
         options.compilerArgs.add("-Aimmutables.gradle.incremental")
+
+        if (project.hasProperty("javaVersionTesting")) {
+          options.compilerArgs.add("--enable-preview")
+          options.release.set(project.property("javaVersionTesting").toString().toInt())
+        }
       }
 
       tasks.withType<Javadoc>().configureEach {

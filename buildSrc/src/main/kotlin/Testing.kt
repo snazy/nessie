@@ -103,6 +103,9 @@ class NessieTestingPlugin : Plugin<Project> {
         systemProperty("test.log.level", testLogLevel())
         environment("TESTCONTAINERS_REUSE_ENABLE", "true")
 
+        if (project.hasProperty("javaVersionTesting")) {
+          jvmArgs("--enable-preview")
+        }
         if (plugins.hasPlugin("io.quarkus")) {
           jvmArgs("--add-opens=java.base/java.util=ALL-UNNAMED")
           // Log-levels are required to be able to parse the HTTP listen URL
