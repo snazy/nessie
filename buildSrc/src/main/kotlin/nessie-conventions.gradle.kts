@@ -124,6 +124,9 @@ fun Project.testTasks() {
         mustRunAfter(tasks.named<Test>("test"))
       }
 
+      if (project.hasProperty("javaVersionTesting")) {
+        jvmArgs("--enable-preview")
+      }
       if (plugins.withType<QuarkusPlugin>().isNotEmpty()) {
         jvmArgs("--add-opens=java.base/java.util=ALL-UNNAMED")
         systemProperty("quarkus.log.level", testLogLevel())
@@ -179,6 +182,11 @@ fun Project.configureJava() {
     // https://github.com/immutables/immutables/pull/858 and
     // https://github.com/immutables/immutables/issues/804#issuecomment-487366544
     options.compilerArgs.add("-Aimmutables.gradle.incremental")
+
+    if (project.hasProperty("javaVersionTesting")) {
+      options.compilerArgs.add("--enable-preview")
+      options.release.set(project.property("javaVersionTesting").toString().toInt())
+    }
   }
 
   tasks.withType<Javadoc>().configureEach {

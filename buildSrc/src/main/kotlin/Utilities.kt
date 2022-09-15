@@ -83,7 +83,7 @@ fun DependencyHandlerScope.forScala(scalaVersion: String) {
  * Spark.
  */
 fun Project.forceJava11ForTests() {
-  if (!JavaVersion.current().isJava11) {
+  if (!hasProperty("javaVersionTesting") && !JavaVersion.current().isJava11) {
     tasks.withType(Test::class.java).configureEach {
       val javaToolchains = project.extensions.findByType(JavaToolchainService::class.java)
       javaLauncher.set(
