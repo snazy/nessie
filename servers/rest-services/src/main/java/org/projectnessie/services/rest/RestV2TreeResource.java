@@ -21,6 +21,7 @@ import static org.projectnessie.services.impl.RefUtil.toReference;
 import static org.projectnessie.services.spi.TreeService.MAX_COMMIT_LOG_ENTRIES;
 
 import com.fasterxml.jackson.annotation.JsonView;
+import io.smallrye.common.annotation.RunOnVirtualThread;
 import java.util.List;
 import javax.enterprise.context.RequestScoped;
 import javax.inject.Inject;
@@ -67,6 +68,7 @@ import org.projectnessie.services.spi.TreeService;
 /** REST endpoint for the tree-API. */
 @RequestScoped
 @jakarta.enterprise.context.RequestScoped
+@RunOnVirtualThread
 public class RestV2TreeResource implements HttpTreeApi {
 
   private final ConfigService configService;

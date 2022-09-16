@@ -18,6 +18,7 @@ package org.projectnessie.services.rest;
 import static org.projectnessie.services.impl.RefUtil.toReference;
 
 import com.fasterxml.jackson.annotation.JsonView;
+import io.smallrye.common.annotation.RunOnVirtualThread;
 import javax.enterprise.context.RequestScoped;
 import javax.inject.Inject;
 import org.projectnessie.api.v1.http.HttpDiffApi;

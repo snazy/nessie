@@ -15,6 +15,7 @@
  */
 package org.projectnessie.services.rest;
 
+import io.smallrye.common.annotation.RunOnVirtualThread;
 import javax.enterprise.context.RequestScoped;
 import javax.inject.Inject;
 import org.projectnessie.api.v1.http.HttpRefLogApi;
@@ -48,6 +49,7 @@ public class RestRefLogResource implements HttpRefLogApi {
   }
 
   @Override
+  @RunOnVirtualThread
   public RefLogResponse getRefLog(RefLogParams params) throws NessieNotFoundException {
     return resource()
         .getRefLog(

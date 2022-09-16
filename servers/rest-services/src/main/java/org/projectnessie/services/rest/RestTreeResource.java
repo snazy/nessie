@@ -19,6 +19,7 @@ import static org.projectnessie.services.impl.RefUtil.toReference;
 import static org.projectnessie.services.spi.TreeService.MAX_COMMIT_LOG_ENTRIES;
 
 import com.fasterxml.jackson.annotation.JsonView;
+import io.smallrye.common.annotation.RunOnVirtualThread;
 import javax.enterprise.context.RequestScoped;
 import javax.inject.Inject;
 import org.projectnessie.api.v1.http.HttpTreeApi;
@@ -49,6 +50,7 @@ import org.projectnessie.services.spi.TreeService;
 /** REST endpoint for the tree-API. */
 @RequestScoped
 @jakarta.enterprise.context.RequestScoped
+@RunOnVirtualThread
 public class RestTreeResource implements HttpTreeApi {
   // Cannot extend the TreeApiImplWithAuthz class, because then CDI gets confused
   // about which interface to use - either HttpTreeApi or the plain TreeApi. This can lead

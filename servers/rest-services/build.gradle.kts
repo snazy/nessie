@@ -43,6 +43,7 @@ dependencies {
   compileOnly(libs.javax.ws.rs21)
   compileOnly(libs.jakarta.servlet.api)
   compileOnly(libs.javax.servlet)
+  compileOnly(libs.smallrye.common.annotations)
 
   compileOnly(libs.microprofile.openapi)
 

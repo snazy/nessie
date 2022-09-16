@@ -15,6 +15,7 @@
  */
 package org.projectnessie.services.rest;
 
+import io.smallrye.common.annotation.RunOnVirtualThread;
 import java.security.Principal;
 import java.util.function.Supplier;
 import javax.enterprise.context.RequestScoped;
@@ -31,6 +32,7 @@ import org.projectnessie.versioned.VersionStore;
 @ValidateOnExecution(type = ExecutableType.ALL)
 @jakarta.validation.executable.ValidateOnExecution(
     type = jakarta.validation.executable.ExecutableType.ALL)
+@RunOnVirtualThread
 public class RestNamespaceService extends NamespaceApiImpl {
   // Mandated by CDI 2.0
   public RestNamespaceService() {

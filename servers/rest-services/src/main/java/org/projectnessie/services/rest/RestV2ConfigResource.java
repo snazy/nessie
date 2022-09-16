@@ -16,6 +16,7 @@
 package org.projectnessie.services.rest;
 
 import com.fasterxml.jackson.annotation.JsonView;
+import io.smallrye.common.annotation.RunOnVirtualThread;
 import javax.enterprise.context.RequestScoped;
 import javax.inject.Inject;
 import org.projectnessie.api.v2.http.HttpConfigApi;
@@ -28,6 +29,7 @@ import org.projectnessie.versioned.VersionStore;
 /** REST endpoint to retrieve server settings. */
 @RequestScoped
 @jakarta.enterprise.context.RequestScoped
+@RunOnVirtualThread
 public class RestV2ConfigResource implements HttpConfigApi {
 
   private final ConfigApiImpl config;
