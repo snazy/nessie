@@ -52,7 +52,7 @@ pluginManagement {
     id("io.gatling.gradle") version "3.8.4"
     id("io.github.gradle-nexus.publish-plugin") version "1.1.0"
     id("io.quarkus") version versionQuarkus
-    id("me.champeau.jmh") version "0.6.7"
+    id("me.champeau.jmh") version "0.6.8"
     id("net.ltgt.errorprone") version versionErrorPronePlugin
     id("org.jetbrains.gradle.plugin.idea-ext") version versionIdeaExtPlugin
     id("org.projectnessie") version "0.27.3"
