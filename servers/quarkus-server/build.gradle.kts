@@ -76,6 +76,8 @@ dependencies {
     implementation("io.quarkus:quarkus-minikube")
   }
 
+  implementation(libs.guava)
+
   openapiSource(project(":nessie-model", "openapiSource"))
 
   testImplementation(project(":nessie-client"))
