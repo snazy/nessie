@@ -182,5 +182,7 @@ public class NessieHttpClient extends NessieApiClient {
   }
 
   @Override
-  public void close() {}
+  public void close() {
+    client.close();
+  }
 }

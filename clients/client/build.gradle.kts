@@ -41,6 +41,8 @@ dependencies {
   compileOnly(libs.immutables.value.annotations)
   annotationProcessor(libs.immutables.value.processor)
 
+  compileOnly(libs.httpclient5)
+
   testImplementation(libs.guava)
   testImplementation(libs.bouncycastle.bcprov)
   testImplementation(libs.bouncycastle.bcpkix)
@@ -60,6 +62,9 @@ dependencies {
   testImplementation(libs.awssdk.auth)
   testImplementation(platform(libs.jetty.bom))
   testImplementation(libs.jetty.http2.server)
+  testRuntimeOnly(libs.logback.classic)
+
+  testRuntimeOnly(libs.httpclient5)
 }
 
 jandex { skipDefaultProcessing() }
@@ -74,7 +79,7 @@ val jacksonTestVersions =
 
 val testJava8 by
   tasks.registering(Test::class) {
-    description = "Runs tests using URLConnection client using Java 8."
+    description = "Runs tests using Java 8."
     group = "verification"
 
     dependsOn("testClasses")
@@ -90,13 +95,28 @@ val testJava8 by
     )
   }
 
+val testUrlConnectionClient by
+  tasks.registering(Test::class) {
+    description = "Runs tests using URLConnection."
+    group = "verification"
+
+    dependsOn("testClasses")
+
+    val test = tasks.named<Test>("test").get()
+
+    testClassesDirs = test.testClassesDirs
+    classpath = test.classpath
+
+    systemProperty("nessie.client.force-url-connection-client", "true")
+  }
+
 val jacksonTests by
   tasks.registering {
     description = "Runs tests against Jackson versions ${jacksonTestVersions.keys}."
     group = "verification"
   }
 
-tasks.named("check") { dependsOn(jacksonTests, testJava8) }
+tasks.named("check") { dependsOn(jacksonTests, testJava8, testUrlConnectionClient) }
 
 jacksonTestVersions.forEach { (jacksonVersion, reason) ->
   val safeName = jacksonVersion.replace("[.]".toRegex(), "_")

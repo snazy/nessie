@@ -44,15 +44,14 @@ import java.util.stream.IntStream;
 import org.assertj.core.api.SoftAssertions;
 import org.assertj.core.api.junit.jupiter.InjectSoftAssertions;
 import org.assertj.core.api.junit.jupiter.SoftAssertionsExtension;
+import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.Assertions;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
-import org.junit.jupiter.api.parallel.Execution;
-import org.junit.jupiter.api.parallel.ExecutionMode;
 import org.projectnessie.client.util.HttpTestServer;
 import org.projectnessie.model.CommitMeta;
 
-@Execution(ExecutionMode.CONCURRENT)
+// @Execution(ExecutionMode.CONCURRENT)
 @ExtendWith(SoftAssertionsExtension.class)
 public class TestHttpClient {
 
@@ -61,24 +60,32 @@ public class TestHttpClient {
 
   @InjectSoftAssertions protected SoftAssertions soft;
 
-  private static HttpRequest get(InetSocketAddress address) {
-    return get(address, false);
+  private final List<HttpClient> createdClients = new ArrayList<>();
+
+  @SuppressWarnings("resource")
+  private HttpRequest get(InetSocketAddress address) {
+    return createClient(address, false).newRequest();
   }
 
-  private static HttpRequest get(InetSocketAddress address, boolean disableCompression) {
-    return get(address, 15000, 15000, disableCompression);
+  private HttpClient createClient(InetSocketAddress address, boolean disableCompression) {
+    HttpClient client =
+        HttpClient.builder()
+            .setBaseUri(URI.create("http://localhost:" + address.getPort()))
+            .setObjectMapper(MAPPER)
+            .setConnectionTimeoutMillis(15000)
+            .setReadTimeoutMillis(15000)
+            .setDisableCompression(disableCompression)
+            .build();
+    createdClients.add(client);
+    return client;
   }
 
-  private static HttpRequest get(
-      InetSocketAddress address, int connectTimeout, int readTimeout, boolean disableCompression) {
-    return HttpClient.builder()
-        .setBaseUri(URI.create("http://localhost:" + address.getPort()))
-        .setObjectMapper(MAPPER)
-        .setConnectionTimeoutMillis(connectTimeout)
-        .setReadTimeoutMillis(readTimeout)
-        .setDisableCompression(disableCompression)
-        .build()
-        .newRequest();
+  @AfterEach
+  void closeCreatedClients() {
+    for (HttpClient client : createdClients) {
+      client.close();
+    }
+    createdClients.clear();
   }
 
   @Test
@@ -116,7 +123,8 @@ public class TestHttpClient {
 
     try (HttpTestServer server = new HttpTestServer(handler)) {
       for (boolean disableCompression : new boolean[] {false, true}) {
-        for (int num : new int[] {1, 10, 20, 100}) {
+        HttpClient client = createClient(server.getAddress(), disableCompression);
+        for (int num : new int[] {1, 10, 20, 100, 200, 1000}) {
           int len = 10_000;
 
           ArrayBean inputBean = ArrayBean.construct(10_000, num);
@@ -124,43 +132,39 @@ public class TestHttpClient {
           soft.assertThatCode(
                   () ->
                       assertThat(
-                              get(server.getAddress(), disableCompression)
+                              client
+                                  .newRequest()
                                   .queryParam("len", Integer.toString(len))
                                   .queryParam("num", Integer.toString(num))
                                   .get()
                                   .readEntity(ArrayBean.class))
                           .isEqualTo(inputBean))
               .describedAs("GET, disableCompression:%s, num:%d", disableCompression, num)
-              .isNull();
+              .doesNotThrowAnyException();
           soft.assertThatCode(
                   () ->
                       assertThat(
-                              get(server.getAddress(), disableCompression)
+                              client
+                                  .newRequest()
                                   .queryParam("len", Integer.toString(len))
                                   .queryParam("num", Integer.toString(num))
                                   .delete()
                                   .readEntity(ArrayBean.class))
                           .isEqualTo(inputBean))
               .describedAs("DELETE, disableCompression:%s, num:%d", disableCompression, num)
-              .isNull();
+              .doesNotThrowAnyException();
           soft.assertThatCode(
                   () ->
-                      assertThat(
-                              get(server.getAddress(), disableCompression)
-                                  .put(inputBean)
-                                  .readEntity(ArrayBean.class))
+                      assertThat(client.newRequest().put(inputBean).readEntity(ArrayBean.class))
                           .isEqualTo(inputBean))
               .describedAs("PUT, disableCompression:%s, num:%d", disableCompression, num)
-              .isNull();
+              .doesNotThrowAnyException();
           soft.assertThatCode(
                   () ->
-                      assertThat(
-                              get(server.getAddress(), disableCompression)
-                                  .post(inputBean)
-                                  .readEntity(ArrayBean.class))
+                      assertThat(client.newRequest().post(inputBean).readEntity(ArrayBean.class))
                           .isEqualTo(inputBean))
               .describedAs("POST, disableCompression:%s, num:%d", disableCompression, num)
-              .isNull();
+              .doesNotThrowAnyException();
         }
       }
     }

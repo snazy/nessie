@@ -15,14 +15,18 @@
  */
 package org.projectnessie.client.util;
 
+import static org.eclipse.jetty.server.CustomRequestLog.NCSA_FORMAT;
+
 import java.io.IOException;
 import java.net.InetSocketAddress;
 import java.net.URI;
 import java.util.function.Consumer;
 import javax.servlet.http.HttpServletRequest;
 import javax.servlet.http.HttpServletResponse;
+import org.eclipse.jetty.server.CustomRequestLog;
 import org.eclipse.jetty.server.Request;
 import org.eclipse.jetty.server.Server;
+import org.eclipse.jetty.server.Slf4jRequestLogWriter;
 import org.eclipse.jetty.server.handler.AbstractHandler;
 import org.eclipse.jetty.server.handler.gzip.GzipHandler;
 
@@ -71,6 +75,10 @@ public class HttpTestServer implements AutoCloseable {
     gzip.addIncludedMethods("PUT");
     server.setHandler(requestHandler);
     server.insertHandler(gzip);
+    server.setRequestLog(
+        new CustomRequestLog(
+            new Slf4jRequestLogWriter(),
+            "%{local}a:%{local}p - %{remote}a:%{remote}p - " + NCSA_FORMAT));
 
     if (init != null) {
       init.accept(server);
