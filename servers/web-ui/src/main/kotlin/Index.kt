@@ -14,30 +14,13 @@
  * limitations under the License.
  */
 
-apply<PublishingHelperPlugin>()
+import org.projectnessie.nessie.ui.App
+import react.create
+import react.dom.client.createRoot
+import web.dom.document
 
-apply<NessieIdePlugin>()
-
-apply<NessieSpotlessPlugin>()
-
-apply<NessieJandexPlugin>()
-
-apply<NessieJavaPlugin>()
-
-apply<NessieScalaPlugin>()
-
-if (plugins.hasPlugin("java")) {
-  apply<NessieCheckstylePlugin>()
-
-  apply<NessieErrorpronePlugin>()
-
-  apply<NessieTestingPlugin>()
-
-  apply<NessieCodeCoveragePlugin>()
-}
-
-tasks.register("compileAll") {
-  group = "build"
-  description = "Runs all compilation and jar tasks"
-  dependsOn(tasks.withType<AbstractCompile>(), tasks.withType<ProcessResources>())
+fun main() {
+  val container = document.getElementById("root") ?: error("Couldn't find root container!")
+  val root = createRoot(container)
+  root.render(App.create())
 }

@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 2022 Dremio
+ * Copyright (C) 2023 Dremio
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -14,30 +14,19 @@
  * limitations under the License.
  */
 
-apply<PublishingHelperPlugin>()
+import mui.material.GridProps
 
-apply<NessieIdePlugin>()
-
-apply<NessieSpotlessPlugin>()
-
-apply<NessieJandexPlugin>()
-
-apply<NessieJavaPlugin>()
-
-apply<NessieScalaPlugin>()
-
-if (plugins.hasPlugin("java")) {
-  apply<NessieCheckstylePlugin>()
-
-  apply<NessieErrorpronePlugin>()
-
-  apply<NessieTestingPlugin>()
-
-  apply<NessieCodeCoveragePlugin>()
+fun column(field: String, key: String, headerName: String, flex: Int): dynamic {
+  val r: dynamic = object {}
+  r["field"] = field
+  r["key"] = key
+  r["headerName"] = headerName
+  r["flex"] = flex
+  return r
 }
 
-tasks.register("compileAll") {
-  group = "build"
-  description = "Runs all compilation and jar tasks"
-  dependsOn(tasks.withType<AbstractCompile>(), tasks.withType<ProcessResources>())
-}
+inline var GridProps.xs: Any?
+  get() = asDynamic().xs
+  set(value) {
+    asDynamic().xs = value
+  }

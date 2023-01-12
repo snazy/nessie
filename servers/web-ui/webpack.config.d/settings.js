@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 2022 Dremio
+ * Copyright (C) 2023 Dremio
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -14,30 +14,12 @@
  * limitations under the License.
  */
 
-apply<PublishingHelperPlugin>()
+const webpack = require("webpack")
 
-apply<NessieIdePlugin>()
+const definePlugin = new webpack.DefinePlugin(
+  {
+    CONFIG_MODE: "\""+config.mode+"\"",
+  }
+)
 
-apply<NessieSpotlessPlugin>()
-
-apply<NessieJandexPlugin>()
-
-apply<NessieJavaPlugin>()
-
-apply<NessieScalaPlugin>()
-
-if (plugins.hasPlugin("java")) {
-  apply<NessieCheckstylePlugin>()
-
-  apply<NessieErrorpronePlugin>()
-
-  apply<NessieTestingPlugin>()
-
-  apply<NessieCodeCoveragePlugin>()
-}
-
-tasks.register("compileAll") {
-  group = "build"
-  description = "Runs all compilation and jar tasks"
-  dependsOn(tasks.withType<AbstractCompile>(), tasks.withType<ProcessResources>())
-}
+config.plugins.push(definePlugin)

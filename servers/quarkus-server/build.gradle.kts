@@ -35,6 +35,8 @@ val quarkusRunner by
 val openapiSource by
   configurations.creating { description = "Used to reference OpenAPI spec files" }
 
+val ui by configurations.creating
+
 dependencies {
   implementation(project(":nessie-model"))
   implementation(project(":nessie-services"))
@@ -43,7 +45,7 @@ dependencies {
   implementation(project(":nessie-versioned-spi"))
   implementation(project(":nessie-versioned-persist-adapter"))
   implementation(project(":nessie-versioned-persist-store"))
-  implementation(project(":nessie-ui"))
+  ui(project(":nessie-web-ui", "ui"))
 
   implementation(enforcedPlatform(libs.quarkus.bom))
   implementation(enforcedPlatform(libs.quarkus.amazon.services.bom))
@@ -109,7 +111,29 @@ dependencies {
   intTestImplementation("io.quarkus:quarkus-test-keycloak-server")
 }
 
+/* It's a bit odd that we cannot "just pull in" the UI-project as an
+ * `implementation` dependency (the build complains that the source-set
+ * `main` could not be found). So this mechanism extracts the contents
+ * of the UI-jar into the resources of the server jar. This also prevents
+ * other dependencies (i.e. Kotlin) leak into the server.
+ */
+tasks.named<ProcessResources>("processResources") {
+  dependsOn(ui)
+  doFirst { delete("$destinationDir/META-INF/resources") }
+  from(provider { zipTree(ui.singleFile) }) {
+    exclude("META-INF", "META-INF/**")
+    into("META-INF/resources")
+  }
+}
+
 buildForJava11()
+
+val openApiSpecDir = project.buildDir.resolve("openapi-extra").relativeTo(project.projectDir)
+
+project.extra["quarkus.smallrye-openapi.store-schema-directory"] =
+  "${project.buildDir.relativeTo(project.projectDir)}/openapi"
+
+project.extra["quarkus.smallrye-openapi.additional-docs-directory"] = "$openApiSpecDir"
 
 val pullOpenApiSpec by
   tasks.registering(Sync::class) {
@@ -117,7 +141,6 @@ val pullOpenApiSpec by
     from(project.objects.property(Configuration::class).value(openapiSource))
   }
 
-val openApiSpecDir = buildDir.resolve("openapi-extra")
 val useNative = project.hasProperty("native")
 
 quarkus {

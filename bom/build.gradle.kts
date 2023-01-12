@@ -46,7 +46,6 @@ dependencies {
     api(project(":nessie-server-store-proto"))
     api(project(":nessie-content-generator"))
     api(project(":nessie-protobuf-relocated"))
-    api(project(":nessie-ui"))
     api(project(":nessie-versioned-persist-adapter"))
     api(project(":nessie-versioned-persist-bench"))
     api(project(":nessie-versioned-persist-dynamodb"))
@@ -85,6 +84,7 @@ dependencies {
     api(project(":nessie-versioned-tests"))
     api(project(":nessie-versioned-transfer-proto"))
     api(project(":nessie-versioned-transfer"))
+    api(project(":nessie-web-ui"))
     if (!isIntegrationsTestingEnabled()) {
       api(project(":nessie-deltalake"))
       api(project(":iceberg-views"))

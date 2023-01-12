@@ -70,3 +70,7 @@ site/site
 
 #jEnv, see https://github.com/jenv/jenv
 .java-version
+
+# Kotlin/JS
+kotlin-js-store/
+
