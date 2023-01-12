@@ -19,7 +19,7 @@ name: macOS Build Check
 
 on:
   pull_request:
-    types: [opened, synchronize, reopened]
+    types: [labeled, opened, synchronize, reopened]
   schedule:
     # Run daily on week days
     - cron:  '0 4 * * 1-5'
@@ -33,87 +33,36 @@ jobs:
   java:
     name: Java/Gradle macOS
     runs-on: macos-12
-    if: github.event.workflow_run.event != 'pull_request' || contains(github.event.pull_request.labels.*.name, 'pr-macos-win')
+    if: github.event_name != 'pull_request' || contains(github.event.pull_request.labels.*.name, 'pr-macos-win')
     env:
       SPARK_LOCAL_IP: localhost
 
     steps:
-    - name: Setup Colima
-      timeout-minutes: 30
-      run: |
-        echo "::group::Install Podman"
-        brew install podman
-        echo "::endgroup::"
-
-        echo "::group::Initializing Podman"
-        podman machine init
-        echo "::endgroup::"
-
-        echo "::group::Starting Podman"
-        podman machine start
-        echo "::endgroup::"
-
-        echo "::group::Aliasing Podman"
-        ln -s /usr/local/bin/podman /usr/local/bin/docker
-        echo "::endgroup::"
-
-        export DOCKER_HOST="unix:///${HOME}/.local/share/containers/podman/machine/podman-machine-default/podman.sock"
-        echo "DOCKER_HOST=$DOCKER_HOST" >> ${GITHUB_ENV}
-
-        # See https://www.testcontainers.org/supported_docker_environment/
-        echo "TESTCONTAINERS_DOCKER_SOCKET_OVERRIDE=/var/run/docker.sock" >> ${GITHUB_ENV}
-
-        echo "::group::Docker info"
-        docker info
-        echo "::endgroup::"
-
-    - uses: actions/checkout@v3.3.0
-    - name: Setup Java, Gradle
-      uses: ./.github/actions/dev-tool-java
-
-    - name: Gradle / compile
-      uses: gradle/gradle-build-action@v2
-      with:
-        arguments: checkstyleMain checkstyleTest jar testClasses --scan
-
-    - name: Gradle / unit test
-      uses: gradle/gradle-build-action@v2
+    - name: Info
       env:
-        SPARK_LOCAL_IP: localhost
-      with:
-        arguments: test --scan
+        RUN_EVENT: ${{ github.event_name }}
+      run: |
+        echo "github.event_name: ${RUN_EVENT}"
+        echo "${{ toJson(github.event.pull_request.labels.*.name) }}"
 
-    - name: Gradle / check incl. integ-test
-      uses: gradle/gradle-build-action@v2
-      with:
-        arguments: check -x spotlessCheck -x checkstyleMain -x checkstyleTest --scan
+    - name: IF 1
+      if: github.event_name != 'pull_request'
+      run: echo "hello ${{ github.event_name }}"
 
-    - name: Capture Test Reports
-      uses: actions/upload-artifact@v3
-      if: ${{ failure() }}
-      with:
-        name: test-results
-        path: |
-          **/build/reports/*
-          **/build/test-results/*
+    - name: IF 2
+      if: contains(github.event.pull_request.labels.*.name, 'pr-macos-win')
+      run: echo "hello ${{ toJson(github.event.pull_request.labels.*.name) }}"
 
-  python:
-    name: Python
-    runs-on: macos-12
-    if: github.event.workflow_run.event != 'pull_request' || contains(github.event.pull_request.labels.*.name, 'pr-macos-win')
-    env:
-      working-directory: ./python
-    strategy:
-      max-parallel: 4
-      matrix:
-        python-version: ['3.7', '3.8', '3.9', '3.10']
+    - name: IF 3
+      if: github.event_name != 'pull_request' || contains(github.event.pull_request.labels.*.name, 'pr-macos-win')
+      run: echo "hello ${{ toJson(github.event.pull_request.labels.*.name) }}"
 
-    steps:
-    - uses: actions/checkout@v3.3.0
-    - name: Setup Python
-      uses: ./.github/actions/dev-tool-python
-      with:
-        python-version: ${{ matrix.python-version }}
-    - name: Test with tox
-      run: tox
-      working-directory: ${{env.working-directory}}
+    - name: IF 4
+      if: ${{ github.event_name != 'pull_request' || contains(github.event.pull_request.labels.*.name, 'pr-macos-win') }}
+      run: echo "hello ${{ toJson(github.event.pull_request.labels.*.name) }}"
+
+    - name: GitHub
+      env:
+        GITHUB_CONTEXT: ${{ toJson(github) }}
+      run: echo "$GITHUB_CONTEXT"
+
