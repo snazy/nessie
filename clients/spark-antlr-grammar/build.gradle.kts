@@ -20,6 +20,7 @@ plugins {
   signing
   antlr
   `nessie-conventions`
+  alias(libs.plugins.antlr4.railroad)
 }
 
 dependencies {
@@ -61,4 +62,10 @@ tasks.withType<Checkstyle>().configureEach {
   // relative to a source-directory, not against full path names, not even relative to the current
   // project.
   exclude("org/apache/spark/sql/catalyst/parser/extensions/*")
+}
+
+antlr4SyntaxRailroadDiagram {
+  inputGrammarDirectory = projectDir.resolve("src/main/antlr4/org/apache/spark/sql/catalyst/parser/extensions")
+  inputGrammarName = "NessieSqlExtensions.g4"
+  outputDirectory = buildDir.resolve("generated/diagram").relativeTo(projectDir).toString()
 }
