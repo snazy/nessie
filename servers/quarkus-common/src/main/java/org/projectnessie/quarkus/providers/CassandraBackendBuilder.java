@@ -17,7 +17,7 @@ package org.projectnessie.quarkus.providers;
 
 import static org.projectnessie.quarkus.config.VersionStoreConfig.VersionStoreType.CASSANDRA;
 
-import javax.enterprise.context.Dependent;
+import jakarta.enterprise.context.Dependent;
 import org.projectnessie.versioned.storage.common.persist.Backend;
 
 @StoreType(CASSANDRA)
