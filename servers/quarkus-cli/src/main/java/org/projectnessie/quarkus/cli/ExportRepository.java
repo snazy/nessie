@@ -15,12 +15,12 @@
  */
 package org.projectnessie.quarkus.cli;
 
+import jakarta.annotation.Nonnull;
 import java.io.PrintWriter;
 import java.nio.file.Files;
 import java.nio.file.Path;
 import java.util.Locale;
 import java.util.function.Consumer;
-import javax.annotation.Nonnull;
 import org.projectnessie.versioned.transfer.ExportImportConstants;
 import org.projectnessie.versioned.transfer.NessieExporter;
 import org.projectnessie.versioned.transfer.ProgressEvent;
