@@ -41,3 +41,6 @@ the [official Docker registry](https://docs.docker.com/registry/deploying/).
 * Create the htpasswd file - for example: `htpasswd -B $(id -un)`,
   if `/etc/docker/registry/htpasswd` doesn't yet exist, add the `-c` option.
 * Login to your local registry using `docker login -u $(id -un) localhost:5000`
+
+
+hello
