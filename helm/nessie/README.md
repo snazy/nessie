@@ -195,3 +195,7 @@ This is broadly following the example from https://kubernetes.io/docs/tasks/acce
 helm uninstall --namespace nessie-ns nessie
 minikube delete
 ```
+
+hello
+
+hello 3
