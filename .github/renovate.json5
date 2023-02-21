@@ -65,6 +65,8 @@
     },
   ],
 
+  osvVulnerabilityAlerts: true,
+
   // Max 50 PRs in total, 10 per hour
   prConcurrentLimit: 50,
   prHourlyLimit: 2,
