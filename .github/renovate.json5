@@ -72,5 +72,5 @@
   prHourlyLimit: 2,
 
   commitBodyTable: true,
-  // commitBody: "{{{warnings}}}{{{notes}}}{{{changelogs}}}",
+  commitBody: "{{{warnings}}}{{{notes}}}{{{changelogs}}}",
 }
