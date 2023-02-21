@@ -71,5 +71,5 @@
   prConcurrentLimit: 50,
   prHourlyLimit: 2,
 
-  commitBody: "{{{table}}}{{{warnings}}}{{{notes}}}{{{changelogs}}}",
+  commitBody: "{{{notes}}} {{{table}}} {{{warnings}}} {{{changelogs}}}",
 }
