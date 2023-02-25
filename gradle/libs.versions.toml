@@ -38,7 +38,7 @@ quarkusJibBaseJvmImage = "registry.access.redhat.com/ubi8/openjdk-17-runtime:1.1
 rocksdb = "7.9.2"
 slf4j = "1.7.36"
 testcontainers = "1.17.6"
-undertow = "2.2.19.Final"
+undertow = "2.3.4.Final"
 
 [bundles]
 # Bundles serve two purposes:
