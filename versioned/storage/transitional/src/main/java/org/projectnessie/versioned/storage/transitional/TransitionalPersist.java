@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 2022 Dremio
+ * Copyright (C) 2023 Dremio
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -13,26 +13,24 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
-package org.projectnessie.versioned.transfer;
+package org.projectnessie.versioned.storage.transitional;
 
-public enum ProgressEvent {
-  FINISHED,
-  START_PREPARE,
-  END_PREPARE,
-  END_FINALIZE,
-  FINALIZE_PROGRESS,
-  START_FINALIZE,
-  END_TRANSITION,
-  TRANSITION_PROGRESS_COMMIT,
-  TRANSITION_PROGRESS_REFERENCE,
-  START_TRANSITION,
-  START_NAMED_REFERENCES,
-  NAMED_REFERENCE_WRITTEN,
-  END_NAMED_REFERENCES,
-  START_COMMITS,
-  COMMIT_WRITTEN,
-  END_COMMITS,
-  START_META,
-  END_META,
-  STARTED
+import java.util.function.IntConsumer;
+import org.projectnessie.versioned.storage.common.persist.Persist;
+
+public interface TransitionalPersist extends Persist {
+  void transition(
+      int objStoreBatchSize,
+      int createReferencesParallelism,
+      IntConsumer commitsTransitioned,
+      Runnable referenceCreated);
+
+  TransitionalStatus status();
+
+  enum TransitionalStatus {
+    INTERMEDIATE,
+    TRANSITIONING,
+    EVENTUAL,
+    FAILED
+  }
 }

@@ -58,6 +58,11 @@ final class ImportDatabaseAdapter extends ImportCommon {
   }
 
   @Override
+  boolean hasTransitionalStorage() {
+    return false;
+  }
+
+  @Override
   void prepareRepository() {
     DatabaseAdapter databaseAdapter = requireNonNull(importer.databaseAdapter());
     databaseAdapter.eraseRepo();
@@ -192,4 +197,7 @@ final class ImportDatabaseAdapter extends ImportCommon {
 
   @Override
   void importFinalize(HeadsAndForks headsAndForks) {}
+
+  @Override
+  void importTransition() {}
 }

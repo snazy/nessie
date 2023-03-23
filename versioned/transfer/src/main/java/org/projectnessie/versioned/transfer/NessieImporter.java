@@ -18,6 +18,7 @@ package org.projectnessie.versioned.transfer;
 import static com.google.common.base.Preconditions.checkState;
 import static org.projectnessie.versioned.transfer.ExportImportConstants.DEFAULT_ATTACHMENT_BATCH_SIZE;
 import static org.projectnessie.versioned.transfer.ExportImportConstants.DEFAULT_COMMIT_BATCH_SIZE;
+import static org.projectnessie.versioned.transfer.ExportImportConstants.DEFAULT_REFERENCES_PARALLELISM;
 import static org.projectnessie.versioned.transfer.ExportImportConstants.EXPORT_METADATA;
 import static org.projectnessie.versioned.transfer.ExportImportConstants.HEADS_AND_FORKS;
 import static org.projectnessie.versioned.transfer.ExportImportConstants.REPOSITORY_DESCRIPTION;
@@ -51,6 +52,9 @@ public abstract class NessieImporter {
     /** Specify the {@code Persist} to use. */
     Builder persist(Persist persist);
 
+    /** Specify the <em>intermediate</em> {@code Persist} to use. */
+    Builder intermediatePersist(Persist intermediatePersist);
+
     /** Optional, specify a custom {@link ObjectMapper}. */
     Builder objectMapper(ObjectMapper objectMapper);
 
@@ -62,6 +66,13 @@ public abstract class NessieImporter {
      * ExportImportConstants#DEFAULT_COMMIT_BATCH_SIZE}.
      */
     Builder commitBatchSize(int commitBatchSize);
+
+    /**
+     * Optional, specify the number of threads that create references in parallel, defaults to
+     * {@value ExportImportConstants#DEFAULT_REFERENCES_PARALLELISM}, only available for the new
+     * storage model.
+     */
+    Builder referencesParallelism(int referencesParallelism);
 
     /**
      * Optional, specify the number of content attachments to be written at once, defaults to
@@ -84,6 +95,10 @@ public abstract class NessieImporter {
   @jakarta.annotation.Nullable
   abstract Persist persist();
 
+  @Nullable
+  @jakarta.annotation.Nullable
+  abstract Persist intermediatePersist();
+
   @Value.Check
   void check() {
     checkState(
@@ -94,6 +109,11 @@ public abstract class NessieImporter {
   @Value.Default
   int commitBatchSize() {
     return DEFAULT_COMMIT_BATCH_SIZE;
+  }
+
+  @Value.Default
+  int referencesParallelism() {
+    return DEFAULT_REFERENCES_PARALLELISM;
   }
 
   @Value.Default

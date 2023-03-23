@@ -51,6 +51,12 @@ abstract class ImportCommon {
     importFinalize(headsAndForks);
     importer.progressListener().progress(ProgressEvent.END_FINALIZE);
 
+    if (hasTransitionalStorage()) {
+      importer.progressListener().progress(ProgressEvent.START_TRANSITION);
+      importTransition();
+      importer.progressListener().progress(ProgressEvent.END_TRANSITION);
+    }
+
     importer.progressListener().progress(ProgressEvent.FINISHED);
 
     return ImmutableImportResult.builder()
@@ -61,6 +67,8 @@ abstract class ImportCommon {
         .build();
   }
 
+  abstract boolean hasTransitionalStorage();
+
   abstract void prepareRepository() throws IOException;
 
   abstract long importNamedReferences() throws IOException;
@@ -68,4 +76,6 @@ abstract class ImportCommon {
   abstract long importCommits() throws IOException;
 
   abstract void importFinalize(HeadsAndForks headsAndForks);
+
+  abstract void importTransition();
 }

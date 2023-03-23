@@ -58,6 +58,7 @@ public class ImportRepository extends BaseCommand {
   static final String NO_OPTIMIZE = "--no-optimize";
   static final String INPUT_BUFFER_SIZE = "--input-buffer-size";
   static final String COMMIT_BATCH_SIZE = "--commit-batch-size";
+  static final String REFERENCES_PARALLELISM = "--create-references-parallelism";
 
   @CommandLine.Option(
       names = {"-p", PATH},
@@ -76,6 +77,14 @@ public class ImportRepository extends BaseCommand {
               + ExportImportConstants.DEFAULT_COMMIT_BATCH_SIZE
               + ".")
   private Integer commitBatchSize;
+
+  @CommandLine.Option(
+      names = REFERENCES_PARALLELISM,
+      description =
+          "Parallelism used when createing references, defaults to "
+              + ExportImportConstants.DEFAULT_REFERENCES_PARALLELISM
+              + ", not available for all Nessie storage models.")
+  private Integer referencesParallelism;
 
   @CommandLine.Option(
       names = INPUT_BUFFER_SIZE,
@@ -113,6 +122,9 @@ public class ImportRepository extends BaseCommand {
               .databaseAdapter(databaseAdapter);
       if (commitBatchSize != null) {
         builder.commitBatchSize(commitBatchSize);
+      }
+      if (referencesParallelism != null) {
+        builder.referencesParallelism(referencesParallelism);
       }
 
       PrintWriter out = spec.commandLine().getOut();
@@ -178,8 +190,17 @@ public class ImportRepository extends BaseCommand {
 
       NessieImporter.Builder builder =
           NessieImporter.builder().importFileSupplier(importFileSupplier).persist(persist);
+      //      Persist intermediate =
+      //          new InmemoryBackendFactory()
+      //              .buildBackend(new InmemoryBackendFactory().newConfigInstance())
+      //              .createFactory()
+      //              .newPersist(StoreConfig.Adjustable.empty());
+      //      builder.intermediatePersist(intermediate);
       if (commitBatchSize != null) {
         builder.commitBatchSize(commitBatchSize);
+      }
+      if (referencesParallelism != null) {
+        builder.referencesParallelism(referencesParallelism);
       }
 
       PrintWriter out = spec.commandLine().getOut();
@@ -241,6 +262,7 @@ public class ImportRepository extends BaseCommand {
     private ExportMeta exportMeta;
     private long timeOffset;
     private long timeLast;
+    private boolean wasTransitionReference;
 
     public ImportProgressListener(PrintWriter out) {
       this.out = out;
@@ -283,6 +305,16 @@ public class ImportRepository extends BaseCommand {
           out.printf("Importing %d named references...%n", exportMeta.getNamedReferencesCount());
           startPhase();
           break;
+        case TRANSITION_PROGRESS_REFERENCE:
+          if (!wasTransitionReference) {
+            wasTransitionReference = true;
+            endPhase();
+            out.printf("%d commits transitioned, total duration: %s.%n%n", count, totalDuration());
+            out.printf("Transitioning import, writing references...%n");
+            startPhase();
+          }
+          // fall through
+        case TRANSITION_PROGRESS_COMMIT:
         case COMMIT_WRITTEN:
         case NAMED_REFERENCE_WRITTEN:
         case FINALIZE_PROGRESS:
@@ -312,6 +344,14 @@ public class ImportRepository extends BaseCommand {
         case END_FINALIZE:
           endPhase();
           out.printf("Import finalization finished, total duration: %s.%n%n", totalDuration());
+          break;
+        case START_TRANSITION:
+          out.printf("Transitioning import, writing commits...%n");
+          startPhase();
+          break;
+        case END_TRANSITION:
+          endPhase();
+          out.printf("%d references transitioned, total duration: %s.%n%n", count, totalDuration());
           break;
         default:
           break;

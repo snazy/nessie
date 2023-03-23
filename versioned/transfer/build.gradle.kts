@@ -33,6 +33,7 @@ dependencies {
   implementation(project(":nessie-versioned-transfer-proto"))
   implementation(project(":nessie-versioned-storage-common"))
   implementation(project(":nessie-versioned-storage-store"))
+  implementation(project(":nessie-versioned-storage-transitional"))
 
   implementation(platform(libs.jackson.bom))
   implementation(libs.jackson.databind)

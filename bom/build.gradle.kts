@@ -81,6 +81,7 @@ dependencies {
     api(project(":nessie-versioned-storage-store"))
     api(project(":nessie-versioned-storage-telemetry"))
     api(project(":nessie-versioned-storage-testextension"))
+    api(project(":nessie-versioned-storage-transitional"))
     api(project(":nessie-versioned-tests"))
     api(project(":nessie-versioned-transfer-proto"))
     api(project(":nessie-versioned-transfer"))

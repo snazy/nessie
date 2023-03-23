@@ -24,6 +24,7 @@ public final class ExportImportConstants {
   public static final int DEFAULT_EXPECTED_COMMIT_COUNT = 1_000_000;
   public static final int DEFAULT_COMMIT_BATCH_SIZE = 20;
   public static final int DEFAULT_ATTACHMENT_BATCH_SIZE = 20;
+  public static final int DEFAULT_REFERENCES_PARALLELISM = 4;
 
   private ExportImportConstants() {}
 }
