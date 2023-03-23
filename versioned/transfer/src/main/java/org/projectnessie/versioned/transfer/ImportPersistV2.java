@@ -15,7 +15,6 @@
  */
 package org.projectnessie.versioned.transfer;
 
-import static java.util.Objects.requireNonNull;
 import static org.projectnessie.versioned.storage.common.indexes.StoreIndexes.newStoreIndex;
 import static org.projectnessie.versioned.storage.common.indexes.StoreKey.keyFromString;
 import static org.projectnessie.versioned.storage.common.logic.Logics.referenceLogic;
@@ -52,7 +51,7 @@ final class ImportPersistV2 extends ImportPersistCommon {
   void prepareRepository() throws IOException {
     RepositoryDescriptionProto repositoryDescription = importer.loadRepositoryDescription();
 
-    Persist persist = requireNonNull(importer.persist());
+    Persist persist = persist();
     persist.erase();
     repositoryLogic(persist)
         .initialize(
@@ -70,7 +69,7 @@ final class ImportPersistV2 extends ImportPersistCommon {
   @Override
   long importNamedReferences() throws IOException {
     long namedReferenceCount = 0L;
-    ReferenceLogic refLogic = referenceLogic(requireNonNull(importer.persist()));
+    ReferenceLogic refLogic = referenceLogic(persist());
     for (String fileName : exportMeta.getNamedReferencesFilesList()) {
       try (InputStream input = importFiles.newFileInput(fileName)) {
         while (true) {

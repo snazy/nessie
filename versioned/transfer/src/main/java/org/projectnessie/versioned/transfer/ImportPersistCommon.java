@@ -26,6 +26,7 @@ import static org.projectnessie.versioned.storage.common.objtypes.ContentValueOb
 
 import java.io.IOException;
 import java.io.InputStream;
+import javax.annotation.Nonnull;
 import org.projectnessie.model.Content;
 import org.projectnessie.nessie.relocated.protobuf.ByteString;
 import org.projectnessie.versioned.storage.common.exceptions.ObjNotFoundException;
@@ -36,6 +37,7 @@ import org.projectnessie.versioned.storage.common.objtypes.CommitOp;
 import org.projectnessie.versioned.storage.common.objtypes.ContentValueObj;
 import org.projectnessie.versioned.storage.common.persist.Obj;
 import org.projectnessie.versioned.storage.common.persist.ObjId;
+import org.projectnessie.versioned.storage.common.persist.Persist;
 import org.projectnessie.versioned.transfer.serialize.TransferTypes.Commit;
 import org.projectnessie.versioned.transfer.serialize.TransferTypes.ExportMeta;
 import org.projectnessie.versioned.transfer.serialize.TransferTypes.HeadsAndForks;
@@ -46,9 +48,15 @@ abstract class ImportPersistCommon extends ImportCommon {
     super(exportMeta, importer);
   }
 
+  @Nonnull
+  @jakarta.annotation.Nonnull
+  Persist persist() {
+    return requireNonNull(importer.persist());
+  }
+
   @Override
   void importFinalize(HeadsAndForks headsAndForks) {
-    IndexesLogic indexesLogic = indexesLogic(requireNonNull(importer.persist()));
+    IndexesLogic indexesLogic = indexesLogic(persist());
     for (ByteString head : headsAndForks.getHeadsList()) {
       try {
         indexesLogic.completeIndexesInCommitChain(
@@ -64,7 +72,7 @@ abstract class ImportPersistCommon extends ImportCommon {
   long importCommits() throws IOException {
     long commitCount = 0L;
     try (BatchWriter<Obj> batchWriter =
-        BatchWriter.objWriter(importer.commitBatchSize(), requireNonNull(importer.persist()))) {
+        BatchWriter.objWriter(importer.commitBatchSize(), persist())) {
       for (String fileName : exportMeta.getCommitsFilesList()) {
         try (InputStream input = importFiles.newFileInput(fileName)) {
           while (true) {
