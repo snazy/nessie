@@ -15,6 +15,9 @@
  */
 package org.projectnessie.services.cel;
 
+import static org.projectnessie.cel.checker.Decls.newObjectType;
+import static org.projectnessie.cel.checker.Decls.newVar;
+
 import com.google.api.expr.v1alpha1.Decl;
 import com.google.common.collect.ImmutableList;
 import java.util.List;
@@ -54,28 +57,26 @@ public final class CELUtil {
 
   public static final List<Decl> REFERENCES_DECLARATIONS =
       ImmutableList.of(
-          Decls.newVar(VAR_COMMIT, Decls.newObjectType(CommitMeta.class.getName())),
-          Decls.newVar(VAR_REF, Decls.newObjectType(Reference.class.getName())),
-          Decls.newVar(VAR_REF_META, Decls.newObjectType(ReferenceMetadata.class.getName())),
-          Decls.newVar(VAR_REF_TYPE, Decls.String));
+          newVar(VAR_COMMIT, newObjectType(CommitMeta.class.getName())),
+          newVar(VAR_REF, newObjectType(Reference.class.getName())),
+          newVar(VAR_REF_META, newObjectType(ReferenceMetadata.class.getName())),
+          newVar(VAR_REF_TYPE, Decls.String));
 
   public static final List<Decl> COMMIT_LOG_DECLARATIONS =
       ImmutableList.of(
-          Decls.newVar(VAR_COMMIT, Decls.newObjectType(CommitMeta.class.getName())),
-          Decls.newVar(
-              VAR_OPERATIONS,
-              Decls.newListType(Decls.newObjectType(OperationForCel.class.getName()))));
+          newVar(VAR_COMMIT, newObjectType(CommitMeta.class.getName())),
+          newVar(
+              VAR_OPERATIONS, Decls.newListType(newObjectType(OperationForCel.class.getName()))));
 
   public static final List<Decl> ENTRIES_DECLARATIONS =
-      ImmutableList.of(
-          Decls.newVar(VAR_ENTRY, Decls.newObjectType(KeyEntryForCel.class.getName())));
+      ImmutableList.of(newVar(VAR_ENTRY, newObjectType(KeyEntryForCel.class.getName())));
 
   public static final List<Decl> AUTHORIZATION_RULE_DECLARATIONS =
       ImmutableList.of(
-          Decls.newVar(VAR_REF, Decls.String),
-          Decls.newVar(VAR_PATH, Decls.String),
-          Decls.newVar(VAR_ROLE, Decls.String),
-          Decls.newVar(VAR_OP, Decls.String));
+          newVar(VAR_REF, Decls.String),
+          newVar(VAR_PATH, Decls.String),
+          newVar(VAR_ROLE, Decls.String),
+          newVar(VAR_OP, Decls.String));
 
   public static final List<Object> COMMIT_LOG_TYPES =
       ImmutableList.of(CommitMeta.class, OperationForCel.class, ContentKey.class, Namespace.class);
@@ -96,8 +97,7 @@ public final class CELUtil {
   @SuppressWarnings("deprecation")
   public static final List<Decl> REFLOG_DECLARATIONS =
       ImmutableList.of(
-          Decls.newVar(
-              VAR_REFLOG, Decls.newObjectType(RefLogResponse.RefLogResponseEntry.class.getName())));
+          newVar(VAR_REFLOG, newObjectType(RefLogResponse.RefLogResponseEntry.class.getName())));
 
   private CELUtil() {}
 
