@@ -1,0 +1,77 @@
+# Copyright (C) 2020 Dremio
+#
+# Licensed under the Apache License, Version 2.0 (the "License");
+# you may not use this file except in compliance with the License.
+# You may obtain a copy of the License at
+#
+# http://www.apache.org/licenses/LICENSE-2.0
+#
+# Unless required by applicable law or agreed to in writing, software
+# distributed under the License is distributed on an "AS IS" BASIS,
+# WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+# See the License for the specific language governing permissions and
+# limitations under the License.
+
+name: PR retrigger
+
+on:
+  pull_request_target:
+    types: [labeled]
+
+jobs:
+  retrigger:
+    runs-on: ubuntu-22.04
+    steps:
+      - name: Retrigger CI
+        uses: actions/github-script@v6
+        with:
+          script: |
+            // GH event payload
+            const payload = context.payload
+            const action = payload.action
+            // Pull request from the pull_request(_target) payload
+            const pull = payload.pull_request
+            const head_sha = pull.head.sha
+
+            const owner = pull.base.repo.owner.login;
+            const repo = pull.base.repo.name;
+            console.info("PR ID: ", pull.number);
+            console.info("PR HEAD: ", head_sha);
+            console.info("Pull request action: ", action);
+
+            async function retrigger_workflow(workflow_path) {
+              console.info("Re-trigger workflow: ", workflow_path)
+              return github.rest.actions.listWorkflowRuns({
+                owner: owner,
+                repo: repo,
+                workflow_id: workflow_path,
+                head_sha: head_sha,
+              }).then(wf_runs => {
+                return Promise.all(wf_runs.data.workflow_runs.map(wf_run => {
+                  console.info("Re-running workflow: ", wf_run.name, " (", workflow_path, ")")
+                  return github.rest.actions.reRunWorkflow({
+                    owner: owner,
+                    repo: repo,
+                    run_id: wf_run.id,
+                  });
+                }));
+              });
+            }
+
+            // Safe guard (pull_request action)
+            if (action === 'labeled') {
+              const label_name = payload.label.name
+              console.info("Added label: ", label_name);
+              switch (label_name) {
+                case 'pr-native':
+                case 'pr-integrations':
+                case 'pr-helm':
+                case 'pr-docker':
+                  await retrigger_workflow('.github/workflows/ci.yml')
+                  break;
+                case 'pr-macos-win':
+                  await retrigger_workflow('.github/workflows/ci-mac.yml')
+                  await retrigger_workflow('.github/workflows/ci-win.yml')
+                  break;
+              }
+            }
