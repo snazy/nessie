@@ -1,0 +1,82 @@
+name: 'Checks PR label and changed files'
+description: 'Checks PRs against a label name or the PR changed files against a list of globs'
+inputs:
+  env_var:
+    required: false
+    description: 'Optional environment variable to set'
+  label:
+    required: false
+    description: 'PR label name to check first'
+  globs:
+    required: true
+    description: 'Globs to check the files changed in a PR against'
+runs:
+  using: composite
+  steps:
+    - name: install minimatch
+      shell: bash
+      run: npm install minimatch@"^7.4.3"
+    - name: check globs
+      uses: actions/github-script@v6
+      with:
+        script: |
+          const {Minimatch} = require("minimatch");
+
+          async function getChangedFiles(pull_request) {
+            const listFilesOptions = github.pulls.listFiles.endpoint.merge({
+              owner: pull_request.base.repo.owner.login,
+              repo: pull_request.base.repo.name,
+              pull_number: pull_request.number,
+            });
+            return github.paginate(listFilesOptions).then(resp => resp.map(f => f.filename))
+          }
+
+          function isMatch(changedFile, matchers) {
+            for (const matcher of matchers) {
+              if (matcher.match(changedFile)) {
+                return true;
+              }
+            }
+            return false;
+          }
+
+          function filesMatchAnyGlob(changedFiles, globs) {
+            const matchers = globs.map(g => new Minimatch(g));
+            for (const changedFile of changedFiles) {
+              if (isMatch(changedFile, matchers)) {
+                return true;
+              }
+            }
+            return false;
+          }
+
+          async function payloadMatches(context, label_name, globs) {
+            const pr = context.payload.pull_request
+
+            if (label_name !== null) {
+              for (const label of pr.labels) {
+                if (label.name === label_name) {
+                  return true;
+                }
+              }
+            }
+
+            // For pull request, check the list of changed files against the given globs
+            return getChangedFiles(pr).then(changedFiles => filesMatchAnyGlob(changedFiles, globs))
+          }
+
+          if (!context.payload || !context.payload.pull_request) {
+            // Yield 'true' for all event payload types, except pull_request
+            core.exportVariable('NEEDS_JOB_NATIVE', 'true');
+            core.exportVariable('NEEDS_JOB_DOCKER', 'true');
+            core.exportVariable('NEEDS_JOB_NESQUEIT', 'true');
+            core.exportVariable('NEEDS_JOB_HELM', 'true');
+            return true;
+          }
+
+          const changedFiles = await getChangedFiles(pr);
+          
+          core.exportVariable('NEEDS_JOB_NATIVE', checkLabelOrGlobs(pr, 'pr-native', ['gradle/wrapper/**', 'servers/**', '.github/**');
+          core.exportVariable('NEEDS_JOB_DOCKER', checkLabelOrGlobs(pr, 'pr-docker', ['gradle/wrapper/**', 'tools/dockerbuild/**', '.github/**');
+          core.exportVariable('NEEDS_JOB_NESQUEIT', checkLabelOrGlobs(pr, 'pr-integrations', ['gradle/wrapper/**', 'integrations/**', 'api/**', '.github/**');
+          core.exportVariable('NEEDS_JOB_HELM', checkLabelOrGlobs(pr, 'pr-helm', ['helm/**', '.github/**');
