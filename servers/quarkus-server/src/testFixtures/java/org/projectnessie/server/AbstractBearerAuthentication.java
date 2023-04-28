@@ -15,16 +15,19 @@
  */
 package org.projectnessie.server;
 
+import static java.util.Collections.singletonList;
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
 
 import com.google.common.collect.ImmutableMap;
 import io.quarkus.test.junit.QuarkusTestProfile;
 import io.smallrye.jwt.build.Jwt;
+import java.util.List;
 import java.util.Map;
 import org.junit.jupiter.api.Test;
 import org.projectnessie.client.auth.BearerAuthenticationProvider;
 import org.projectnessie.client.rest.NessieNotAuthorizedException;
+import org.projectnessie.quarkus.tests.profiles.KeycloakTestResourceLifecycleManager;
 import org.projectnessie.server.authn.AuthenticationEnabledProfile;
 
 @SuppressWarnings("resource") // api() returns an AutoCloseable
@@ -76,6 +79,13 @@ public abstract class AbstractBearerAuthentication extends BaseClientAuthTest {
           .put("quarkus.oidc.application-type", "service")
           .put("smallrye.jwt.sign.key.location", "privateKey.jwk") // for unit tests
           .build();
+    }
+  }
+
+  public static class ProfileWithKeycloak extends Profile {
+    @Override
+    public List<TestResourceEntry> testResources() {
+      return singletonList(new TestResourceEntry(KeycloakTestResourceLifecycleManager.class));
     }
   }
 }

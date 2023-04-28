@@ -15,15 +15,12 @@
  */
 package org.projectnessie.server;
 
-import io.quarkus.test.common.QuarkusTestResource;
 import io.quarkus.test.junit.QuarkusIntegrationTest;
 import io.quarkus.test.junit.TestProfile;
 import io.quarkus.test.keycloak.client.KeycloakTestClient;
-import org.projectnessie.quarkus.tests.profiles.KeycloakTestResourceLifecycleManager;
 
 @QuarkusIntegrationTest
-@QuarkusTestResource(KeycloakTestResourceLifecycleManager.class)
-@TestProfile(value = AbstractBearerAuthentication.Profile.class)
+@TestProfile(value = AbstractBearerAuthentication.ProfileWithKeycloak.class)
 public class ITBearerAuthentication extends AbstractBearerAuthentication {
 
   private final KeycloakTestClient keycloakClient = new KeycloakTestClient();
