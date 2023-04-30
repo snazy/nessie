@@ -16,21 +16,21 @@
 package org.projectnessie.api.v1.http;
 
 import com.fasterxml.jackson.annotation.JsonView;
-import javax.ws.rs.BeanParam;
 import javax.ws.rs.Consumes;
 import javax.ws.rs.GET;
 import javax.ws.rs.Path;
+import javax.ws.rs.PathParam;
 import javax.ws.rs.Produces;
 import javax.ws.rs.core.MediaType;
 import org.eclipse.microprofile.openapi.annotations.Operation;
 import org.eclipse.microprofile.openapi.annotations.media.Content;
 import org.eclipse.microprofile.openapi.annotations.media.ExampleObject;
 import org.eclipse.microprofile.openapi.annotations.media.Schema;
+import org.eclipse.microprofile.openapi.annotations.parameters.Parameter;
 import org.eclipse.microprofile.openapi.annotations.responses.APIResponse;
 import org.eclipse.microprofile.openapi.annotations.responses.APIResponses;
 import org.eclipse.microprofile.openapi.annotations.tags.Tag;
 import org.projectnessie.api.v1.DiffApi;
-import org.projectnessie.api.v1.params.DiffParams;
 import org.projectnessie.error.NessieNotFoundException;
 import org.projectnessie.model.DiffResponse;
 import org.projectnessie.model.ser.Views;
@@ -78,6 +78,18 @@ public interface HttpDiffApi extends DiffApi {
   })
   @JsonView(Views.V1.class)
   @Override
-  DiffResponse getDiff(@BeanParam @jakarta.ws.rs.BeanParam DiffParams params)
+  DiffResponse getDiff(
+      @Parameter(
+              description = "The 'from' reference (and optional hash) to start the diff from",
+              examples = {@ExampleObject(ref = "ref"), @ExampleObject(ref = "refForDiffWithHash")})
+          @PathParam("fromRefWithHash")
+          @jakarta.ws.rs.PathParam("fromRefWithHash")
+          String fromRefWithHash,
+      @Parameter(
+              description = "The 'to' reference (and optional hash) to end the diff at.",
+              examples = {@ExampleObject(ref = "ref"), @ExampleObject(ref = "refForDiffWithHash")})
+          @PathParam("toRefWithHash")
+          @jakarta.ws.rs.PathParam("toRefWithHash")
+          String toRefWithHash)
       throws NessieNotFoundException;
 }

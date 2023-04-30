@@ -58,7 +58,10 @@ public class RestDiffResource implements HttpDiffApi {
 
   @Override
   @JsonView(Views.V1.class)
-  public DiffResponse getDiff(DiffParams params) throws NessieNotFoundException {
+  public DiffResponse getDiff(String fromRefWithHash, String toRefWithHash)
+      throws NessieNotFoundException {
+    DiffParams params =
+        DiffParams.builder().fromHashOnRef(fromRefWithHash).toHashOnRef(toRefWithHash).build();
     ImmutableDiffResponse.Builder builder = DiffResponse.builder();
     return resource()
         .getDiff(

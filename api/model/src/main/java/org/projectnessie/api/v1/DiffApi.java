@@ -15,22 +15,36 @@
  */
 package org.projectnessie.api.v1;
 
-import javax.validation.Valid;
+import static org.projectnessie.api.v1.params.DiffParams.HASH_OPTIONAL_REGEX;
+
+import javax.annotation.Nullable;
 import javax.validation.constraints.NotNull;
-import org.projectnessie.api.v1.params.DiffParams;
+import javax.validation.constraints.Pattern;
 import org.projectnessie.error.NessieNotFoundException;
 import org.projectnessie.model.DiffResponse;
+import org.projectnessie.model.Validation;
 
 public interface DiffApi {
 
   /**
    * Returns a list of diff values that show the difference between two given references.
    *
-   * @param params The {@link DiffParams} that includes the parameters for this API call.
    * @return A list of diff values that show the difference between two given references.
    */
   DiffResponse getDiff(
-      @Valid @jakarta.validation.Valid @NotNull @jakarta.validation.constraints.NotNull
-          DiffParams params)
+      @NotNull
+          @jakarta.validation.constraints.NotNull
+          @Pattern(regexp = Validation.REF_NAME_REGEX, message = Validation.REF_NAME_MESSAGE)
+          @jakarta.validation.constraints.Pattern(
+              regexp = Validation.REF_NAME_REGEX,
+              message = Validation.REF_NAME_MESSAGE)
+          String fromRefWithHash,
+      @Nullable
+          @jakarta.annotation.Nullable
+          @Pattern(regexp = HASH_OPTIONAL_REGEX, message = Validation.HASH_MESSAGE)
+          @jakarta.validation.constraints.Pattern(
+              regexp = HASH_OPTIONAL_REGEX,
+              message = Validation.HASH_MESSAGE)
+          String toRefWithHash)
       throws NessieNotFoundException;
 }

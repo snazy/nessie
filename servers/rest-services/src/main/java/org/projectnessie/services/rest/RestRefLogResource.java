@@ -27,6 +27,7 @@ import org.projectnessie.services.spi.RefLogService;
 @RequestScoped
 @jakarta.enterprise.context.RequestScoped
 @Deprecated
+@RunOnVirtualThread
 public class RestRefLogResource implements HttpRefLogApi {
 
   private final RefLogService refLogService;

@@ -16,7 +16,6 @@
 package org.projectnessie.client.http.v1api;
 
 import org.projectnessie.api.v1.params.DiffParams;
-import org.projectnessie.api.v1.params.DiffParamsBuilder;
 import org.projectnessie.client.api.GetDiffBuilder;
 import org.projectnessie.client.builder.BaseGetDiffBuilder;
 import org.projectnessie.client.http.NessieApiClient;
@@ -58,12 +57,6 @@ final class HttpGetDiff extends BaseGetDiffBuilder<DiffParams> {
 
   @Override
   public DiffResponse get(DiffParams params) throws NessieNotFoundException {
-    DiffParamsBuilder builder =
-        DiffParams.builder()
-            .fromRef(params.getFromRef())
-            .fromHashOnRef(params.getFromHashOnRef())
-            .toRef(params.getToRef())
-            .toHashOnRef(params.getToHashOnRef());
-    return client.getDiffApi().getDiff(builder.build());
+    return client.getDiffApi().getDiff(params.getFromPathParam(), params.getToPathParam());
   }
 }

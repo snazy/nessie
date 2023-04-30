@@ -15,7 +15,6 @@
  */
 package org.projectnessie.client.http;
 
-import javax.validation.constraints.NotNull;
 import org.projectnessie.api.v1.http.HttpDiffApi;
 import org.projectnessie.api.v1.params.DiffParams;
 import org.projectnessie.error.NessieNotFoundException;
@@ -30,8 +29,10 @@ class HttpDiffClient implements HttpDiffApi {
   }
 
   @Override
-  public DiffResponse getDiff(@NotNull @jakarta.validation.constraints.NotNull DiffParams params)
+  public DiffResponse getDiff(String fromRefWithHash, String toRefWithHash)
       throws NessieNotFoundException {
+    DiffParams params =
+        DiffParams.builder().fromHashOnRef(fromRefWithHash).toHashOnRef(toRefWithHash).build();
     return client
         .newRequest()
         .path("diffs/{fromRef}{fromHashOnRef}...{toRef}{toHashOnRef}")

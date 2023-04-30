@@ -126,6 +126,30 @@ public class DiffParams {
     return emptyToNull(toHashOnRef);
   }
 
+  public String getFromPathParam() {
+    return asPathParam(fromRef, fromHashOnRef);
+  }
+
+  public String getToPathParam() {
+    return asPathParam(toRef, toHashOnRef);
+  }
+
+  private String asPathParam(String ref, String hash) {
+    if (ref == null) {
+      if (hash == null) {
+        return null;
+      } else {
+        return HASH_SEPARATOR + hash;
+      }
+    } else {
+      if (hash == null) {
+        return ref;
+      } else {
+        return ref + HASH_SEPARATOR + hash;
+      }
+    }
+  }
+
   private static String emptyToNull(String s) {
     if (s == null || s.isEmpty()) {
       return null;
