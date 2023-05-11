@@ -37,6 +37,7 @@ import static org.projectnessie.versioned.storage.versionstore.TypeMapping.hashT
 import static org.projectnessie.versioned.storage.versionstore.TypeMapping.keyToStoreKey;
 import static org.projectnessie.versioned.storage.versionstore.TypeMapping.objIdToHash;
 import static org.projectnessie.versioned.storage.versionstore.TypeMapping.storeKeyToKey;
+import static org.projectnessie.versioned.storage.versionstore.TypeMapping.storeKeyToKeyAndDiscriminator;
 import static org.projectnessie.versioned.store.DefaultStoreWorker.contentTypeForPayload;
 import static org.projectnessie.versioned.store.DefaultStoreWorker.payloadForContent;
 
@@ -58,6 +59,7 @@ import org.agrona.collections.Object2IntHashMap;
 import org.projectnessie.model.Conflict;
 import org.projectnessie.model.Content;
 import org.projectnessie.model.ContentKey;
+import org.projectnessie.model.Documentation;
 import org.projectnessie.model.MergeBehavior;
 import org.projectnessie.model.MergeKeyBehavior;
 import org.projectnessie.model.Namespace;
@@ -92,6 +94,7 @@ import org.projectnessie.versioned.storage.common.logic.PagedResult;
 import org.projectnessie.versioned.storage.common.objtypes.CommitObj;
 import org.projectnessie.versioned.storage.common.objtypes.CommitOp;
 import org.projectnessie.versioned.storage.common.objtypes.ContentValueObj;
+import org.projectnessie.versioned.storage.common.objtypes.StringObj;
 import org.projectnessie.versioned.storage.common.persist.Obj;
 import org.projectnessie.versioned.storage.common.persist.ObjId;
 import org.projectnessie.versioned.storage.common.persist.Persist;
@@ -581,10 +584,10 @@ class BaseCommitHelper {
            * be handled.
            */
           conflict -> {
-            ContentKey key = storeKeyToKey(conflict.key());
+            KeyAndDiscriminator keyDisc = storeKeyToKeyAndDiscriminator(conflict.key());
             // Note: key==null, if not the "main universe" or not a "content"
             // discriminator
-            if (key != null) {
+            if (keyDisc != null) {
               if (conflict.conflictType() == KEY_EXISTS) {
                 // This is rather a hack to ignore conflicts when merging namespaces. If both the
                 // source and target payload is NAMESPACE, let the target content "win" (aka no
@@ -599,15 +602,15 @@ class BaseCommitHelper {
                 }
               }
 
-              MergeBehavior mergeBehavior = mergeBehaviors.mergeBehavior(key);
+              MergeBehavior mergeBehavior = mergeBehaviors.mergeBehavior(keyDisc.key());
               switch (mergeBehavior) {
                 case FORCE:
                 case DROP:
-                  MergeKeyBehavior mergeKeyBe = mergeBehaviors.useKey(false, key);
+                  MergeKeyBehavior mergeKeyBe = mergeBehaviors.useKey(false, keyDisc.key());
                   // Do not plain ignore (due to FORCE) or drop (DROP), when the caller provided an
-                  // expectedTargetContent.
+                  // expectedTargetContent.0
                   if (mergeKeyBe.getExpectedTargetContent() == null) {
-                    keyDetailsMap.put(key, keyDetails(mergeBehavior, null));
+                    keyDetailsMap.put(keyDisc.key(), keyDetails(mergeBehavior, null));
                     return mergeBehavior == MergeBehavior.FORCE
                         ? ConflictResolution.ADD
                         : ConflictResolution.DROP;
@@ -615,7 +618,7 @@ class BaseCommitHelper {
                   // fall through
                 case NORMAL:
                   keyDetailsMap.put(
-                      key, keyDetails(mergeBehavior, commitConflictToConflict(conflict)));
+                      keyDisc.key(), keyDetails(mergeBehavior, commitConflictToConflict(conflict)));
                   return ConflictResolution.ADD;
                 default:
                   throw new IllegalStateException("Unknown merge behavior " + mergeBehavior);
@@ -641,19 +644,37 @@ class BaseCommitHelper {
            */
           (add, storeKey, expectedValueId) -> {
             // "replace" the ObjId expected for a commit-ADD action
-            ContentKey key = storeKeyToKey(storeKey);
-            // Note: key==null, if not the "main universe" or not a "content" discriminator
-            if (key == null) {
+            KeyAndDiscriminator keyDisc = storeKeyToKeyAndDiscriminator(storeKey);
+            // Note: key==null, if not the "main universe" or not a "content/doc" discriminator
+            if (keyDisc == null) {
               return expectedValueId;
             }
-            Content expectedTarget = mergeBehaviors.useKey(add, key).getExpectedTargetContent();
-            // If there is an expected-target-content, we only need the ObjId for it to let the
-            // commit code perform the check. An object load is not needed.
-            return expectedTarget != null
-                ? contentMapping
-                    .buildContent(expectedTarget, payloadForContent(expectedTarget))
-                    .id()
-                : expectedValueId;
+            MergeKeyBehavior mergeKeyBehavior = mergeBehaviors.useKey(add, keyDisc.key());
+            switch (keyDisc.discriminator()) {
+              case CONTENT_DISCRIMINATOR:
+                Content expectedTarget = mergeKeyBehavior.getExpectedTargetContent();
+                // If there is an expected-target-content, we only need the ObjId for it to let the
+                // commit code perform the check. An object load is not needed.
+                return expectedTarget != null
+                    ? contentMapping
+                        .buildContent(expectedTarget, payloadForContent(expectedTarget))
+                        .id()
+                    : expectedValueId;
+              case DOCUMENTATION_DISCRIMINATOR:
+                Documentation expectedTargetDoc = mergeKeyBehavior.getExpectedTargetDocumentation();
+                // If there is an expected-target-content, we only need the ObjId for it to let the
+                // commit code perform the check. An object load is not needed.
+                // TODO the generated StringObj might be different but semantically equal if:
+                //  - compression algorithm is different
+                //  - current value is stored incrementally
+                // TODO maybe pass the existingContent into this callback and also do the
+                //  "content equals" check here in this callback?
+                return expectedTargetDoc != null
+                    ? contentMapping.buildDocumentation(expectedTargetDoc).id()
+                    : expectedValueId;
+              default:
+                return expectedValueId;
+            }
           },
           /*
            * Following callback implements the functionality to handle MergeKeyBehavior.resolvedContent,
@@ -663,23 +684,40 @@ class BaseCommitHelper {
            * Non-squashing merges are prohibited to have a non-null MergeKeyBehavior.resolvedContent.
            */
           (add, storeKey, commitValueId) -> {
-            ContentKey key = storeKeyToKey(storeKey);
-            // Note: key==null, if not the "main universe" or not a "content" discriminator
-            if (key == null) {
+            KeyAndDiscriminator keyDisc = storeKeyToKeyAndDiscriminator(storeKey);
+            // Note: key==null, if not the "main universe" or not a "content/doc" discriminator
+            if (keyDisc == null) {
               return commitValueId;
             }
-            MergeKeyBehavior mergeKeyBehavior = mergeBehaviors.useKey(add, key);
-            Content resolvedContent = mergeKeyBehavior.getResolvedContent();
-            if (resolvedContent == null) {
-              // Nothing to resolve, use the value from the source.
-              return commitValueId;
-            }
+            MergeKeyBehavior mergeKeyBehavior = mergeBehaviors.useKey(add, keyDisc.key());
+            switch (keyDisc.discriminator()) {
+              case CONTENT_DISCRIMINATOR:
+                Content resolvedContent = mergeKeyBehavior.getResolvedContent();
+                if (resolvedContent == null) {
+                  // Nothing to resolve, use the value from the source.
+                  return commitValueId;
+                }
 
-            // Build the "resolved" content value object and add it to the objects to persist.
-            ContentValueObj resolvedValue =
-                contentMapping.buildContent(resolvedContent, payloadForContent(resolvedContent));
-            objsToStore.accept(resolvedValue);
-            return resolvedValue.id();
+                // Build the "resolved" content value object and add it to the objects to persist.
+                ContentValueObj resolvedValue =
+                    contentMapping.buildContent(
+                        resolvedContent, payloadForContent(resolvedContent));
+                objsToStore.accept(resolvedValue);
+                return resolvedValue.id();
+              case DOCUMENTATION_DISCRIMINATOR:
+                Documentation resolvedDoc = mergeKeyBehavior.getResolvedDocumentation();
+                if (resolvedDoc == null) {
+                  // Nothing to resolve, use the value from the source.
+                  return commitValueId;
+                }
+
+                // Build the "resolved" documentation object and add it to the objects to persist.
+                StringObj resolvedDocValue = contentMapping.buildDocumentation(resolvedDoc);
+                objsToStore.accept(resolvedDocValue);
+                return resolvedDocValue.id();
+              default:
+                return commitValueId;
+            }
           });
     } catch (CommitConflictException conflict) {
       // Data conflicts are handled, if we get here, it's an internal error OR unimplemented

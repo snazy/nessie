@@ -95,8 +95,13 @@ message Operation {
   OperationType operation_type = 1;
   repeated string content_key = 2;
   optional string content_id = 3;
+  //
   optional int32 payload = 4;
   optional bytes value = 5;
+  //
+  optional string doc_mime_type = 6;
+  optional string doc_compression = 7;
+  optional bytes doc_text = 8;
 }
 
 enum OperationType {

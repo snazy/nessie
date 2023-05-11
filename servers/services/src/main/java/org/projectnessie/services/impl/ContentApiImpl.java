@@ -64,7 +64,7 @@ public class ContentApiImpl extends BaseApiImpl implements ContentService {
       BatchAccessChecker accessCheck = startAccessCheck();
       if (obj != null) {
         accessCheck.canReadEntityValue(ref.getValue(), obj.identifiedKey()).checkAndThrow();
-        return ContentResponse.of(obj.content(), makeReference(ref), null);
+        return ContentResponse.of(obj.content(), makeReference(ref), obj.documentation());
       }
       accessCheck.canViewReference(ref.getValue()).checkAndThrow();
       throw new NessieContentNotFoundException(key, namedRef);

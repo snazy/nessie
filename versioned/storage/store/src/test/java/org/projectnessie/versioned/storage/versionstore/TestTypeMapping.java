@@ -21,17 +21,20 @@ import static org.assertj.core.api.InstanceOfAssertFactories.type;
 import static org.junit.jupiter.params.provider.Arguments.arguments;
 import static org.projectnessie.versioned.storage.common.indexes.StoreIndexes.emptyImmutableIndex;
 import static org.projectnessie.versioned.storage.common.indexes.StoreKey.key;
+import static org.projectnessie.versioned.storage.common.indexes.StoreKey.keyFromString;
 import static org.projectnessie.versioned.storage.common.logic.CreateCommit.newCommitBuilder;
 import static org.projectnessie.versioned.storage.common.objtypes.CommitHeaders.EMPTY_COMMIT_HEADERS;
 import static org.projectnessie.versioned.storage.common.objtypes.CommitHeaders.newCommitHeaders;
 import static org.projectnessie.versioned.storage.common.objtypes.CommitOp.COMMIT_OP_SERIALIZER;
 import static org.projectnessie.versioned.storage.common.persist.ObjId.EMPTY_OBJ_ID;
 import static org.projectnessie.versioned.storage.common.persist.ObjId.objIdFromString;
+import static org.projectnessie.versioned.storage.versionstore.Discriminators.CONTENT_DISCRIMINATOR;
+import static org.projectnessie.versioned.storage.versionstore.Discriminators.DOCUMENTATION_DISCRIMINATOR;
+import static org.projectnessie.versioned.storage.versionstore.KeyAndDiscriminator.keyAndDiscriminator;
 import static org.projectnessie.versioned.storage.versionstore.TypeMapping.AUTHOR;
 import static org.projectnessie.versioned.storage.versionstore.TypeMapping.AUTHOR_TIME;
 import static org.projectnessie.versioned.storage.versionstore.TypeMapping.COMMITTER;
 import static org.projectnessie.versioned.storage.versionstore.TypeMapping.COMMIT_TIME;
-import static org.projectnessie.versioned.storage.versionstore.TypeMapping.CONTENT_DISCRIMINATOR;
 import static org.projectnessie.versioned.storage.versionstore.TypeMapping.MAIN_UNIVERSE;
 import static org.projectnessie.versioned.storage.versionstore.TypeMapping.SIGNED_OFF_BY;
 import static org.projectnessie.versioned.storage.versionstore.TypeMapping.fromCommitMeta;
@@ -39,8 +42,13 @@ import static org.projectnessie.versioned.storage.versionstore.TypeMapping.heade
 import static org.projectnessie.versioned.storage.versionstore.TypeMapping.headersFromCommitMeta;
 import static org.projectnessie.versioned.storage.versionstore.TypeMapping.headersToCommitMeta;
 import static org.projectnessie.versioned.storage.versionstore.TypeMapping.instantToHeaderValue;
+import static org.projectnessie.versioned.storage.versionstore.TypeMapping.keyToAllStoreKeys;
 import static org.projectnessie.versioned.storage.versionstore.TypeMapping.keyToStoreKey;
+import static org.projectnessie.versioned.storage.versionstore.TypeMapping.keyToStoreKeyVariant;
+import static org.projectnessie.versioned.storage.versionstore.TypeMapping.storeKeyGetDiscriminator;
 import static org.projectnessie.versioned.storage.versionstore.TypeMapping.storeKeyToKey;
+import static org.projectnessie.versioned.storage.versionstore.TypeMapping.storeKeyToKeyAndDiscriminator;
+import static org.projectnessie.versioned.storage.versionstore.TypeMapping.storeKeyWithDiscriminator;
 import static org.projectnessie.versioned.storage.versionstore.TypeMapping.toCommitMeta;
 
 import java.time.Instant;
@@ -179,22 +187,48 @@ public class TestTypeMapping {
     return Stream.of(
         arguments(
             ContentKey.of("foo", "bar", "baz"),
-            key(MAIN_UNIVERSE, "foo\u0001bar\u0001baz", CONTENT_DISCRIMINATOR)),
-        arguments(ContentKey.of("foo"), key(MAIN_UNIVERSE, "foo", CONTENT_DISCRIMINATOR)),
-        arguments(ContentKey.of(), key(MAIN_UNIVERSE, CONTENT_DISCRIMINATOR)),
+            CONTENT_DISCRIMINATOR,
+            key(MAIN_UNIVERSE, "foo\u0001bar\u0001baz", CONTENT_DISCRIMINATOR.value())),
+        arguments(
+            ContentKey.of("foo"),
+            CONTENT_DISCRIMINATOR,
+            key(MAIN_UNIVERSE, "foo", CONTENT_DISCRIMINATOR.value())),
+        arguments(
+            ContentKey.of(),
+            CONTENT_DISCRIMINATOR,
+            key(MAIN_UNIVERSE, CONTENT_DISCRIMINATOR.value())),
+        //
+        arguments(
+            ContentKey.of("foo", "bar", "baz"),
+            DOCUMENTATION_DISCRIMINATOR,
+            key(MAIN_UNIVERSE, "foo\u0001bar\u0001baz", DOCUMENTATION_DISCRIMINATOR.value())),
+        arguments(
+            ContentKey.of("foo"),
+            DOCUMENTATION_DISCRIMINATOR,
+            key(MAIN_UNIVERSE, "foo", DOCUMENTATION_DISCRIMINATOR.value())),
+        arguments(
+            ContentKey.of(),
+            DOCUMENTATION_DISCRIMINATOR,
+            key(MAIN_UNIVERSE, DOCUMENTATION_DISCRIMINATOR.value())),
         // unknown variant
-        arguments(null, key(MAIN_UNIVERSE, "foo", "XYZ")),
+        arguments(null, CONTENT_DISCRIMINATOR, key(MAIN_UNIVERSE, "foo", "XYZ")),
         // unknown universe
-        arguments(null, key("ZYX", "foo", CONTENT_DISCRIMINATOR)));
+        arguments(null, CONTENT_DISCRIMINATOR, key("ZYX", "foo", CONTENT_DISCRIMINATOR.value())));
   }
 
   @ParameterizedTest
   @MethodSource("keyConversions")
-  public void keyConversions(ContentKey key, StoreKey storeKey) {
+  public void keyConversions(ContentKey key, Discriminators discriminator, StoreKey storeKey) {
     if (key != null) {
-      soft.assertThat(keyToStoreKey(key)).isEqualTo(storeKey);
+      soft.assertThat(keyToStoreKeyVariant(key, discriminator)).isEqualTo(storeKey);
     }
-    soft.assertThat(storeKeyToKey(storeKey)).isEqualTo(key);
+    soft.assertThat(storeKeyToKey(storeKey))
+        .isEqualTo(discriminator == CONTENT_DISCRIMINATOR ? key : null);
+    if (key != null) {
+      soft.assertThat(storeKeyGetDiscriminator(storeKey)).isSameAs(discriminator);
+      soft.assertThat(storeKeyToKeyAndDiscriminator(storeKey))
+          .isEqualTo(keyAndDiscriminator(key, discriminator));
+    }
   }
 
   static Stream<Arguments> keyComparisons() {
@@ -213,6 +247,60 @@ public class TestTypeMapping {
     int cmp = signum(k1.compareTo(k2));
     soft.assertThat(signum(keyToStoreKey(k1).compareTo(keyToStoreKey(k2)))).isEqualTo(cmp);
     soft.assertThat(signum(keyToStoreKey(k2).compareTo(keyToStoreKey(k1)))).isEqualTo(-cmp);
+  }
+
+  @Test
+  public void storeKeyGetVariants() {
+    ContentKey key = ContentKey.of("a", "b");
+    StoreKey contentKey = keyToStoreKey(key);
+    StoreKey docKey = keyToStoreKeyVariant(key, DOCUMENTATION_DISCRIMINATOR);
+    soft.assertThat(storeKeyGetDiscriminator(contentKey)).isSameAs(CONTENT_DISCRIMINATOR);
+    soft.assertThat(storeKeyGetDiscriminator(docKey)).isSameAs(DOCUMENTATION_DISCRIMINATOR);
+    soft.assertThat(storeKeyGetDiscriminator(keyFromString(contentKey.rawString() + "X"))).isNull();
+  }
+
+  @Test
+  public void storeKeyVariants() {
+    ContentKey key = ContentKey.of("a", "b");
+    StoreKey contentKey1 = keyToStoreKey(key);
+    StoreKey contentKey2 = keyToStoreKeyVariant(key, CONTENT_DISCRIMINATOR);
+    StoreKey docKey = keyToStoreKeyVariant(key, DOCUMENTATION_DISCRIMINATOR);
+
+    soft.assertThat(contentKey1).isEqualTo(contentKey2);
+    soft.assertThat(contentKey1).isEqualByComparingTo(contentKey2);
+    soft.assertThat(contentKey1).isNotEqualTo(docKey);
+    soft.assertThat(contentKey1).isNotEqualByComparingTo(docKey);
+    soft.assertThat(contentKey1).isLessThan(docKey);
+    soft.assertThat(docKey).isGreaterThan(contentKey1);
+  }
+
+  @Test
+  public void allStoreKeys() {
+    ContentKey key = ContentKey.of("a", "b");
+    StoreKey contentKey = keyToStoreKey(key);
+    StoreKey docKey = keyToStoreKeyVariant(key, DOCUMENTATION_DISCRIMINATOR);
+    soft.assertThat(contentKey).isNotEqualTo(docKey);
+
+    soft.assertThat(keyToAllStoreKeys(key))
+        .hasSize(2)
+        .containsEntry(CONTENT_DISCRIMINATOR, contentKey)
+        .containsEntry(DOCUMENTATION_DISCRIMINATOR, docKey);
+  }
+
+  @Test
+  public void storeKeyDiscriminator() {
+    ContentKey key = ContentKey.of("a", "b");
+    StoreKey contentKey = keyToStoreKey(key);
+    StoreKey docKey = keyToStoreKeyVariant(key, DOCUMENTATION_DISCRIMINATOR);
+
+    soft.assertThat(storeKeyWithDiscriminator(contentKey, DOCUMENTATION_DISCRIMINATOR))
+        .isEqualTo(docKey);
+    soft.assertThat(storeKeyWithDiscriminator(docKey, CONTENT_DISCRIMINATOR)).isEqualTo(contentKey);
+
+    soft.assertThat(storeKeyWithDiscriminator(contentKey, CONTENT_DISCRIMINATOR))
+        .isEqualTo(contentKey);
+    soft.assertThat(storeKeyWithDiscriminator(docKey, DOCUMENTATION_DISCRIMINATOR))
+        .isEqualTo(docKey);
   }
 
   static Stream<Arguments> headers() {

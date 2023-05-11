@@ -24,6 +24,7 @@ import org.junit.jupiter.api.Assertions;
 import org.projectnessie.model.CommitMeta;
 import org.projectnessie.model.Content;
 import org.projectnessie.model.ContentKey;
+import org.projectnessie.model.Documentation;
 import org.projectnessie.versioned.BranchName;
 import org.projectnessie.versioned.Delete;
 import org.projectnessie.versioned.Hash;
@@ -60,12 +61,34 @@ public class CommitBuilder {
   /**
    * Adds a put operation to the current commit.
    *
+   * @param key key's name to add
+   * @param value the value associated with the key
+   * @return the builder instance
+   */
+  public CommitBuilder put(String key, Content value, Documentation documentation) {
+    return put(ContentKey.of(key), value, documentation);
+  }
+
+  /**
+   * Adds a put operation to the current commit.
+   *
    * @param key key to add
    * @param value the value associated with the key
    * @return the builder instance
    */
   public CommitBuilder put(ContentKey key, Content value) {
     return add(Put.of(key, value));
+  }
+
+  /**
+   * Adds a put operation to the current commit.
+   *
+   * @param key key to add
+   * @param value the value associated with the key
+   * @return the builder instance
+   */
+  public CommitBuilder put(ContentKey key, Content value, Documentation documentation) {
+    return add(Put.of(key, value, documentation));
   }
 
   /**

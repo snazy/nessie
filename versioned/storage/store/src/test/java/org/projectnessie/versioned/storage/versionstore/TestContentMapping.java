@@ -23,9 +23,9 @@ import static org.projectnessie.versioned.storage.common.objtypes.CommitOp.COMMI
 import static org.projectnessie.versioned.storage.common.objtypes.CommitOp.commitOp;
 import static org.projectnessie.versioned.storage.common.persist.ObjId.EMPTY_OBJ_ID;
 import static org.projectnessie.versioned.storage.common.persist.ObjId.randomObjId;
+import static org.projectnessie.versioned.storage.versionstore.Discriminators.CONTENT_DISCRIMINATOR;
 import static org.projectnessie.versioned.storage.versionstore.TypeMapping.AUTHOR;
 import static org.projectnessie.versioned.storage.versionstore.TypeMapping.COMMITTER;
-import static org.projectnessie.versioned.storage.versionstore.TypeMapping.CONTENT_DISCRIMINATOR;
 import static org.projectnessie.versioned.storage.versionstore.TypeMapping.MAIN_UNIVERSE;
 import static org.projectnessie.versioned.storage.versionstore.TypeMapping.objIdToHash;
 import static org.projectnessie.versioned.store.DefaultStoreWorker.payloadForContent;
@@ -126,10 +126,12 @@ public class TestContentMapping {
     StoreIndex<CommitOp> index = newStoreIndex(COMMIT_OP_SERIALIZER);
     index.add(
         indexElement(
-            key(MAIN_UNIVERSE, "foo", CONTENT_DISCRIMINATOR), commitOp(Action.ADD, 1, tableId)));
+            key(MAIN_UNIVERSE, "foo", CONTENT_DISCRIMINATOR.value()),
+            commitOp(Action.ADD, 1, tableId)));
     index.add(
         indexElement(
-            key(MAIN_UNIVERSE, "bar", CONTENT_DISCRIMINATOR), commitOp(Action.REMOVE, 1, tableId)));
+            key(MAIN_UNIVERSE, "bar", CONTENT_DISCRIMINATOR.value()),
+            commitOp(Action.REMOVE, 1, tableId)));
 
     CommitMeta referenceCommitMeta =
         ImmutableCommitMeta.builder()
@@ -196,10 +198,12 @@ public class TestContentMapping {
     StoreIndex<CommitOp> index = newStoreIndex(COMMIT_OP_SERIALIZER);
     index.add(
         indexElement(
-            key(MAIN_UNIVERSE, "foo", CONTENT_DISCRIMINATOR), commitOp(Action.ADD, 1, tableId)));
+            key(MAIN_UNIVERSE, "foo", CONTENT_DISCRIMINATOR.value()),
+            commitOp(Action.ADD, 1, tableId)));
     index.add(
         indexElement(
-            key(MAIN_UNIVERSE, "bar", CONTENT_DISCRIMINATOR), commitOp(Action.REMOVE, 1, tableId)));
+            key(MAIN_UNIVERSE, "bar", CONTENT_DISCRIMINATOR.value()),
+            commitOp(Action.REMOVE, 1, tableId)));
 
     CommitMeta referenceCommitMeta =
         ImmutableCommitMeta.builder()

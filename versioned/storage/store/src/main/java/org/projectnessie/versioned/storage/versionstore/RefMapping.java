@@ -25,11 +25,12 @@ import static org.projectnessie.versioned.storage.common.logic.CommitLogQuery.co
 import static org.projectnessie.versioned.storage.common.logic.Logics.commitLogic;
 import static org.projectnessie.versioned.storage.common.logic.Logics.referenceLogic;
 import static org.projectnessie.versioned.storage.common.persist.ObjId.EMPTY_OBJ_ID;
+import static org.projectnessie.versioned.storage.versionstore.Discriminators.DOCUMENTATION_DISCRIMINATOR;
 import static org.projectnessie.versioned.storage.versionstore.TypeMapping.COMMIT_TIME;
 import static org.projectnessie.versioned.storage.versionstore.TypeMapping.hashToObjId;
 import static org.projectnessie.versioned.storage.versionstore.TypeMapping.headerValueToInstant;
 import static org.projectnessie.versioned.storage.versionstore.TypeMapping.objIdToHash;
-import static org.projectnessie.versioned.storage.versionstore.TypeMapping.storeKeyToKey;
+import static org.projectnessie.versioned.storage.versionstore.TypeMapping.storeKeyToKeyAndDiscriminator;
 
 import com.google.common.annotations.VisibleForTesting;
 import java.time.Instant;
@@ -140,8 +141,18 @@ public class RefMapping {
   }
 
   public static Conflict commitConflictToConflict(CommitConflict conflict) {
-    ContentKey key = storeKeyToKey(conflict.key());
-    String k = key != null ? "key '" + key + "'" : "store-key '" + conflict.key() + "'";
+    KeyAndDiscriminator keyDisc = storeKeyToKeyAndDiscriminator(conflict.key());
+
+    ContentKey key;
+    String k;
+    if (keyDisc != null) {
+      key = keyDisc.key();
+      k = "key '" + keyDisc.key() + "'";
+    } else {
+      key = null;
+      k = "store-key '" + conflict.key() + "'";
+    }
+
     String msg;
     ConflictType conflictType;
     switch (conflict.conflictType()) {
@@ -162,8 +173,13 @@ public class RefMapping {
         msg = "content IDs of existing and expected content for " + k + " are different";
         break;
       case VALUE_DIFFERS:
-        conflictType = ConflictType.VALUE_DIFFERS;
-        msg = "values of existing and expected content for " + k + " are different";
+        if (keyDisc != null && keyDisc.discriminator() == DOCUMENTATION_DISCRIMINATOR) {
+          conflictType = ConflictType.DOCUMENTATION_DIFFERS;
+          msg = "existing and expected documentation for " + k + " are different";
+        } else {
+          conflictType = ConflictType.VALUE_DIFFERS;
+          msg = "values of existing and expected content for " + k + " are different";
+        }
         break;
       default:
         conflictType = ConflictType.UNKNOWN;

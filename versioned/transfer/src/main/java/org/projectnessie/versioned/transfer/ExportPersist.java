@@ -175,6 +175,10 @@ final class ExportPersist extends ExportCommon {
               ObjId valueId = content.value();
               if (valueId != null) {
                 try {
+                  // TODO add support for StringObj for docs !
+                  //  - export individual store-key commits (i.e. separate for content + docs?)
+                  //  - export content + docs in a single Commit.Operation ?
+
                   ContentValueObj value =
                       requireNonNull(exporter.persist())
                           .fetchTypedObj(valueId, VALUE, ContentValueObj.class);

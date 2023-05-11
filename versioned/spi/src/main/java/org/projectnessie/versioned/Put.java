@@ -23,6 +23,7 @@ import javax.annotation.Nullable;
 import org.immutables.value.Value;
 import org.projectnessie.model.Content;
 import org.projectnessie.model.ContentKey;
+import org.projectnessie.model.Documentation;
 import org.projectnessie.nessie.relocated.protobuf.ByteString;
 import org.projectnessie.versioned.store.DefaultStoreWorker;
 
@@ -39,6 +40,10 @@ public abstract class Put implements Operation {
   public Content getValue() {
     return getValueSupplier().get();
   }
+
+  @Nullable
+  @jakarta.annotation.Nullable
+  public abstract Documentation getDocumentation();
 
   protected abstract Supplier<Content> getValueSupplier();
 
@@ -63,7 +68,20 @@ public abstract class Put implements Operation {
   public static Put of(
       @Nonnull @jakarta.annotation.Nonnull ContentKey key,
       @Nonnull @jakarta.annotation.Nonnull Content value) {
-    return ImmutablePut.builder().key(key).valueSupplier(() -> value).build();
+    return of(key, value, null);
+  }
+
+  @Nonnull
+  @jakarta.annotation.Nonnull
+  public static Put of(
+      @Nonnull @jakarta.annotation.Nonnull ContentKey key,
+      @Nonnull @jakarta.annotation.Nonnull Content value,
+      @Nullable @jakarta.annotation.Nullable Documentation documentation) {
+    return ImmutablePut.builder()
+        .key(key)
+        .valueSupplier(() -> value)
+        .documentation(documentation)
+        .build();
   }
 
   /** Creates a lazily-evaluated put-operation for the given key, payload and ByteString value. */
@@ -105,12 +123,13 @@ public abstract class Put implements Operation {
     Put that = (Put) o;
     return this.shouldMatchHash() == that.shouldMatchHash()
         && this.getKey().equals(that.getKey())
-        && this.getValue().equals(that.getValue());
+        && this.getValue().equals(that.getValue())
+        && Objects.equals(this.getDocumentation(), that.getDocumentation());
   }
 
   @Override
   public int hashCode() {
-    return Objects.hash(shouldMatchHash(), getKey(), getValue());
+    return Objects.hash(shouldMatchHash(), getKey(), getValue(), getDocumentation());
   }
 
   @Override
@@ -120,6 +139,7 @@ public abstract class Put implements Operation {
         .add("shouldMatchHash", shouldMatchHash())
         .add("key", getKey())
         .add("value", getValue())
+        .add("documentation", getDocumentation())
         .toString();
   }
 }

@@ -28,6 +28,8 @@ import static java.time.temporal.ChronoField.SECOND_OF_MINUTE;
 import static java.time.temporal.ChronoField.YEAR;
 import static java.util.Collections.emptyList;
 import static org.projectnessie.versioned.storage.common.objtypes.CommitHeaders.newCommitHeaders;
+import static org.projectnessie.versioned.storage.versionstore.Discriminators.CONTENT_DISCRIMINATOR;
+import static org.projectnessie.versioned.storage.versionstore.KeyAndDiscriminator.keyAndDiscriminator;
 
 import java.time.Instant;
 import java.time.ZonedDateTime;
@@ -36,6 +38,7 @@ import java.time.format.DateTimeFormatterBuilder;
 import java.time.format.DateTimeParseException;
 import java.time.format.SignStyle;
 import java.util.ArrayList;
+import java.util.EnumMap;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
@@ -55,7 +58,6 @@ import org.projectnessie.versioned.storage.common.persist.ObjId;
 public final class TypeMapping {
 
   public static final String MAIN_UNIVERSE = "M";
-  public static final String CONTENT_DISCRIMINATOR = "C";
 
   public static final String COMMIT_TIME = "date";
   public static final String AUTHOR_TIME = "author-date";
@@ -80,7 +82,7 @@ public final class TypeMapping {
   /**
    * Converts a {@link StoreKey} to a {@link ContentKey}, returning {@code null}, if the store key
    * does not reference the {@link #MAIN_UNIVERSE main universe} or not a {@link
-   * #CONTENT_DISCRIMINATOR content object}.
+   * Discriminators#CONTENT_DISCRIMINATOR content object}.
    *
    * <p>A {@link ContentKey} is represented as a {@link StoreKey} as follows:<br>
    * {@code universe CHAR_0 key-element ( CHAR_1 key-element ) * CHAR_0 variant}
@@ -91,6 +93,19 @@ public final class TypeMapping {
   @Nullable
   @jakarta.annotation.Nullable
   public static ContentKey storeKeyToKey(@Nonnull @jakarta.annotation.Nonnull StoreKey storeKey) {
+    KeyAndDiscriminator keyAndDiscriminator = storeKeyToKeyAndDiscriminator(storeKey);
+
+    if (keyAndDiscriminator == null
+        || CONTENT_DISCRIMINATOR != keyAndDiscriminator.discriminator()) {
+      return null;
+    }
+    return keyAndDiscriminator.key();
+  }
+
+  @Nullable
+  @jakarta.annotation.Nullable
+  public static KeyAndDiscriminator storeKeyToKeyAndDiscriminator(
+      @Nonnull @jakarta.annotation.Nonnull StoreKey storeKey) {
     String universe;
     List<String> keyElements;
     String variant;
@@ -120,20 +135,26 @@ public final class TypeMapping {
       variant = raw.substring(idx2 + 1);
     }
 
-    if (!universe.equals(MAIN_UNIVERSE) || !CONTENT_DISCRIMINATOR.equals(variant)) {
+    if (!universe.equals(MAIN_UNIVERSE)) {
       return null;
     }
-    return ContentKey.of(keyElements);
+
+    ContentKey key = ContentKey.of(keyElements);
+    Discriminators discriminator = Discriminators.fromString(variant);
+    if (discriminator == null) {
+      return null;
+    }
+    return keyAndDiscriminator(key, discriminator);
   }
 
   /**
    * Converts a {@link ContentKey} to a {@link StoreKey} in the {@link #MAIN_UNIVERSE main universe}
-   * as a {@link #CONTENT_DISCRIMINATOR content object}.
+   * as a {@link Discriminators#CONTENT_DISCRIMINATOR content object}.
    */
   @Nonnull
   @jakarta.annotation.Nonnull
   public static StoreKey keyToStoreKey(@Nonnull @jakarta.annotation.Nonnull ContentKey key) {
-    return keyToStoreKeyVariant(key, CONTENT_DISCRIMINATOR);
+    return keyToStoreKey(key.getElements());
   }
 
   @Nonnull
@@ -141,6 +162,37 @@ public final class TypeMapping {
   public static StoreKey keyToStoreKey(
       @Nonnull @jakarta.annotation.Nonnull List<String> keyElements) {
     return keyToStoreKeyVariant(keyElements, CONTENT_DISCRIMINATOR);
+  }
+
+  @Nonnull
+  @jakarta.annotation.Nonnull
+  public static StoreKey keyToStoreKeyVariant(
+      @Nonnull @jakarta.annotation.Nonnull ContentKey key,
+      @Nonnull @jakarta.annotation.Nonnull Discriminators discriminator) {
+    return keyToStoreKeyVariant(key.getElements(), discriminator);
+  }
+
+  @Nonnull
+  @jakarta.annotation.Nonnull
+  public static StoreKey keyToStoreKeyVariant(
+      @Nonnull @jakarta.annotation.Nonnull List<String> keyElements,
+      @Nonnull @jakarta.annotation.Nonnull Discriminators discriminator) {
+    return keyToStoreKeyVariant(keyElements, discriminator.value());
+  }
+
+  @Nonnull
+  @jakarta.annotation.Nonnull
+  public static EnumMap<Discriminators, StoreKey> keyToAllStoreKeys(
+      @Nonnull @jakarta.annotation.Nonnull ContentKey key) {
+    StringBuilder prefix = keyToStoreKeyPrepare(key).append((char) 0);
+    int prefixLen = prefix.length();
+    EnumMap<Discriminators, StoreKey> map = new EnumMap<>(Discriminators.class);
+    for (Discriminators discriminator : Discriminators.values()) {
+      prefix.setLength(prefixLen);
+      map.put(
+          discriminator, StoreKey.keyFromString(prefix.append(discriminator.value()).toString()));
+    }
+    return map;
   }
 
   @Nonnull
@@ -155,6 +207,14 @@ public final class TypeMapping {
   public static StoreKey keyToStoreKeyVariant(
       @Nonnull @jakarta.annotation.Nonnull ContentKey key, String discriminator) {
     return keyToStoreKeyVariant(key.getElements(), discriminator);
+  }
+
+  public static StoreKey storeKeyWithDiscriminator(
+      @Nonnull @jakarta.annotation.Nonnull StoreKey storeKey,
+      @Nonnull @jakarta.annotation.Nonnull Discriminators variant) {
+    String raw = storeKey.rawString();
+    int i = raw.lastIndexOf((char) 0);
+    return StoreKey.keyFromString(raw.substring(0, i + 1) + variant.value());
   }
 
   @Nonnull
@@ -209,6 +269,14 @@ public final class TypeMapping {
       }
     }
     return sb;
+  }
+
+  public static Discriminators storeKeyGetDiscriminator(
+      @Nonnull @jakarta.annotation.Nonnull StoreKey storeKey) {
+    String raw = storeKey.rawString();
+    int i = raw.lastIndexOf((char) 0);
+    String d = raw.substring(i + 1);
+    return Discriminators.fromString(d);
   }
 
   @Nonnull

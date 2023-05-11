@@ -15,6 +15,8 @@
  */
 package org.projectnessie.versioned.tests;
 
+import static com.google.common.collect.Lists.newArrayList;
+import static com.google.common.collect.Maps.immutableEntry;
 import static com.google.common.collect.Streams.stream;
 import static java.util.Collections.emptyList;
 import static org.assertj.core.api.Assertions.assertThat;
@@ -23,6 +25,7 @@ import static org.assertj.core.api.Assumptions.assumeThat;
 import static org.assertj.core.api.InstanceOfAssertFactories.list;
 import static org.assertj.core.api.InstanceOfAssertFactories.type;
 import static org.junit.jupiter.params.provider.Arguments.arguments;
+import static org.projectnessie.versioned.ContentResult.contentResult;
 import static org.projectnessie.versioned.testworker.OnRefOnly.newOnRef;
 
 import com.google.common.collect.ImmutableList;
@@ -46,10 +49,12 @@ import org.projectnessie.model.Conflict;
 import org.projectnessie.model.Conflict.ConflictType;
 import org.projectnessie.model.Content;
 import org.projectnessie.model.ContentKey;
+import org.projectnessie.model.Documentation;
 import org.projectnessie.model.IcebergTable;
 import org.projectnessie.versioned.BranchName;
 import org.projectnessie.versioned.Commit;
 import org.projectnessie.versioned.CommitResult;
+import org.projectnessie.versioned.ContentResult;
 import org.projectnessie.versioned.Delete;
 import org.projectnessie.versioned.GetNamedRefsParams;
 import org.projectnessie.versioned.Hash;
@@ -149,6 +154,72 @@ public abstract class AbstractCommits extends AbstractNestedVersionStore {
     }
     soft.assertThatThrownBy(() -> store().delete(branch, Optional.of(commitHash)))
         .isInstanceOf(ReferenceNotFoundException.class);
+  }
+
+  @Test
+  public void commitWithDocs() throws Exception {
+    assumeThat(isNewStorageModel()).isTrue();
+
+    // TODO tests for conflicting doc updates
+
+    BranchName branch = BranchName.of("foo");
+
+    store().create(branch, Optional.empty()).getHash();
+
+    ContentKey t1 = ContentKey.of("t1");
+    ContentKey t2 = ContentKey.of("t2");
+    ContentKey t3 = ContentKey.of("t3");
+
+    Documentation doc1 = Documentation.of("text/plain", "hello 1");
+    Documentation doc2 = Documentation.of("text/plain", "hello 2");
+    Documentation doc3 = Documentation.of("text/plain", "hello 3");
+
+    Hash commit =
+        commit("Initial Commit")
+            .put(t1, V_1_1, doc1)
+            .put(t2, V_2_1)
+            .put(t3, V_3_1)
+            .toBranch(branch);
+
+    ContentResult cr1 = store().getValue(commit, t1);
+    ContentResult cr2 = store().getValue(commit, t2);
+    ContentResult cr3 = store().getValue(commit, t3);
+
+    soft.assertThat(cr1.documentation()).isEqualTo(doc1);
+    soft.assertThat(cr2.documentation()).isNull();
+    soft.assertThat(cr3.documentation()).isNull();
+    soft.assertThat(store().getValues(commit, newArrayList(t1, t2, t3)))
+        .containsExactly(immutableEntry(t1, cr1), immutableEntry(t2, cr2), immutableEntry(t3, cr3));
+
+    // add doc for t2
+
+    commit = commit("Doc for t2").put(t2, cr2.content(), doc2).toBranch(branch);
+    soft.assertThat(store().getValue(commit, t2))
+        .isEqualTo(contentResult(cr2.identifiedKey(), cr2.content(), doc2));
+
+    // add doc for t3
+
+    commit = commit("Doc for t3").put(t3, cr3.content(), doc3).toBranch(branch);
+    soft.assertThat(store().getValue(commit, t3))
+        .isEqualTo(contentResult(cr3.identifiedKey(), cr3.content(), doc3));
+
+    // delete t2
+
+    commit = commit("Delete t2").delete(t2).toBranch(branch);
+    soft.assertThat(store().getValue(commit, t2)).isNull();
+
+    // re-add another t2
+
+    commit = commit("Re-add t2").put(t2, V_2_1).toBranch(branch);
+    cr2 = store().getValue(commit, t2);
+    soft.assertThat(store().getValue(commit, t2))
+        .isEqualTo(contentResult(cr2.identifiedKey(), cr2.content(), null));
+
+    // add doc for t2
+
+    commit = commit("Doc for t2").put(t2, cr2.content(), doc2).toBranch(branch);
+    soft.assertThat(store().getValue(commit, t2))
+        .isEqualTo(contentResult(cr2.identifiedKey(), cr2.content(), doc2));
   }
 
   /*

@@ -17,7 +17,6 @@ package org.projectnessie.versioned.storage.versionstore;
 
 import static com.google.common.base.Preconditions.checkArgument;
 import static com.google.common.base.Preconditions.checkState;
-import static com.google.common.collect.Sets.newHashSetWithExpectedSize;
 import static java.util.Objects.requireNonNull;
 import static org.agrona.collections.Hashing.DEFAULT_LOAD_FACTOR;
 import static org.projectnessie.versioned.CommitValidation.CommitOperation.commitOperation;
@@ -30,15 +29,18 @@ import static org.projectnessie.versioned.storage.common.logic.Logics.commitLogi
 import static org.projectnessie.versioned.storage.common.logic.Logics.indexesLogic;
 import static org.projectnessie.versioned.storage.common.objtypes.CommitOp.contentIdMaybe;
 import static org.projectnessie.versioned.storage.common.persist.ObjId.EMPTY_OBJ_ID;
+import static org.projectnessie.versioned.storage.versionstore.Discriminators.CONTENT_DISCRIMINATOR;
+import static org.projectnessie.versioned.storage.versionstore.Discriminators.DOCUMENTATION_DISCRIMINATOR;
 import static org.projectnessie.versioned.storage.versionstore.RefMapping.referenceConflictException;
 import static org.projectnessie.versioned.storage.versionstore.RefMapping.referenceNotFound;
 import static org.projectnessie.versioned.storage.versionstore.TypeMapping.fromCommitMeta;
-import static org.projectnessie.versioned.storage.versionstore.TypeMapping.keyToStoreKey;
+import static org.projectnessie.versioned.storage.versionstore.TypeMapping.keyToAllStoreKeys;
 import static org.projectnessie.versioned.storage.versionstore.VersionStoreImpl.buildIdentifiedKey;
 import static org.projectnessie.versioned.store.DefaultStoreWorker.contentTypeForPayload;
 import static org.projectnessie.versioned.store.DefaultStoreWorker.payloadForContent;
 
 import java.util.ArrayList;
+import java.util.EnumMap;
 import java.util.HashMap;
 import java.util.HashSet;
 import java.util.List;
@@ -56,6 +58,7 @@ import org.projectnessie.error.BaseNessieClientServerException;
 import org.projectnessie.model.CommitMeta;
 import org.projectnessie.model.Content;
 import org.projectnessie.model.ContentKey;
+import org.projectnessie.model.Documentation;
 import org.projectnessie.versioned.BranchName;
 import org.projectnessie.versioned.Commit;
 import org.projectnessie.versioned.CommitResult;
@@ -84,6 +87,7 @@ import org.projectnessie.versioned.storage.common.logic.IndexesLogic;
 import org.projectnessie.versioned.storage.common.objtypes.CommitObj;
 import org.projectnessie.versioned.storage.common.objtypes.CommitOp;
 import org.projectnessie.versioned.storage.common.objtypes.ContentValueObj;
+import org.projectnessie.versioned.storage.common.objtypes.StringObj;
 import org.projectnessie.versioned.storage.common.persist.Obj;
 import org.projectnessie.versioned.storage.common.persist.ObjId;
 import org.projectnessie.versioned.storage.common.persist.Persist;
@@ -214,23 +218,19 @@ class CommitImpl extends BaseCommitHelper {
       throws ObjNotFoundException, ReferenceConflictException {
     Set<ContentKey> allKeys = new HashSet<>();
 
-    Set<StoreKey> storeKeysForHead =
-        expectedIndex() != headIndex() ? newHashSetWithExpectedSize(operations.size()) : null;
-
-    List<StoreKey> storeKeys = new ArrayList<>();
+    List<EnumMap<Discriminators, StoreKey>> storeKeys = new ArrayList<>();
+    Set<StoreKey> storeKeysToPreload = new HashSet<>();
     for (Operation operation : operations) {
       ContentKey key = operation.getKey();
       checkArgument(allKeys.add(key), "Duplicate key in commit operations: %s", key);
-      StoreKey storeKey = keyToStoreKey(key);
-      storeKeys.add(storeKey);
-      if (storeKeysForHead != null && operation instanceof Unchanged) {
-        storeKeysForHead.add(storeKey);
-      }
+      EnumMap<Discriminators, StoreKey> storeKeyMap = keyToAllStoreKeys(key);
+      storeKeys.add(storeKeyMap);
+      storeKeysToPreload.addAll(storeKeyMap.values());
     }
 
-    expectedIndex().loadIfNecessary(new HashSet<>(storeKeys));
-    if (storeKeysForHead != null) {
-      headIndex().loadIfNecessary(storeKeysForHead);
+    expectedIndex().loadIfNecessary(storeKeysToPreload);
+    if (expectedIndex() != headIndex()) {
+      headIndex().loadIfNecessary(storeKeysToPreload);
     }
 
     Map<UUID, StoreKey> deleted = new HashMap<>();
@@ -240,14 +240,13 @@ class CommitImpl extends BaseCommitHelper {
     // Must handle delete operations before put operations
     for (int i = 0; i < operations.size(); i++) {
       Operation operation = operations.get(i);
-      StoreKey storeKey = storeKeys.get(i);
+      EnumMap<Discriminators, StoreKey> storeKeyMap = storeKeys.get(i);
 
       if (operation instanceof Delete) {
         commitAddDelete(
-            expectedIndex(),
             commit,
             (Delete) operation,
-            storeKey,
+            storeKeyMap,
             deleted,
             deletedKeysAndPayload::put,
             commitValidation);
@@ -255,14 +254,13 @@ class CommitImpl extends BaseCommitHelper {
     }
     for (int i = 0; i < operations.size(); i++) {
       Operation operation = operations.get(i);
-      StoreKey storeKey = storeKeys.get(i);
+      EnumMap<Discriminators, StoreKey> storeKeyMap = storeKeys.get(i);
 
       if (operation instanceof Put) {
         commitAddPut(
-            expectedIndex(),
             commit,
             (Put) operation,
-            storeKey,
+            storeKeyMap,
             contentToStore,
             commitRetryState,
             deleted,
@@ -271,7 +269,7 @@ class CommitImpl extends BaseCommitHelper {
       } else if (operation instanceof Delete) {
         // handled above
       } else if (operation instanceof Unchanged) {
-        commitAddUnchanged(headIndex(), expectedIndex(), commit, storeKey);
+        commitAddUnchanged(commit, storeKeyMap);
       } else {
         throw new IllegalArgumentException(
             "Unknown operation type " + operation.getClass().getSimpleName());
@@ -281,98 +279,118 @@ class CommitImpl extends BaseCommitHelper {
     validateNamespaces(newContent, deletedKeysAndPayload, headIndex());
   }
 
-  private static void commitAddUnchanged(
-      StoreIndex<CommitOp> headIndex,
-      StoreIndex<CommitOp> expectedIndex,
-      CreateCommit.Builder commit,
-      StoreKey storeKey) {
+  private void commitAddUnchanged(
+      CreateCommit.Builder commit, EnumMap<Discriminators, StoreKey> storeKeyMap) {
     // nothing to do, if head == expected
-    if (headIndex != expectedIndex) {
-      StoreIndexElement<CommitOp> expectedElement = expectedIndex.get(storeKey);
+    if (headIndex() != expectedIndex()) {
+      for (Map.Entry<Discriminators, StoreKey> discriminatorStoreKey : storeKeyMap.entrySet()) {
+        StoreKey storeKey = discriminatorStoreKey.getValue();
+        boolean isContent = discriminatorStoreKey.getKey() == CONTENT_DISCRIMINATOR;
 
-      int payload = 0;
-      ObjId expectedValue = null;
-      UUID expectedContentID = null;
+        StoreIndexElement<CommitOp> currentElement;
+        StoreIndexElement<CommitOp> existingElement;
+        if (headIndex() != expectedIndex()) {
+          currentElement = headIndex().get(storeKey);
+          existingElement = expectedIndex().get(storeKey);
+        } else {
+          currentElement = existingElement = expectedIndex().get(storeKey);
+        }
 
-      // TODO add much stricter handling of Delete against existing content, but that requires
-      //  changes to the model
-      // TODO validate content-ID in store-index against content-ID in operation
+        int payload = 0;
+        ObjId expectedValue = null;
+        UUID expectedContentID = null;
 
-      if (expectedElement != null) {
-        CommitOp content = expectedElement.content();
-        if (content.action().exists()) {
-          payload = content.payload();
-          expectedValue = content.value();
-          expectedContentID = content.contentId();
+        // TODO add much stricter handling of Delete against existing content, but that requires
+        //  changes to the model
+        // TODO validate content-ID in store-index against content-ID in operation
+
+        if (existingElement != null) {
+          CommitOp content = existingElement.content();
+          if (content.action().exists()) {
+            payload = content.payload();
+            expectedValue = content.value();
+            expectedContentID = content.contentId();
+          }
+        }
+
+        if (expectedValue == null) {
+          expectedValue = EMPTY_OBJ_ID;
+        }
+
+        // Always add the remove action for CONTENT_DISCRIMINATOR, but only add the remove action
+        // for
+        // 2nd-ary variants, if the value exists.
+        if (isContent || currentElement != null) {
+          commit.addUnchanged(commitUnchanged(storeKey, payload, expectedValue, expectedContentID));
         }
       }
-
-      if (expectedValue == null) {
-        expectedValue = EMPTY_OBJ_ID;
-      }
-
-      commit.addUnchanged(commitUnchanged(storeKey, payload, expectedValue, expectedContentID));
     }
   }
 
   private void commitAddDelete(
-      StoreIndex<CommitOp> expectedIndex,
       CreateCommit.Builder commit,
       Delete operation,
-      StoreKey storeKey,
+      EnumMap<Discriminators, StoreKey> storeKeyMap,
       Map<UUID, StoreKey> deleted,
       ObjIntConsumer<ContentKey> deletedKeys,
       ImmutableCommitValidation.Builder commitValidation) {
-    StoreIndexElement<CommitOp> existingElement = expectedIndex.get(storeKey);
+    for (Map.Entry<Discriminators, StoreKey> discriminatorStoreKey : storeKeyMap.entrySet()) {
+      StoreKey storeKey = discriminatorStoreKey.getValue();
+      boolean isContent = discriminatorStoreKey.getKey() == CONTENT_DISCRIMINATOR;
 
-    int payload = 0;
-    ObjId existingValue = null;
-    UUID existingContentID = null;
+      StoreIndexElement<CommitOp> currentElement;
+      StoreIndexElement<CommitOp> existingElement;
+      if (headIndex() != expectedIndex()) {
+        currentElement = headIndex().get(storeKey);
+        existingElement = expectedIndex().get(storeKey);
+      } else {
+        currentElement = existingElement = expectedIndex().get(storeKey);
+      }
 
-    // TODO add much stricter handling of Delete against existing content, but that requires changes
-    //  to the model
-    // TODO require expectedContent for existing content
-    // TODO validate content-ID in store-index against content-ID in operation
+      int payload = 0;
+      ObjId existingValue = null;
+      UUID existingContentID = null;
 
-    if (existingElement != null) {
-      CommitOp content = existingElement.content();
-      if (content.action().exists()) {
-        payload = content.payload();
-        existingValue = content.value();
-        existingContentID = content.contentId();
-        deleted.put(existingContentID, storeKey);
+      if (existingElement != null) {
+        CommitOp content = existingElement.content();
+        if (content.action().exists()) {
+          payload = content.payload();
+          existingValue = content.value();
+          existingContentID = content.contentId();
 
-        ContentKey contentKey = operation.getKey();
+          if (isContent) {
+            ContentKey contentKey = operation.getKey();
 
-        deletedKeys.accept(contentKey, payload);
+            commitValidation.addOperations(
+                commitOperation(
+                    buildIdentifiedKey(
+                        contentKey,
+                        expectedIndex,
+                        contentTypeForPayload(payload),
+                        existingContentID != null ? existingContentID.toString() : null),
+                    operation));
+            deleted.put(existingContentID, storeKey);
+            deletedKeys.accept(contentKey, payload);
+          }
+        }
+      }
 
-        commitValidation.addOperations(
-            commitOperation(
-                buildIdentifiedKey(
-                    contentKey,
-                    expectedIndex,
-                    contentTypeForPayload(payload),
-                    existingContentID != null ? existingContentID.toString() : null),
-                operation));
+      if (existingValue == null) {
+        existingValue = EMPTY_OBJ_ID;
+      }
+
+      // Always add the remove action for CONTENT_DISCRIMINATOR, but only add the remove action for
+      // 2nd-ary variants, if the value exists.
+      if (isContent || currentElement != null) {
+        commit.addRemoves(commitRemove(storeKey, payload, existingValue, existingContentID));
       }
     }
-
-    if (existingValue == null) {
-      existingValue = EMPTY_OBJ_ID;
-    }
-
-    // TODO remove other existing variants beside TypeMapping.CONTENT_DISCRIMINATOR.
-    //  Plan: shorten the storeKey (remove CONTENT_DISCRIMINATOR), iterate over the headIndex()
-    //  and add removes for all the found keys.
-
-    commit.addRemoves(commitRemove(storeKey, payload, existingValue, existingContentID));
   }
 
   private void commitAddPut(
-      StoreIndex<CommitOp> expectedIndex,
       CreateCommit.Builder commit,
       Put put,
-      StoreKey storeKey,
+      EnumMap<Discriminators, StoreKey> storeKeyMap,
       Consumer<Obj> contentToStore,
       CommitRetryState commitRetryState,
       Map<UUID, StoreKey> deleted,
@@ -380,21 +398,25 @@ class CommitImpl extends BaseCommitHelper {
       ImmutableCommitValidation.Builder commitValidation)
       throws ObjNotFoundException {
     Content putValue = put.getValue();
+    Documentation documentation = put.getDocumentation();
     ContentKey putKey = put.getKey();
     String putValueId = putValue.getId();
 
     int payload = payloadForContent(putValue);
-    ObjId existingValue = null;
+    ObjId existingId = null;
+    ObjId existingDocId = null;
     UUID existingContentID;
     String expectedContentIDString;
 
-    StoreIndexElement<CommitOp> existing = expectedIndex.get(storeKey);
+    StoreKey storeKey = storeKeyMap.get(CONTENT_DISCRIMINATOR);
+
+    StoreIndexElement<CommitOp> existing = expectedIndex().get(storeKey);
     if (existing == null && putValueId != null) {
       // Check for a Delete-op in the same commit, representing a rename operation.
       UUID expectedContentID = UUID.fromString(putValueId);
       StoreKey deletedKey = deleted.remove(expectedContentID);
       if (deletedKey != null) {
-        existing = expectedIndex.get(deletedKey);
+        existing = expectedIndex().get(deletedKey);
       }
     }
 
@@ -403,12 +425,12 @@ class CommitImpl extends BaseCommitHelper {
       CommitOp content = existing.content();
       if (content.action().exists()) {
         payload = content.payload();
-        existingValue = requireNonNull(content.value());
+        existingId = requireNonNull(content.value());
         existingContentID = content.contentId();
         expectedContentIDString =
             existingContentID != null
                 ? existingContentID.toString()
-                : contentIdFromContent(existingValue);
+                : contentIdFromContent(existingId);
 
         checkArgument(
             putValueId != null, "New value to update existing key '%s' has no content ID", putKey);
@@ -447,7 +469,7 @@ class CommitImpl extends BaseCommitHelper {
     // Note: the content-ID from legacy, imported Nessie repositories could theoretically been
     // any string value. If it's a UUID, use it, otherwise ignore it down the road.
     UUID contentId = contentIdMaybe(putValueId);
-    commit.addAdds(commitAdd(storeKey, payload, valueId, existingValue, contentId));
+    commit.addAdds(commitAdd(storeKey, payload, valueId, existingId, contentId));
 
     commitValidation.addOperations(
         commitOperation(
@@ -457,6 +479,20 @@ class CommitImpl extends BaseCommitHelper {
                 contentTypeForPayload(payload),
                 contentId != null ? contentId.toString() : null),
             put));
+
+    if (documentation != null) {
+      StringObj doc = contentMapping.buildDocumentation(documentation);
+      contentToStore.accept(doc);
+      ObjId docId = requireNonNull(doc.id());
+
+      commit.addAdds(
+          commitAdd(
+              storeKeyMap.get(DOCUMENTATION_DISCRIMINATOR),
+              0, // no payload ID for documentation
+              docId,
+              existingDocId,
+              null));
+    }
   }
 
   private String contentIdFromContent(@Nonnull @jakarta.annotation.Nonnull ObjId contentValueId)

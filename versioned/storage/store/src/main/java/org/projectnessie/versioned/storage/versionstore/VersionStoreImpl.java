@@ -37,6 +37,8 @@ import static org.projectnessie.versioned.storage.common.persist.ObjType.COMMIT;
 import static org.projectnessie.versioned.storage.common.persist.Reference.reference;
 import static org.projectnessie.versioned.storage.versionstore.BaseCommitHelper.committingOperation;
 import static org.projectnessie.versioned.storage.versionstore.BaseCommitHelper.dryRunCommitterSupplier;
+import static org.projectnessie.versioned.storage.versionstore.Discriminators.CONTENT_DISCRIMINATOR;
+import static org.projectnessie.versioned.storage.versionstore.Discriminators.DOCUMENTATION_DISCRIMINATOR;
 import static org.projectnessie.versioned.storage.versionstore.KeyRanges.keyRanges;
 import static org.projectnessie.versioned.storage.versionstore.RefMapping.NO_ANCESTOR;
 import static org.projectnessie.versioned.storage.versionstore.RefMapping.asBranchName;
@@ -48,17 +50,19 @@ import static org.projectnessie.versioned.storage.versionstore.RefMapping.refere
 import static org.projectnessie.versioned.storage.versionstore.RefMapping.referenceNotFound;
 import static org.projectnessie.versioned.storage.versionstore.RefMapping.referenceToNamedRef;
 import static org.projectnessie.versioned.storage.versionstore.RefMapping.verifyExpectedHash;
-import static org.projectnessie.versioned.storage.versionstore.TypeMapping.CONTENT_DISCRIMINATOR;
 import static org.projectnessie.versioned.storage.versionstore.TypeMapping.hashToObjId;
+import static org.projectnessie.versioned.storage.versionstore.TypeMapping.keyToAllStoreKeys;
 import static org.projectnessie.versioned.storage.versionstore.TypeMapping.keyToStoreKey;
 import static org.projectnessie.versioned.storage.versionstore.TypeMapping.keyToStoreKeyMin;
 import static org.projectnessie.versioned.storage.versionstore.TypeMapping.keyToStoreKeyNoVariant;
+import static org.projectnessie.versioned.storage.versionstore.TypeMapping.keyToStoreKeyVariant;
 import static org.projectnessie.versioned.storage.versionstore.TypeMapping.objIdToHash;
 import static org.projectnessie.versioned.storage.versionstore.TypeMapping.storeKeyToKey;
 import static org.projectnessie.versioned.storage.versionstore.TypeMapping.toCommitMeta;
 import static org.projectnessie.versioned.store.DefaultStoreWorker.contentTypeForPayload;
 
 import java.util.Collection;
+import java.util.EnumMap;
 import java.util.HashMap;
 import java.util.Iterator;
 import java.util.List;
@@ -76,6 +80,7 @@ import javax.annotation.Nonnull;
 import org.projectnessie.model.CommitMeta;
 import org.projectnessie.model.Content;
 import org.projectnessie.model.ContentKey;
+import org.projectnessie.model.Documentation;
 import org.projectnessie.model.IdentifiedContentKey;
 import org.projectnessie.versioned.BranchName;
 import org.projectnessie.versioned.Commit;
@@ -560,7 +565,7 @@ public class VersionStoreImpl implements VersionStore {
     Predicate<StoreIndexElement<CommitOp>> keyPredicate =
         indexElement ->
             indexElement.content().action().exists()
-                && indexElement.key().endsWithElement(CONTENT_DISCRIMINATOR);
+                && indexElement.key().endsWithElement(CONTENT_DISCRIMINATOR.value());
     if (contentKeyPredicate != null) {
       keyPredicate =
           keyPredicate.and(
@@ -655,7 +660,18 @@ public class VersionStoreImpl implements VersionStore {
 
       IdentifiedContentKey identifiedKey = buildIdentifiedKey(key, index, content);
 
-      return contentResult(identifiedKey, content, null);
+      // fetch doc, if exists
+      StoreKey storeKeyDoc = keyToStoreKeyVariant(key, DOCUMENTATION_DISCRIMINATOR);
+      indexElement = index.get(storeKeyDoc);
+      Documentation documentation = null;
+      if (indexElement != null && indexElement.content().action().exists()) {
+        documentation =
+            contentMapping.fetchDocumentation(
+                requireNonNull(
+                    indexElement.content().value(), "Required documentation pointer is null"));
+      }
+
+      return contentResult(identifiedKey, content, documentation);
     } catch (ObjNotFoundException e) {
       throw objectNotFound(e);
     }
@@ -700,27 +716,30 @@ public class VersionStoreImpl implements VersionStore {
           keys.stream().map(TypeMapping::keyToStoreKey).collect(Collectors.toSet()));
 
       Map<ObjId, ContentKey> idsToKeys = new HashMap<>();
+      Map<ObjId, ContentKey> docIdsToKeys = new HashMap<>();
       for (ContentKey key : keys) {
-        StoreKey storeKey = keyToStoreKey(key);
-        StoreIndexElement<CommitOp> indexElement = index.get(storeKey);
+        EnumMap<Discriminators, StoreKey> storeKeys = keyToAllStoreKeys(key);
+        StoreIndexElement<CommitOp> indexElement = index.get(storeKeys.get(CONTENT_DISCRIMINATOR));
         if (indexElement == null || !indexElement.content().action().exists()) {
           continue;
         }
 
         idsToKeys.put(
             requireNonNull(indexElement.content().value(), "Required value pointer is null"), key);
+
+        StoreIndexElement<CommitOp> indexElementDoc =
+            index.get(storeKeys.get(DOCUMENTATION_DISCRIMINATOR));
+        if (indexElementDoc != null) {
+          docIdsToKeys.put(
+              requireNonNull(
+                  indexElementDoc.content().value(), "Required documentation pointer is null"),
+              key);
+        }
       }
 
       ContentMapping contentMapping = new ContentMapping(persist);
-      return contentMapping.fetchContents(idsToKeys).entrySet().stream()
-          .collect(
-              Collectors.toMap(
-                  Map.Entry::getKey,
-                  e ->
-                      contentResult(
-                          buildIdentifiedKey(e.getKey(), index, e.getValue()),
-                          e.getValue(),
-                          null)));
+      return contentMapping.fetchContents(
+          idsToKeys, docIdsToKeys, (key, content) -> buildIdentifiedKey(key, index, content));
     } catch (ObjNotFoundException e) {
       throw objectNotFound(e);
     }
