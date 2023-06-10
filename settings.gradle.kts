@@ -17,6 +17,7 @@
 import java.util.Properties
 
 includeBuild("build-logic") { name = "nessie-build-logic" }
+includeBuild("/home/snazy/devel/quarkusio/quarkus/master/devtools/gradle")
 
 if (!JavaVersion.current().isCompatibleWith(JavaVersion.VERSION_11)) {
   throw GradleException("Build requires Java 11")
