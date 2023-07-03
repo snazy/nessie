@@ -35,6 +35,7 @@ val quarkusRunner by
   }
 
 dependencies {
+  implementation(nessieProject(":nessie-catalog-content"))
   implementation(nessieProject(":nessie-catalog-service"))
   implementation(nessieProject(":nessie-model"))
   implementation(nessieProject(":nessie-client"))

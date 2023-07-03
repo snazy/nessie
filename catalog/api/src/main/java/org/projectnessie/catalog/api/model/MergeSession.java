@@ -18,17 +18,20 @@ package org.projectnessie.catalog.api.model;
 import com.fasterxml.jackson.databind.annotation.JsonDeserialize;
 import com.fasterxml.jackson.databind.annotation.JsonSerialize;
 import org.immutables.value.Value;
-import org.projectnessie.model.MergeResponse;
 
+/**
+ * {@link MergeSession Merge session} objects returned in a {@link MergeOutcome} must be passed
+ * as-is in the next {@link MergeRequest#getSession() merge request}.
+ *
+ * <p>The contents of the fields in this object must neither be interpreted nor modified.
+ */
 @Value.Immutable
-@JsonSerialize(as = ImmutableMergeOutcome.class)
-@JsonDeserialize(as = ImmutableMergeOutcome.class)
-public interface MergeOutcome {
-  static ImmutableMergeOutcome.Builder builder() {
-    return ImmutableMergeOutcome.builder();
-  }
+@JsonSerialize(as = ImmutableMergeSession.class)
+@JsonDeserialize(as = ImmutableMergeSession.class)
+public interface MergeSession {
+  @Value.Parameter(order = 1)
+  String sessionId();
 
-  MergeSession session();
-
-  MergeResponse response();
+  @Value.Parameter(order = 2)
+  String signature();
 }

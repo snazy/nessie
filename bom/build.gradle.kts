@@ -95,6 +95,7 @@ dependencies {
       api(project(":nessie-gc-iceberg-mock"))
       api(project(":nessie-gc-tool"))
       api(project(":nessie-catalog-api"))
+      api(project(":nessie-catalog-content"))
       api(project(":nessie-catalog-server"))
       api(project(":nessie-catalog-service"))
 

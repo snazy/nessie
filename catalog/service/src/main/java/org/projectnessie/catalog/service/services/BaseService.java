@@ -13,20 +13,16 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
-package org.projectnessie.catalog.service.ee.jakarta;
+package org.projectnessie.catalog.service.services;
 
-import com.fasterxml.jackson.databind.ObjectMapper;
-import jakarta.ws.rs.ext.ContextResolver;
-import jakarta.ws.rs.ext.Provider;
-import org.projectnessie.catalog.content.iceberg.metadata.Json;
+public abstract class BaseService {
+  private final ServiceContext context;
 
-@Provider
-public class ContextObjectMapper implements ContextResolver<ObjectMapper> {
+  protected BaseService(ServiceContext context) {
+    this.context = context;
+  }
 
-  public ContextObjectMapper() {}
-
-  @Override
-  public ObjectMapper getContext(Class<?> type) {
-    return Json.OBJECT_MAPPER;
+  protected ServiceContext context() {
+    return context;
   }
 }

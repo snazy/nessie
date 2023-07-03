@@ -18,7 +18,7 @@ package org.projectnessie.catalog.service.ee.javax;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import javax.ws.rs.ext.ContextResolver;
 import javax.ws.rs.ext.Provider;
-import org.projectnessie.catalog.service.util.Json;
+import org.projectnessie.catalog.content.iceberg.metadata.Json;
 
 @Provider
 public class ContextObjectMapper implements ContextResolver<ObjectMapper> {

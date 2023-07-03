@@ -18,8 +18,8 @@ package org.projectnessie.catalog.service.spi;
 import java.util.Map;
 import org.apache.iceberg.io.FileIO;
 import org.immutables.value.Value;
-import org.projectnessie.catalog.service.metadata.DelegatingMetadataIO;
-import org.projectnessie.catalog.service.metadata.MetadataIO;
+import org.projectnessie.catalog.content.iceberg.metadata.DelegatingMetadataIO;
+import org.projectnessie.catalog.content.iceberg.metadata.MetadataIO;
 
 @Value.Immutable
 public interface Warehouse {

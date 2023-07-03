@@ -18,8 +18,8 @@ package org.projectnessie.catalog.server.json;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import jakarta.enterprise.context.ApplicationScoped;
 import jakarta.inject.Singleton;
+import org.projectnessie.catalog.content.iceberg.metadata.Json;
 import org.projectnessie.catalog.service.ee.javax.ContextObjectMapper;
-import org.projectnessie.catalog.service.util.Json;
 
 @ApplicationScoped
 public class IcebergObjectMapperProducer {

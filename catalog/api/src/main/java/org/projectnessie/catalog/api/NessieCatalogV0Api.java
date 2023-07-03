@@ -72,6 +72,8 @@ public interface NessieCatalogV0Api {
       PickTablesRequest pickTables)
       throws IOException;
 
+  // TODO this operation can run for a very long time (at least longer than a typical HTTP request),
+  //  -> need some async response & progress mechanism
   @POST
   @jakarta.ws.rs.POST
   @Path("/{prefix}/merge")

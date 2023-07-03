@@ -37,6 +37,7 @@ import org.glassfish.jersey.test.TestProperties;
 import org.jboss.weld.environment.se.Weld;
 import org.jboss.weld.environment.se.WeldContainer;
 import org.projectnessie.api.v2.params.ParsedReference;
+import org.projectnessie.catalog.content.iceberg.LocalFileIO;
 import org.projectnessie.catalog.service.ee.javax.ContextObjectMapper;
 import org.projectnessie.catalog.service.ee.javax.JavaxExceptionMapper;
 import org.projectnessie.catalog.service.ee.javax.OAuthTokenRequestReader;

@@ -13,9 +13,7 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
-package org.projectnessie.catalog.service.metadata;
-
-import static org.projectnessie.catalog.service.util.Json.jsonToTableMetadata;
+package org.projectnessie.catalog.content.iceberg.metadata;
 
 import com.fasterxml.jackson.databind.JsonNode;
 import java.util.UUID;
@@ -25,7 +23,6 @@ import org.apache.iceberg.TableProperties;
 import org.apache.iceberg.io.FileIO;
 import org.apache.iceberg.io.OutputFile;
 import org.apache.iceberg.util.LocationUtil;
-import org.projectnessie.catalog.service.util.Json;
 
 public class DelegatingMetadataIO implements MetadataIO {
 
@@ -48,7 +45,7 @@ public class DelegatingMetadataIO implements MetadataIO {
 
     JsonNode root = Json.tableMetadataToJsonNode(metadata);
 
-    return jsonToTableMetadata(metadataLocation, root);
+    return Json.jsonToTableMetadata(metadataLocation, root);
   }
 
   protected String writeNewMetadata(TableMetadata metadata, int newVersion) {
