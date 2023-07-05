@@ -49,6 +49,7 @@ import org.projectnessie.error.NessieReferenceConflictException;
 import org.projectnessie.error.ReferenceConflicts;
 import org.projectnessie.model.Branch;
 import org.projectnessie.model.CommitMeta;
+import org.projectnessie.model.CommitResponse;
 import org.projectnessie.model.Conflict;
 import org.projectnessie.model.ContentKey;
 import org.projectnessie.model.EntriesResponse;
@@ -59,6 +60,7 @@ import org.projectnessie.model.MergeResponse;
 import org.projectnessie.model.MergeResponse.ContentKeyConflict;
 import org.projectnessie.model.MergeResponse.ContentKeyDetails;
 import org.projectnessie.model.Namespace;
+import org.projectnessie.model.Operation.Delete;
 import org.projectnessie.model.Operation.Put;
 import org.projectnessie.model.Reference;
 
@@ -711,5 +713,325 @@ public abstract class AbstractTestMergeTransplant extends BaseTestServiceImpl {
             tuple(KEY_1, "main-table1"),
             tuple(KEY_2, "branch-table2"),
             tuple(KEY_3, "branch-no-conflict"));
+  }
+
+  @Test
+  public void mergeRenamedTableNoConflict() throws Exception {
+    Branch target = createBranch("target");
+
+    ContentKey tableKey = ContentKey.of("table");
+    ContentKey renamedKey = ContentKey.of("renamed");
+    ContentKey otherKey = ContentKey.of("other");
+
+    IcebergTable table = IcebergTable.of("table", 1, 2, 3, 4);
+    IcebergTable other = IcebergTable.of("other", 1, 2, 3, 4);
+
+    CommitResponse committed = commit(target, fromMessage("initial"), Put.of(tableKey, table));
+    target = committed.getTargetBranch();
+    table = committed.contentWithAssignedId(tableKey, table);
+
+    Branch source = createBranch("source", target);
+    source =
+        commit(source, fromMessage("rename table"), Delete.of(tableKey), Put.of(renamedKey, table))
+            .getTargetBranch();
+
+    soft.assertThat(entries(target))
+        .extracting(EntriesResponse.Entry::getName)
+        .containsExactly(tableKey);
+    soft.assertThat(contents(target, tableKey)).containsOnly(Map.entry(tableKey, table));
+    soft.assertThat(entries(source))
+        .extracting(EntriesResponse.Entry::getName)
+        .containsExactly(renamedKey);
+    soft.assertThat(contents(source, renamedKey)).containsOnly(Map.entry(renamedKey, table));
+
+    committed = commit(target, fromMessage("other"), Put.of(otherKey, other));
+    other = committed.contentWithAssignedId(otherKey, other);
+    target = committed.getTargetBranch();
+
+    treeApi()
+        .mergeRefIntoBranch(
+            target.getName(),
+            target.getHash(),
+            source.getName(),
+            source.getHash(),
+            null,
+            null,
+            NORMAL,
+            null,
+            null,
+            false);
+
+    soft.assertThat(entries(target))
+        .extracting(EntriesResponse.Entry::getName)
+        .containsExactlyInAnyOrder(tableKey, otherKey);
+    soft.assertThat(contents(target, tableKey, otherKey))
+        .containsOnly(Map.entry(tableKey, table), Map.entry(otherKey, other));
+  }
+
+  @Test
+  public void mergeRenamedTableWithConflict() throws Exception {
+    Branch target = createBranch("target");
+
+    ContentKey tableKey = ContentKey.of("table");
+    ContentKey renamedKey = ContentKey.of("renamed");
+    ContentKey otherKey = ContentKey.of("other");
+
+    IcebergTable table = IcebergTable.of("table", 1, 2, 3, 4);
+    IcebergTable other = IcebergTable.of("other", 1, 2, 3, 4);
+
+    CommitResponse committed = commit(target, fromMessage("initial"), Put.of(tableKey, table));
+    target = committed.getTargetBranch();
+    table = committed.contentWithAssignedId(tableKey, table);
+
+    Branch source = createBranch("source", target);
+    source =
+        commit(source, fromMessage("rename table"), Delete.of(tableKey), Put.of(renamedKey, table))
+            .getTargetBranch();
+
+    committed = commit(target, fromMessage("other"), Put.of(otherKey, other));
+    other = committed.contentWithAssignedId(otherKey, other);
+    target = committed.getTargetBranch();
+
+    IcebergTable tableModifiedOnTarget = IcebergTable.builder().from(table).snapshotId(42).build();
+    target =
+        commit(target, fromMessage("update table"), Put.of(tableKey, tableModifiedOnTarget))
+            .getTargetBranch();
+
+    // Source has:
+    // - 'renamed' (from 'table')
+    // Target has:
+    // - 'table' (modified!)
+    // - 'other'
+
+    soft.assertThat(entries(source))
+        .extracting(EntriesResponse.Entry::getName)
+        .containsExactly(renamedKey);
+    soft.assertThat(contents(source, renamedKey)).containsOnly(Map.entry(renamedKey, table));
+
+    soft.assertThat(entries(target))
+        .extracting(EntriesResponse.Entry::getName)
+        .containsExactlyInAnyOrder(tableKey, otherKey);
+    soft.assertThat(contents(target, tableKey, otherKey))
+        .contains(Map.entry(tableKey, tableModifiedOnTarget), Map.entry(otherKey, other));
+
+    MergeResponse mergeResponse =
+        treeApi()
+            .mergeRefIntoBranch(
+                target.getName(),
+                target.getHash(),
+                source.getName(),
+                source.getHash(),
+                null,
+                null,
+                NORMAL,
+                null,
+                null,
+                true);
+    List<Conflict> mergeResponseConflicts =
+        mergeResponse.getDetails().stream()
+            .map(ContentKeyDetails::getConflict)
+            .collect(Collectors.toList());
+    soft.assertThat(mergeResponseConflicts).isNotEmpty();
+    try {
+      treeApi()
+          .mergeRefIntoBranch(
+              target.getName(),
+              target.getHash(),
+              source.getName(),
+              source.getHash(),
+              null,
+              null,
+              NORMAL,
+              null,
+              null,
+              false);
+    } catch (NessieReferenceConflictException e) {
+      soft.assertThat(e.getErrorDetails().conflicts())
+          .containsExactlyInAnyOrderElementsOf(mergeResponseConflicts);
+    }
+
+    if (isNewStorageModel()) {
+      soft.assertThat(mergeResponseConflicts.get(0))
+          .extracting(Conflict::key, Conflict::contentId, Conflict::renameTo)
+          .containsExactly(tableKey, table.getId(), renamedKey);
+    }
+  }
+
+  @Test
+  public void mergeRenamedOnBothTableWithConflict() throws Exception {
+    Branch target = createBranch("target");
+
+    ContentKey tableKey = ContentKey.of("table");
+    ContentKey renamedSourceKey = ContentKey.of("renamedSource");
+    ContentKey renamedTargetKey = ContentKey.of("renamedTarget");
+
+    IcebergTable table = IcebergTable.of("table", 1, 2, 3, 4);
+
+    CommitResponse committed = commit(target, fromMessage("initial"), Put.of(tableKey, table));
+    target = committed.getTargetBranch();
+    table = committed.contentWithAssignedId(tableKey, table);
+
+    Branch source = createBranch("source", target);
+    source =
+        commit(
+                source,
+                fromMessage("rename on source"),
+                Delete.of(tableKey),
+                Put.of(renamedSourceKey, table))
+            .getTargetBranch();
+
+    IcebergTable tableModifiedOnTarget = IcebergTable.builder().from(table).snapshotId(42).build();
+    target =
+        commit(
+                target,
+                fromMessage("rename on target"),
+                Delete.of(tableKey),
+                Put.of(renamedTargetKey, tableModifiedOnTarget))
+            .getTargetBranch();
+
+    // Source has:
+    // - 'renamedSource' (from 'table')
+    // Target has:
+    // - 'renamedTarget' (from 'table')
+    // - 'other'
+
+    soft.assertThat(entries(source))
+        .extracting(EntriesResponse.Entry::getName)
+        .containsExactly(renamedSourceKey);
+    soft.assertThat(contents(source, renamedSourceKey))
+        .containsOnly(Map.entry(renamedSourceKey, table));
+
+    soft.assertThat(entries(target))
+        .extracting(EntriesResponse.Entry::getName)
+        .containsExactlyInAnyOrder(renamedTargetKey);
+    soft.assertThat(contents(target, renamedTargetKey))
+        .contains(Map.entry(renamedTargetKey, tableModifiedOnTarget));
+
+    MergeResponse mergeResponse =
+        treeApi()
+            .mergeRefIntoBranch(
+                target.getName(),
+                target.getHash(),
+                source.getName(),
+                source.getHash(),
+                null,
+                null,
+                NORMAL,
+                null,
+                null,
+                true);
+    List<Conflict> mergeResponseConflicts =
+        mergeResponse.getDetails().stream()
+            .map(ContentKeyDetails::getConflict)
+            .collect(Collectors.toList());
+    soft.assertThat(mergeResponseConflicts).isNotEmpty();
+    try {
+      treeApi()
+          .mergeRefIntoBranch(
+              target.getName(),
+              target.getHash(),
+              source.getName(),
+              source.getHash(),
+              null,
+              null,
+              NORMAL,
+              null,
+              null,
+              false);
+    } catch (NessieReferenceConflictException e) {
+      soft.assertThat(e.getErrorDetails().conflicts())
+          .containsExactlyInAnyOrderElementsOf(mergeResponseConflicts);
+    }
+
+    if (isNewStorageModel()) {
+      soft.assertThat(mergeResponseConflicts.get(0))
+          .extracting(Conflict::key, Conflict::contentId, Conflict::renameTo)
+          .containsExactly(tableKey, table.getId(), renamedSourceKey);
+    }
+  }
+
+  @Test
+  public void mergeTableWithConflict() throws Exception {
+    Branch target = createBranch("target");
+
+    ContentKey tableKey = ContentKey.of("table");
+
+    IcebergTable table = IcebergTable.of("table", 1, 2, 3, 4);
+
+    CommitResponse committed = commit(target, fromMessage("initial"), Put.of(tableKey, table));
+    target = committed.getTargetBranch();
+    table = committed.contentWithAssignedId(tableKey, table);
+
+    Branch source = createBranch("source", target);
+
+    IcebergTable tableModifiedOnSource = IcebergTable.builder().from(table).snapshotId(11).build();
+    source =
+        commit(
+                source,
+                fromMessage("update table on source"),
+                Put.of(tableKey, tableModifiedOnSource))
+            .getTargetBranch();
+
+    IcebergTable tableModifiedOnTarget = IcebergTable.builder().from(table).snapshotId(42).build();
+    target =
+        commit(
+                target,
+                fromMessage("update table on target"),
+                Put.of(tableKey, tableModifiedOnTarget))
+            .getTargetBranch();
+
+    soft.assertThat(entries(source))
+        .extracting(EntriesResponse.Entry::getName)
+        .containsExactly(tableKey);
+    soft.assertThat(contents(source, tableKey))
+        .containsOnly(Map.entry(tableKey, tableModifiedOnSource));
+
+    soft.assertThat(entries(target))
+        .extracting(EntriesResponse.Entry::getName)
+        .containsExactly(tableKey);
+    soft.assertThat(contents(target, tableKey))
+        .containsOnly(Map.entry(tableKey, tableModifiedOnTarget));
+
+    MergeResponse mergeResponse =
+        treeApi()
+            .mergeRefIntoBranch(
+                target.getName(),
+                target.getHash(),
+                source.getName(),
+                source.getHash(),
+                null,
+                null,
+                NORMAL,
+                null,
+                null,
+                true);
+    List<Conflict> mergeResponseConflicts =
+        mergeResponse.getDetails().stream()
+            .map(ContentKeyDetails::getConflict)
+            .collect(Collectors.toList());
+    soft.assertThat(mergeResponseConflicts).isNotEmpty();
+    try {
+      treeApi()
+          .mergeRefIntoBranch(
+              target.getName(),
+              target.getHash(),
+              source.getName(),
+              source.getHash(),
+              null,
+              null,
+              NORMAL,
+              null,
+              null,
+              false);
+    } catch (NessieReferenceConflictException e) {
+      soft.assertThat(e.getErrorDetails().conflicts())
+          .containsExactlyInAnyOrderElementsOf(mergeResponseConflicts);
+    }
+
+    if (isNewStorageModel()) {
+      soft.assertThat(mergeResponseConflicts.get(0))
+          .extracting(Conflict::key, Conflict::contentId, Conflict::renameTo)
+          .containsExactly(tableKey, table.getId(), null);
+    }
   }
 }

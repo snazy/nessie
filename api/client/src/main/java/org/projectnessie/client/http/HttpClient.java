@@ -81,7 +81,7 @@ public interface HttpClient extends AutoCloseable {
     private boolean http2Upgrade;
     private String followRedirects;
     private boolean forceUrlConnectionClient;
-    private int clientSpec = 2;
+    private int clientSpec = 3;
 
     private Builder() {}
 

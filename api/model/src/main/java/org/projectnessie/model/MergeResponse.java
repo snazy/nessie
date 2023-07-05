@@ -127,6 +127,8 @@ public interface MergeResponse {
     @Nullable
     @jakarta.annotation.Nullable
     Conflict getConflict();
+
+    ContentKeyDetails withConflict(Conflict conflict);
   }
 
   @Deprecated // for removal

@@ -38,17 +38,26 @@ public interface CommitConflict {
   @jakarta.annotation.Nullable
   CommitOp existing();
 
+  @Value.Parameter(order = 5)
+  @Nullable
+  @jakarta.annotation.Nullable
+  StoreKey renameTo();
+
   static CommitConflict commitConflict(
-      StoreKey key, ConflictType conflictType, @Nullable @jakarta.annotation.Nullable CommitOp op) {
-    return commitConflict(key, conflictType, op, null);
+      StoreKey key,
+      ConflictType conflictType,
+      @Nullable @jakarta.annotation.Nullable CommitOp op,
+      @Nullable @jakarta.annotation.Nullable StoreKey renameTo) {
+    return commitConflict(key, conflictType, op, null, renameTo);
   }
 
   static CommitConflict commitConflict(
       StoreKey key,
       ConflictType conflictType,
       @Nullable @jakarta.annotation.Nullable CommitOp op,
-      @Nullable @jakarta.annotation.Nullable CommitOp existing) {
-    return ImmutableCommitConflict.of(key, conflictType, op, existing);
+      @Nullable @jakarta.annotation.Nullable CommitOp existing,
+      @Nullable @jakarta.annotation.Nullable StoreKey renameTo) {
+    return ImmutableCommitConflict.of(key, conflictType, op, existing, renameTo);
   }
 
   enum ConflictType {

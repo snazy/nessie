@@ -17,6 +17,7 @@ package org.projectnessie.services.rest;
 
 import static org.projectnessie.api.v2.params.ReferenceResolver.resolveReferencePathElement;
 import static org.projectnessie.services.impl.RefUtil.toReference;
+import static org.projectnessie.services.rest.ClientCompatibility.maybeUpdateResponseOrException;
 import static org.projectnessie.services.spi.TreeService.MAX_COMMIT_LOG_ENTRIES;
 
 import com.fasterxml.jackson.annotation.JsonView;
@@ -342,30 +343,34 @@ public class RestV2TreeResource implements HttpTreeApi {
 
   @JsonView(Views.V2.class)
   @Override
-  public MergeResponse transplantCommitsIntoBranch(String branch, Transplant transplant)
+  public MergeResponse transplantCommitsIntoBranch(
+      String branch, Transplant transplant, String nessieClientSpec)
       throws NessieNotFoundException, NessieConflictException {
     ParsedReference ref = parseRefPathString(branch);
 
     String msg = transplant.getMessage();
     CommitMeta meta = CommitMeta.fromMessage(msg == null ? "" : msg);
 
-    return tree()
-        .transplantCommitsIntoBranch(
-            ref.name(),
-            ref.hashWithRelativeSpec(),
-            meta,
-            transplant.getHashesToTransplant(),
-            transplant.getFromRefName(),
-            transplant.getKeyMergeModes(),
-            transplant.getDefaultKeyMergeMode(),
-            transplant.isDryRun(),
-            transplant.isFetchAdditionalInfo(),
-            transplant.isReturnConflictAsResult());
+    return maybeUpdateResponseOrException(
+        nessieClientSpec,
+        () ->
+            tree()
+                .transplantCommitsIntoBranch(
+                    ref.name(),
+                    ref.hashWithRelativeSpec(),
+                    meta,
+                    transplant.getHashesToTransplant(),
+                    transplant.getFromRefName(),
+                    transplant.getKeyMergeModes(),
+                    transplant.getDefaultKeyMergeMode(),
+                    transplant.isDryRun(),
+                    transplant.isFetchAdditionalInfo(),
+                    transplant.isReturnConflictAsResult()));
   }
 
   @JsonView(Views.V2.class)
   @Override
-  public MergeResponse mergeRefIntoBranch(String branch, Merge merge)
+  public MergeResponse mergeRefIntoBranch(String branch, Merge merge, String nessieClientSpec)
       throws NessieNotFoundException, NessieConflictException {
     ParsedReference ref = parseRefPathString(branch);
 
@@ -383,25 +388,31 @@ public class RestV2TreeResource implements HttpTreeApi {
       meta.message(msg == null ? "" : msg);
     }
 
-    return tree()
-        .mergeRefIntoBranch(
-            ref.name(),
-            ref.hashWithRelativeSpec(),
-            merge.getFromRefName(),
-            merge.getFromHash(),
-            meta.build(),
-            merge.getKeyMergeModes(),
-            merge.getDefaultKeyMergeMode(),
-            merge.isDryRun(),
-            merge.isFetchAdditionalInfo(),
-            merge.isReturnConflictAsResult());
+    return maybeUpdateResponseOrException(
+        nessieClientSpec,
+        () ->
+            tree()
+                .mergeRefIntoBranch(
+                    ref.name(),
+                    ref.hashWithRelativeSpec(),
+                    merge.getFromRefName(),
+                    merge.getFromHash(),
+                    meta.build(),
+                    merge.getKeyMergeModes(),
+                    merge.getDefaultKeyMergeMode(),
+                    merge.isDryRun(),
+                    merge.isFetchAdditionalInfo(),
+                    merge.isReturnConflictAsResult()));
   }
 
   @JsonView(Views.V2.class)
   @Override
-  public CommitResponse commitMultipleOperations(String branch, Operations operations)
+  public CommitResponse commitMultipleOperations(
+      String branch, Operations operations, String nessieClientSpec)
       throws NessieNotFoundException, NessieConflictException {
     ParsedReference ref = parseRefPathString(branch);
-    return tree().commitMultipleOperations(ref.name(), ref.hashWithRelativeSpec(), operations);
+    return maybeUpdateResponseOrException(
+        nessieClientSpec,
+        () -> tree().commitMultipleOperations(ref.name(), ref.hashWithRelativeSpec(), operations));
   }
 }

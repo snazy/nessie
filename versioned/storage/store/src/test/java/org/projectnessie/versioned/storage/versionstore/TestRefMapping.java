@@ -251,24 +251,26 @@ public class TestRefMapping {
                         commitConflict(
                             keyToStoreKey(ContentKey.of("aaa", "foo")),
                             KEY_DOES_NOT_EXIST,
+                            null,
                             null)))),
             ReferenceConflictException.class,
             "Key 'aaa.foo' does not exist."),
         arguments(
             referenceConflictException(
                 new CommitConflictException(
-                    singletonList(commitConflict(key("aaa", "foo"), KEY_DOES_NOT_EXIST, null)))),
+                    singletonList(
+                        commitConflict(key("aaa", "foo"), KEY_DOES_NOT_EXIST, null, null)))),
             ReferenceConflictException.class,
             "Store-key 'aaa/foo' does not exist."),
         arguments(
             referenceConflictException(
                 new CommitConflictException(
                     asList(
-                        commitConflict(key("aaa", "foo"), KEY_EXISTS, null),
-                        commitConflict(key("bbb", "foo"), KEY_DOES_NOT_EXIST, null),
-                        commitConflict(key("ccc", "foo"), PAYLOAD_DIFFERS, null),
-                        commitConflict(key("ddd", "foo"), CONTENT_ID_DIFFERS, null),
-                        commitConflict(key("eee", "foo"), VALUE_DIFFERS, null)))),
+                        commitConflict(key("aaa", "foo"), KEY_EXISTS, null, null),
+                        commitConflict(key("bbb", "foo"), KEY_DOES_NOT_EXIST, null, null),
+                        commitConflict(key("ccc", "foo"), PAYLOAD_DIFFERS, null, null),
+                        commitConflict(key("ddd", "foo"), CONTENT_ID_DIFFERS, null, null),
+                        commitConflict(key("eee", "foo"), VALUE_DIFFERS, null, null)))),
             ReferenceConflictException.class,
             "There are multiple conflicts that prevent committing the provided operations: "
                 + "store-key 'aaa/foo' already exists, "
@@ -281,15 +283,27 @@ public class TestRefMapping {
                 new CommitConflictException(
                     asList(
                         commitConflict(
-                            keyToStoreKey(ContentKey.of("aaa", "foo")), KEY_EXISTS, null),
+                            keyToStoreKey(ContentKey.of("aaa", "foo")), KEY_EXISTS, null, null),
                         commitConflict(
-                            keyToStoreKey(ContentKey.of("bbb", "foo")), KEY_DOES_NOT_EXIST, null),
+                            keyToStoreKey(ContentKey.of("bbb", "foo")),
+                            KEY_DOES_NOT_EXIST,
+                            null,
+                            null),
                         commitConflict(
-                            keyToStoreKey(ContentKey.of("ccc", "foo")), PAYLOAD_DIFFERS, null),
+                            keyToStoreKey(ContentKey.of("ccc", "foo")),
+                            PAYLOAD_DIFFERS,
+                            null,
+                            null),
                         commitConflict(
-                            keyToStoreKey(ContentKey.of("ddd", "foo")), CONTENT_ID_DIFFERS, null),
+                            keyToStoreKey(ContentKey.of("ddd", "foo")),
+                            CONTENT_ID_DIFFERS,
+                            null,
+                            null),
                         commitConflict(
-                            keyToStoreKey(ContentKey.of("eee", "foo")), VALUE_DIFFERS, null)))),
+                            keyToStoreKey(ContentKey.of("eee", "foo")),
+                            VALUE_DIFFERS,
+                            null,
+                            null)))),
             ReferenceConflictException.class,
             "There are multiple conflicts that prevent committing the provided operations: "
                 + "key 'aaa.foo' already exists, "

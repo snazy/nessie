@@ -100,7 +100,7 @@ public interface HttpRuntimeConfig extends AutoCloseable {
 
   @Value.Default
   default int getClientSpec() {
-    return 2;
+    return 3;
   }
 
   @Override

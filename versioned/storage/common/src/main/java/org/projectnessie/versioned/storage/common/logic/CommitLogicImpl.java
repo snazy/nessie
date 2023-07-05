@@ -591,7 +591,12 @@ final class CommitLogicImpl implements CommitLogic {
         newHashSetWithExpectedSize(createCommit.adds().size() + createCommit.removes().size());
     Set<StoreKey> reAddedKeys = newHashSetWithExpectedSize(createCommit.removes().size());
 
-    preprocessCommitActions(createCommit, keys, reAddedKeys);
+    // Map containing the renamed keys - in "natural" notion:
+    //   map key: "rename-from" (commit "remove" operation, as currently on HEAD)
+    //   map value: "rename-to" (commit "add" operation)
+    Map<StoreKey, StoreKey> renames = newHashMapWithExpectedSize(createCommit.removes().size());
+
+    preprocessCommitActions(createCommit, keys, reAddedKeys, renames);
 
     // Results in a bulk-(pre)fetch of the requested index stripes
     fullIndex.loadIfNecessary(keys);
@@ -613,7 +618,7 @@ final class CommitLogicImpl implements CommitLogic {
       }
 
       CommitConflict conflict =
-          checkForConflict(key, contentId, payload, op, existingContent, expectedValue);
+          checkForConflict(key, contentId, payload, op, existingContent, expectedValue, renames);
 
       if (conflict != null) {
         if (handleConflict(conflictHandler, conflicts, conflict)) {
@@ -644,7 +649,7 @@ final class CommitLogicImpl implements CommitLogic {
       ObjId expectedValue =
           expectedValueReplacement.maybeReplaceValue(false, key, unchanged.expectedValue());
       CommitConflict conflict =
-          checkForConflict(key, contentId, payload, null, existingContent, expectedValue);
+          checkForConflict(key, contentId, payload, null, existingContent, expectedValue, renames);
 
       if (conflict != null) {
         handleConflict(conflictHandler, conflicts, conflict);
@@ -673,7 +678,7 @@ final class CommitLogicImpl implements CommitLogic {
         CommitOp removeOp = removes.remove(contentId);
         if (removeOp != null) {
           if (existingContent != null) {
-            conflict = commitConflict(key, KEY_EXISTS, op, existingContent);
+            conflict = commitConflict(key, KEY_EXISTS, op, existingContent, renames.get(key));
           }
           existingContent = removeOp;
         }
@@ -682,7 +687,8 @@ final class CommitLogicImpl implements CommitLogic {
       ObjId expectedValue =
           expectedValueReplacement.maybeReplaceValue(true, key, add.expectedValue());
       if (conflict == null) {
-        conflict = checkForConflict(key, contentId, payload, op, existingContent, expectedValue);
+        conflict =
+            checkForConflict(key, contentId, payload, op, existingContent, expectedValue, renames);
       }
 
       if (conflict != null) {
@@ -715,14 +721,24 @@ final class CommitLogicImpl implements CommitLogic {
   }
 
   private static void preprocessCommitActions(
-      CreateCommit createCommit, Set<StoreKey> keys, Set<StoreKey> reAddedKeys) {
+      CreateCommit createCommit,
+      Set<StoreKey> keys,
+      Set<StoreKey> reAddedKeys,
+      Map<StoreKey, StoreKey> renames) {
     Set<StoreKey> removedKeys = newHashSetWithExpectedSize(createCommit.removes().size());
+    Map<UUID, StoreKey> removedIds = newHashMapWithExpectedSize(createCommit.removes().size());
 
     // Collect the removed keys - both for "pure" deletes, renames and re-adds.
     for (Remove remove : createCommit.removes()) {
       StoreKey key = remove.key();
-      checkArgument(keys.add(key), "Duplicate key: " + key);
+      UUID contentId = remove.contentId();
+
+      checkArgument(keys.add(key), "Duplicate key: %s", key);
       removedKeys.add(key);
+      if (contentId != null) {
+        checkArgument(
+            removedIds.put(contentId, key) == null, "Duplicate removed content ID: %s", contentId);
+      }
     }
 
     // Collect the keys that are re-added w/ potentially different payload and content-ID:
@@ -738,20 +754,27 @@ final class CommitLogicImpl implements CommitLogic {
       if (!unseenKey && removedKeys.remove(key)) {
         reAddedKeys.add(key);
       } else {
-        checkArgument(unseenKey, "Duplicate key: " + key);
+        checkArgument(unseenKey, "Duplicate key: %s", key);
       }
       UUID contentId = add.contentId();
       if (contentId != null) {
         checkArgument(
-            seenContentIds.add(contentId),
-            "Duplicate content ID: " + contentId + " for key: " + key);
+            seenContentIds.add(contentId), "Duplicate content ID: %s for key: %s", contentId, key);
+      }
+      StoreKey renameFrom = removedIds.remove(contentId);
+      if (renameFrom != null) {
+        checkArgument(
+            renames.putIfAbsent(renameFrom, key) == null,
+            "Duplicate rename to same key %s for content ID",
+            key,
+            contentId);
       }
     }
 
     // Collect keys from "unchanged" actions.
     for (Unchanged unchanged : createCommit.unchanged()) {
       StoreKey key = unchanged.key();
-      checkArgument(keys.add(key), "Duplicate key: " + key);
+      checkArgument(keys.add(key), "Duplicate key: %s", key);
     }
   }
 
@@ -761,23 +784,27 @@ final class CommitLogicImpl implements CommitLogic {
       int payload,
       CommitOp op,
       CommitOp existingContent,
-      ObjId expectedValue) {
+      ObjId expectedValue,
+      // Map containing the renamed keys - in "natural" notion:
+      //   map key: "rename-from" (commit "remove" operation, as currently on HEAD)
+      //   map value: "rename-to" (commit "add" operation)
+      Map<StoreKey, StoreKey> renames) {
     CommitConflict conflict = null;
     if (expectedValue == null) {
       if (existingContent != null) {
-        conflict = commitConflict(key, KEY_EXISTS, op, existingContent);
+        conflict = commitConflict(key, KEY_EXISTS, op, existingContent, renames.get(key));
       }
     } else {
       if (existingContent != null) {
         if (payload != existingContent.payload()) {
-          conflict = commitConflict(key, PAYLOAD_DIFFERS, op, existingContent);
+          conflict = commitConflict(key, PAYLOAD_DIFFERS, op, existingContent, renames.get(key));
         } else if (!Objects.equals(contentId, existingContent.contentId())) {
-          conflict = commitConflict(key, CONTENT_ID_DIFFERS, op, existingContent);
+          conflict = commitConflict(key, CONTENT_ID_DIFFERS, op, existingContent, renames.get(key));
         } else if (!expectedValue.equals(existingContent.value())) {
-          conflict = commitConflict(key, VALUE_DIFFERS, op, existingContent);
+          conflict = commitConflict(key, VALUE_DIFFERS, op, existingContent, renames.get(key));
         }
       } else {
-        conflict = commitConflict(key, KEY_DOES_NOT_EXIST, op);
+        conflict = commitConflict(key, KEY_DOES_NOT_EXIST, op, renames.get(key));
       }
     }
     //

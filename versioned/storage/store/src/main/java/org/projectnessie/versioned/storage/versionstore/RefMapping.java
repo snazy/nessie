@@ -35,6 +35,7 @@ import com.google.common.annotations.VisibleForTesting;
 import java.time.Instant;
 import java.util.List;
 import java.util.Optional;
+import java.util.UUID;
 import java.util.stream.Collectors;
 import javax.annotation.Nonnull;
 import javax.annotation.Nullable;
@@ -53,11 +54,13 @@ import org.projectnessie.versioned.TagName;
 import org.projectnessie.versioned.storage.common.exceptions.CommitConflictException;
 import org.projectnessie.versioned.storage.common.exceptions.ObjNotFoundException;
 import org.projectnessie.versioned.storage.common.exceptions.RefNotFoundException;
+import org.projectnessie.versioned.storage.common.indexes.StoreKey;
 import org.projectnessie.versioned.storage.common.logic.CommitConflict;
 import org.projectnessie.versioned.storage.common.logic.CommitLogic;
 import org.projectnessie.versioned.storage.common.logic.PagedResult;
 import org.projectnessie.versioned.storage.common.logic.ReferenceLogic;
 import org.projectnessie.versioned.storage.common.objtypes.CommitObj;
+import org.projectnessie.versioned.storage.common.objtypes.CommitOp;
 import org.projectnessie.versioned.storage.common.persist.ObjId;
 import org.projectnessie.versioned.storage.common.persist.Persist;
 import org.projectnessie.versioned.storage.common.persist.Reference;
@@ -141,7 +144,24 @@ public class RefMapping {
 
   public static Conflict commitConflictToConflict(CommitConflict conflict) {
     ContentKey key = storeKeyToKey(conflict.key());
-    String k = key != null ? "key '" + key + "'" : "store-key '" + conflict.key() + "'";
+
+    StringBuilder k = new StringBuilder();
+    if (key != null) {
+      k.append("key '").append(key).append("'");
+    } else {
+      k.append("store-key '").append(conflict.key()).append("'");
+    }
+    StoreKey renameTo = conflict.renameTo();
+    ContentKey renameToKey = null;
+    if (renameTo != null) {
+      renameToKey = storeKeyToKey(renameTo);
+      if (renameToKey != null) {
+        k.append(" (rename to key '").append(renameToKey).append("')");
+      } else {
+        k.append(" (rename to store-key '").append(renameTo).append("')");
+      }
+    }
+
     String msg;
     ConflictType conflictType;
     switch (conflict.conflictType()) {
@@ -169,7 +189,13 @@ public class RefMapping {
         conflictType = ConflictType.UNKNOWN;
         msg = conflict.toString();
     }
-    return conflict(conflictType, key, msg);
+    CommitOp op = conflict.op();
+    String cidString = null;
+    if (op != null) {
+      UUID cid = op.contentId();
+      cidString = cid != null ? cid.toString() : null;
+    }
+    return conflict(conflictType, key, msg, renameToKey, cidString);
   }
 
   public static ReferenceConflictException referenceConflictException(

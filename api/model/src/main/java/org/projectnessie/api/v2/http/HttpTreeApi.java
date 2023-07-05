@@ -32,6 +32,7 @@ import javax.ws.rs.BeanParam;
 import javax.ws.rs.Consumes;
 import javax.ws.rs.DELETE;
 import javax.ws.rs.GET;
+import javax.ws.rs.HeaderParam;
 import javax.ws.rs.POST;
 import javax.ws.rs.PUT;
 import javax.ws.rs.Path;
@@ -768,7 +769,9 @@ public interface HttpTreeApi extends TreeApi {
                   @Content(
                       mediaType = MediaType.APPLICATION_JSON,
                       examples = {@ExampleObject(ref = "transplant")}))
-          Transplant transplant)
+          Transplant transplant,
+      @HeaderParam("Nessie-Client-Spec") @jakarta.ws.rs.HeaderParam("Nessie-Client-Spec")
+          String nessieClientSpec)
       throws NessieNotFoundException, NessieConflictException;
 
   @Override
@@ -833,7 +836,9 @@ public interface HttpTreeApi extends TreeApi {
                   @Content(
                       mediaType = MediaType.APPLICATION_JSON,
                       examples = {@ExampleObject(ref = "merge")}))
-          Merge merge)
+          Merge merge,
+      @HeaderParam("Nessie-Client-Spec") @jakarta.ws.rs.HeaderParam("Nessie-Client-Spec")
+          String nessieClientSpec)
       throws NessieNotFoundException, NessieConflictException;
 
   @Override
@@ -888,6 +893,8 @@ public interface HttpTreeApi extends TreeApi {
                   @Content(
                       mediaType = MediaType.APPLICATION_JSON,
                       examples = {@ExampleObject(ref = "operations")}))
-          Operations operations)
+          Operations operations,
+      @HeaderParam("Nessie-Client-Spec") @jakarta.ws.rs.HeaderParam("Nessie-Client-Spec")
+          String nessieClientSpec)
       throws NessieNotFoundException, NessieConflictException;
 }

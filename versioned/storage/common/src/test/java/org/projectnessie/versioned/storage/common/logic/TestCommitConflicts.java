@@ -561,11 +561,13 @@ public class TestCommitConflicts {
         .isInstanceOf(CommitConflictException.class)
         .asInstanceOf(type(CommitConflictException.class))
         .extracting(CommitConflictException::conflicts, list(CommitConflict.class))
-        .containsExactly(commitConflict(fooKey, KEY_DOES_NOT_EXIST, commitOp(ADD, 0, fooAddId)));
+        .containsExactly(
+            commitConflict(fooKey, KEY_DOES_NOT_EXIST, commitOp(ADD, 0, fooAddId), null));
 
     soft.assertThat(callbacks).hasSize(1).containsEntry(barKey, barAddId);
     soft.assertThat(conflicts)
-        .containsExactly(commitConflict(fooKey, KEY_DOES_NOT_EXIST, commitOp(ADD, 0, fooAddId)));
+        .containsExactly(
+            commitConflict(fooKey, KEY_DOES_NOT_EXIST, commitOp(ADD, 0, fooAddId), null));
 
     // ConflictResolution.IGNORE
 
@@ -588,7 +590,8 @@ public class TestCommitConflicts {
 
     soft.assertThat(callbacks).hasSize(1).containsEntry(barKey, barAddId);
     soft.assertThat(conflicts)
-        .containsExactly(commitConflict(fooKey, KEY_DOES_NOT_EXIST, commitOp(ADD, 0, fooAddId)));
+        .containsExactly(
+            commitConflict(fooKey, KEY_DOES_NOT_EXIST, commitOp(ADD, 0, fooAddId), null));
     soft.assertThat(indexesLogic.buildCompleteIndex(commit, Optional.empty()))
         .containsExactly(
             indexElement(barKey, commitOp(ADD, 0, barAddId)),
@@ -615,7 +618,8 @@ public class TestCommitConflicts {
 
     soft.assertThat(callbacks).hasSize(1).containsEntry(barKey, barAddId);
     soft.assertThat(conflicts)
-        .containsExactly(commitConflict(fooKey, KEY_DOES_NOT_EXIST, commitOp(ADD, 0, fooAddId)));
+        .containsExactly(
+            commitConflict(fooKey, KEY_DOES_NOT_EXIST, commitOp(ADD, 0, fooAddId), null));
     soft.assertThat(indexesLogic.buildCompleteIndex(commit, Optional.empty()))
         .containsExactly(indexElement(barKey, commitOp(ADD, 0, barAddId)));
   }

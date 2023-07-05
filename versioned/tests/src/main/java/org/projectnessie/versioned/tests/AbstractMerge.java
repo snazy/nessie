@@ -185,6 +185,8 @@ public abstract class AbstractMerge extends AbstractNestedVersionStore {
     for (MergeBehavior mergeBehavior :
         new MergeBehavior[] {MergeBehavior.NORMAL, MergeBehavior.FORCE}) {
       StorageAssertions checkpoint = storageCheckpoint();
+      String contentId =
+          isNewStorageModel() ? store().getValue(firstCommit, keyT3).content().getId() : null;
       soft.assertThatThrownBy(
               () ->
                   store()
@@ -211,7 +213,8 @@ public abstract class AbstractMerge extends AbstractNestedVersionStore {
                   Conflict.conflict(
                       ConflictType.VALUE_DIFFERS,
                       keyT3,
-                      "values of existing and expected content for key 't3' are different")));
+                      "values of existing and expected content for key 't3' are different",
+                      contentId)));
       checkpoint.assertNoWrites();
       soft.assertAll();
     }
@@ -296,7 +299,8 @@ public abstract class AbstractMerge extends AbstractNestedVersionStore {
             Conflict.conflict(
                 ConflictType.VALUE_DIFFERS,
                 key2,
-                "values of existing and expected content for key 't2' are different"));
+                "values of existing and expected content for key 't2' are different",
+                isNewStorageModel() ? contentT2.getId() : null));
 
     soft.assertThatIllegalArgumentException()
         .isThrownBy(

@@ -235,7 +235,8 @@ public interface TreeApi {
               regexp = Validation.REF_NAME_PATH_REGEX,
               message = Validation.REF_NAME_PATH_MESSAGE)
           String branch,
-      @Valid @jakarta.validation.Valid Transplant transplant)
+      @Valid @jakarta.validation.Valid Transplant transplant,
+      @Nullable @jakarta.annotation.Nullable String nessieClientSpec)
       throws NessieNotFoundException, NessieConflictException;
 
   /** Merge commits from any reference onto a branch. */
@@ -251,7 +252,8 @@ public interface TreeApi {
               regexp = Validation.REF_NAME_PATH_REGEX,
               message = Validation.REF_NAME_PATH_MESSAGE)
           String branch,
-      @Valid @jakarta.validation.Valid @NotNull @jakarta.validation.constraints.NotNull Merge merge)
+      @Valid @jakarta.validation.Valid @NotNull @jakarta.validation.constraints.NotNull Merge merge,
+      @Nullable @jakarta.annotation.Nullable String nessieClientSpec)
       throws NessieNotFoundException, NessieConflictException;
 
   /**
@@ -279,7 +281,8 @@ public interface TreeApi {
               message = Validation.REF_NAME_PATH_MESSAGE)
           String branch,
       @Valid @jakarta.validation.Valid @NotNull @jakarta.validation.constraints.NotNull
-          Operations operations)
+          Operations operations,
+      @Nullable @jakarta.annotation.Nullable String nessieClientSpec)
       throws NessieNotFoundException, NessieConflictException;
 
   /**

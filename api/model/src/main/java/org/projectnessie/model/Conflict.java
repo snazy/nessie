@@ -15,6 +15,8 @@
  */
 package org.projectnessie.model;
 
+import com.fasterxml.jackson.annotation.JsonInclude;
+import com.fasterxml.jackson.annotation.JsonView;
 import com.fasterxml.jackson.core.JsonParser;
 import com.fasterxml.jackson.databind.DeserializationContext;
 import com.fasterxml.jackson.databind.JsonDeserializer;
@@ -24,6 +26,7 @@ import java.io.IOException;
 import java.util.Locale;
 import javax.annotation.Nullable;
 import org.immutables.value.Value;
+import org.projectnessie.model.ser.Views;
 
 @Value.Immutable
 @JsonSerialize(as = ImmutableConflict.class)
@@ -35,6 +38,11 @@ public interface Conflict {
   @JsonDeserialize(using = ConflictType.Deserializer.class)
   ConflictType conflictType();
 
+  /**
+   * The content-key of the conflicting content, refers to the content-key on the "base" commit,
+   * which is the merge-base in case of a merge operation and the target branch's HEAD in case of
+   * commit and transplant operations.
+   */
   @Value.Parameter(order = 2)
   @Nullable
   @jakarta.annotation.Nullable
@@ -43,11 +51,54 @@ public interface Conflict {
   @Value.Parameter(order = 3)
   String message();
 
+  /**
+   * If the content is to be renamed via the commit, or the content is renamed via the merged
+   * changes (the difference between the merge-base and the merge-from), this attribute contains the
+   * new content-key.
+   *
+   * @since Present for Nessie clients that announce {@code Nessie-Client-Spec} version {@code 3} or
+   *     newer using (REST) API v2.
+   */
+  @Value.Parameter(order = 4)
+  @JsonInclude(JsonInclude.Include.NON_NULL)
+  @JsonView(Views.V2.class)
+  @Nullable
+  @jakarta.annotation.Nullable
+  ContentKey renameTo();
+
+  Conflict withRenameTo(ContentKey renameTo);
+
+  @Value.Parameter(order = 5)
+  @JsonInclude(JsonInclude.Include.NON_NULL)
+  @JsonView(Views.V2.class)
+  @Nullable
+  @jakarta.annotation.Nullable
+  String contentId();
+
+  Conflict withContentId(String contentId);
+
   static Conflict conflict(
       @Nullable @jakarta.annotation.Nullable ConflictType conflictType,
       @Nullable @jakarta.annotation.Nullable ContentKey key,
       String message) {
-    return ImmutableConflict.of(conflictType, key, message);
+    return conflict(conflictType, key, message, null);
+  }
+
+  static Conflict conflict(
+      @Nullable @jakarta.annotation.Nullable ConflictType conflictType,
+      @Nullable @jakarta.annotation.Nullable ContentKey key,
+      String message,
+      @Nullable @jakarta.annotation.Nullable String contentId) {
+    return conflict(conflictType, key, message, null, contentId);
+  }
+
+  static Conflict conflict(
+      @Nullable @jakarta.annotation.Nullable ConflictType conflictType,
+      @Nullable @jakarta.annotation.Nullable ContentKey key,
+      String message,
+      @Nullable @jakarta.annotation.Nullable ContentKey renameTo,
+      @Nullable @jakarta.annotation.Nullable String contentId) {
+    return ImmutableConflict.of(conflictType, key, message, renameTo, contentId);
   }
 
   enum ConflictType {
