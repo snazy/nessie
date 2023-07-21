@@ -16,6 +16,12 @@
 
 import io.quarkus.gradle.tasks.QuarkusBuild
 import org.apache.tools.ant.taskdefs.condition.Os
+import org.yaml.snakeyaml.DumperOptions
+import org.yaml.snakeyaml.Yaml
+import org.yaml.snakeyaml.nodes.MappingNode
+import org.yaml.snakeyaml.nodes.NodeTuple
+import org.yaml.snakeyaml.nodes.ScalarNode
+import org.yaml.snakeyaml.nodes.Tag
 
 plugins {
   alias(libs.plugins.quarkus)
@@ -114,30 +120,65 @@ dependencies {
   intTestImplementation(libs.keycloak.admin.client)
 }
 
-val pullOpenApiSpec by tasks.registering(Sync::class)
+val openApiExtraDir = buildDir.resolve("openapi-extra")
+
+val pullOpenApiSpec by tasks.registering
 
 pullOpenApiSpec.configure {
-  destinationDir = openApiSpecDir
-  from(project.objects.property(Configuration::class).value(openapiSource))
+  inputs.files(openapiSource)
+  outputs.dir(openApiExtraDir)
+  doLast {
+    delete(openApiExtraDir)
+    val openapiSpecFile = openapiSource.resolve().first().resolve("openapi.yaml")
+    val yaml = Yaml()
+    val root = openapiSpecFile.reader().use { yaml.compose(it) } as MappingNode
+    val info =
+      root.value.find { (it.keyNode as ScalarNode).value == "info" }!!.valueNode as MappingNode
+    val versionIndex = info.value.indexOfFirst { (it.keyNode as ScalarNode).value == "version" }
+    val infoTuple = info.value[versionIndex]
+    info.value.set(
+      versionIndex,
+      NodeTuple(
+        infoTuple.keyNode,
+        ScalarNode(
+          Tag.STR,
+          project.version.toString(),
+          null,
+          null,
+          DumperOptions.ScalarStyle.DOUBLE_QUOTED
+        )
+      )
+    )
+    root.value.removeAll {
+      val key = it.keyNode as ScalarNode
+      key.value == "servers"
+    }
+    mkdir(openApiExtraDir)
+    openApiExtraDir.resolve("openapi.yaml").writer().use {
+      it.write("---\n")
+      yaml.serialize(root, it)
+    }
+  }
 }
-
-val openApiSpecDir = buildDir.resolve("openapi-extra")
 
 quarkus {
   quarkusBuildProperties.put("quarkus.package.type", quarkusPackageType())
   quarkusBuildProperties.put(
     "quarkus.smallrye-openapi.store-schema-directory",
-    buildDir.resolve("openapi").toString()
+    buildDir.resolve("openapi-effective").toString()
   )
   quarkusBuildProperties.put(
     "quarkus.smallrye-openapi.additional-docs-directory",
-    openApiSpecDir.toString()
+    openApiExtraDir.toString()
   )
 }
 
-val quarkusBuild = tasks.named<QuarkusBuild>("quarkusBuild")
+val quarkusAppPartsBuild = tasks.named("quarkusAppPartsBuild")
 
-quarkusBuild.configure { dependsOn(pullOpenApiSpec) }
+quarkusAppPartsBuild.configure {
+  //  dependsOn(pullOpenApiSpec)
+  //  inputs.dir(openApiExtraDir)
+}
 
 tasks.withType<Test>().configureEach {
   systemProperty(
@@ -146,6 +187,8 @@ tasks.withType<Test>().configureEach {
   )
   systemProperty("keycloak.docker.tag", libs.versions.keycloak.get())
 }
+
+val quarkusBuild = tasks.named<QuarkusBuild>("quarkusBuild")
 
 // Expose runnable jar via quarkusRunner configuration for integration-tests that require the
 // server.

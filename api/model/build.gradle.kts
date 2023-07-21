@@ -95,10 +95,10 @@ val openapiSource by
 val generateOpenApiSpec = tasks.named<SmallryeOpenApiTask>("generateOpenApiSpec")
 
 generateOpenApiSpec.configure {
-  inputs.files("src/main").withPathSensitivity(PathSensitivity.RELATIVE)
+  inputs.files("src/openapi").withPathSensitivity(PathSensitivity.RELATIVE)
 }
 
-artifacts { add(openapiSource.name, file("src/main/resources/META-INF")) }
+artifacts { add(openapiSource.name, file("src/openapi/resources/META-INF")) }
 
 annotationStripper {
   registerDefault().configure {
