@@ -54,7 +54,11 @@ dependencies {
   implementation(project(":nessie-versioned-persist-store"))
   implementation(libs.nessie.ui)
 
-  implementation(enforcedPlatform(libs.quarkus.bom))
+  implementation(enforcedPlatform(libs.quarkus.bom)) {
+    dependencies {
+      implementation("io.opentelemetry:opentelemetry-opencensus-shim:1.29.0-alpha") // for Google BigTable
+    }
+  }
   implementation(enforcedPlatform(libs.quarkus.amazon.services.bom))
   implementation("org.jboss.resteasy:resteasy-core-spi")
   implementation("io.quarkus:quarkus-resteasy")

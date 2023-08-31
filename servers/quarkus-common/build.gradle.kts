@@ -56,7 +56,11 @@ dependencies {
   implementation(project(":nessie-versioned-storage-rocksdb"))
   implementation(project(":nessie-versioned-storage-store"))
 
-  implementation(enforcedPlatform(libs.quarkus.bom))
+  implementation(enforcedPlatform(libs.quarkus.bom)) {
+    dependencies {
+      implementation("io.opentelemetry:opentelemetry-opencensus-shim:1.29.0-alpha") // for Google BigTable
+    }
+  }
   implementation("io.quarkus:quarkus-mongodb-client")
   implementation("io.quarkus:quarkus-hibernate-validator")
   implementation("io.quarkus:quarkus-agroal")
