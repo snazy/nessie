@@ -17,6 +17,10 @@
 import java.net.URI
 import java.util.Properties
 
+includeBuild("/home/snazy/devel/quarkusio/quarkus/master/devtools/gradle") {
+  name = "quarkus-plugin"
+}
+
 includeBuild("build-logic") { name = "nessie-build-logic" }
 
 if (!JavaVersion.current().isCompatibleWith(JavaVersion.VERSION_11)) {
