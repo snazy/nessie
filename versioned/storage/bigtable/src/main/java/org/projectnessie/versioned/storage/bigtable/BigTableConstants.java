@@ -15,6 +15,11 @@
  */
 package org.projectnessie.versioned.storage.bigtable;
 
+import static com.google.cloud.bigtable.admin.v2.models.GCRules.GCRULES;
+import static com.google.cloud.bigtable.data.v2.models.Filters.FILTERS;
+
+import com.google.cloud.bigtable.admin.v2.models.GCRules;
+import com.google.cloud.bigtable.data.v2.models.Filters;
 import com.google.protobuf.ByteString;
 
 final class BigTableConstants {
@@ -29,8 +34,15 @@ final class BigTableConstants {
   static final ByteString QUALIFIER_OBJS = ByteString.copyFromUtf8("o");
   static final ByteString QUALIFIER_REFS = ByteString.copyFromUtf8("r");
 
-  // Tue Apr 7 08:14:21 2020 +0200
-  static final long CELL_TIMESTAMP = 1586232861000L;
+  public static final Filters.Filter FILTER_LIMIT_1 = FILTERS.limit().cellsPerColumn(1);
+  public static final Filters.Filter FILTER_FAMILY_REFS = FILTERS.family().exactMatch(FAMILY_REFS);
+  public static final Filters.Filter FILTER_QUALIFIER_REFS =
+      FILTERS.qualifier().exactMatch(QUALIFIER_REFS);
+  public static final Filters.Filter FILTER_FAMILY_OBJS = FILTERS.family().exactMatch(FAMILY_OBJS);
+  public static final Filters.Filter FILTER_QUALIFIER_OBJS =
+      FILTERS.qualifier().exactMatch(QUALIFIER_OBJS);
+
+  static final GCRules.VersionRule GCRULE_MAX_VERSIONS_1 = GCRULES.maxVersions(1);
 
   static final int MAX_PARALLEL_READS = 5;
   static final int MAX_BULK_READS = 100;

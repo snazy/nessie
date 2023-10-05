@@ -21,6 +21,7 @@ import static com.google.protobuf.ByteString.copyFromUtf8;
 import static java.util.Objects.requireNonNull;
 import static org.projectnessie.versioned.storage.bigtable.BigTableConstants.FAMILY_OBJS;
 import static org.projectnessie.versioned.storage.bigtable.BigTableConstants.FAMILY_REFS;
+import static org.projectnessie.versioned.storage.bigtable.BigTableConstants.GCRULE_MAX_VERSIONS_1;
 import static org.projectnessie.versioned.storage.bigtable.BigTableConstants.TABLE_OBJS;
 import static org.projectnessie.versioned.storage.bigtable.BigTableConstants.TABLE_REFS;
 import static org.projectnessie.versioned.storage.bigtable.BigTablePersist.apiException;
@@ -31,6 +32,7 @@ import com.google.api.gax.rpc.NotFoundException;
 import com.google.api.gax.rpc.ServerStream;
 import com.google.cloud.bigtable.admin.v2.BigtableTableAdminClient;
 import com.google.cloud.bigtable.admin.v2.models.CreateTableRequest;
+import com.google.cloud.bigtable.admin.v2.models.ModifyColumnFamiliesRequest;
 import com.google.cloud.bigtable.data.v2.BigtableDataClient;
 import com.google.cloud.bigtable.data.v2.models.Filters;
 import com.google.cloud.bigtable.data.v2.models.Filters.Filter;
@@ -150,10 +152,17 @@ final class BigTableBackend implements Backend {
   private void checkTable(String table, String family) {
     BigtableTableAdminClient client = requireNonNull(tableAdminClient);
     try {
-      client.getTable(table);
+      client.getTable(table).getColumnFamilies().stream()
+          .filter(cf -> cf.getId().equals(family))
+          .filter(cf -> !cf.hasGCRule())
+          .forEach(
+              cf ->
+                  client.modifyFamilies(
+                      ModifyColumnFamiliesRequest.of(table)
+                          .updateFamily(family, GCRULE_MAX_VERSIONS_1)));
     } catch (NotFoundException nf) {
       LOGGER.info("Creating Nessie table '{}' in Google Bigtable...", table);
-      client.createTable(CreateTableRequest.of(table).addFamily(family));
+      client.createTable(CreateTableRequest.of(table).addFamily(family, GCRULE_MAX_VERSIONS_1));
     }
   }
 
