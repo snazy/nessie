@@ -22,11 +22,13 @@ import javax.annotation.Nullable;
 import javax.validation.constraints.NotBlank;
 import javax.validation.constraints.NotNull;
 import org.immutables.value.Value;
+import org.projectnessie.jackson.protobuf.api.ProtoType;
 
 @Value.Immutable
 @JsonSerialize(as = ImmutableUDF.class)
 @JsonDeserialize(as = ImmutableUDF.class)
 @JsonTypeName("UDF")
+@ProtoType(protoType = "nessie.model.UDF")
 public abstract class UDF extends Content {
 
   @NotBlank

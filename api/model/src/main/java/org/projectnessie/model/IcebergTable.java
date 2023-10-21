@@ -28,6 +28,7 @@ import javax.validation.constraints.NotNull;
 import org.eclipse.microprofile.openapi.annotations.enums.SchemaType;
 import org.eclipse.microprofile.openapi.annotations.media.Schema;
 import org.immutables.value.Value;
+import org.projectnessie.jackson.protobuf.api.ProtoType;
 import org.projectnessie.model.ser.Views;
 
 /**
@@ -56,6 +57,7 @@ import org.projectnessie.model.ser.Views;
 @JsonSerialize(as = ImmutableIcebergTable.class)
 @JsonDeserialize(as = ImmutableIcebergTable.class)
 @JsonTypeName("ICEBERG_TABLE")
+@ProtoType(protoType = "nessie.model.IcebergTable")
 public abstract class IcebergTable extends IcebergContent {
 
   /**

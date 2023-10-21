@@ -28,6 +28,7 @@ import org.eclipse.microprofile.openapi.annotations.enums.SchemaType;
 import org.eclipse.microprofile.openapi.annotations.media.DiscriminatorMapping;
 import org.eclipse.microprofile.openapi.annotations.media.Schema;
 import org.immutables.value.Value;
+import org.projectnessie.jackson.protobuf.api.ProtoType;
 import org.projectnessie.model.types.ContentTypeIdResolver;
 import org.projectnessie.model.types.ContentTypes;
 
@@ -53,6 +54,7 @@ import org.projectnessie.model.types.ContentTypes;
     discriminatorProperty = "type")
 @JsonTypeIdResolver(ContentTypeIdResolver.class)
 @JsonTypeInfo(use = JsonTypeInfo.Id.CUSTOM, property = "type", visible = true)
+@ProtoType(protoType = "nessie.model.Content")
 public abstract class Content {
 
   @JsonDeserialize(using = Util.ContentTypeDeserializer.class)

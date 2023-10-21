@@ -40,6 +40,9 @@ import org.eclipse.microprofile.openapi.annotations.enums.SchemaType;
 import org.eclipse.microprofile.openapi.annotations.media.Schema;
 import org.eclipse.microprofile.openapi.annotations.media.SchemaProperty;
 import org.immutables.value.Value;
+import org.projectnessie.jackson.protobuf.api.ProtoType;
+import org.projectnessie.jackson.protobuf.api.ProtobufGenerator;
+import org.projectnessie.jackson.protobuf.api.ProtobufParser;
 import org.projectnessie.model.ser.CommitMetaDeserializer;
 import org.projectnessie.model.ser.Views;
 
@@ -51,6 +54,7 @@ import org.projectnessie.model.ser.Views;
     properties = {@SchemaProperty(name = "hash", pattern = Validation.HASH_REGEX)})
 @JsonSerialize(as = ImmutableCommitMeta.class)
 @JsonDeserialize(using = CommitMetaDeserializer.class)
+@ProtoType(protoType = "nessie.model.CommitMeta")
 public abstract class CommitMeta {
 
   /**
@@ -248,7 +252,11 @@ public abstract class CommitMeta {
     @Override
     public void serialize(Instant value, JsonGenerator gen, SerializerProvider provider)
         throws IOException {
-      gen.writeString(FORMATTER.format(value));
+      if (gen instanceof ProtobufGenerator) {
+        ((ProtobufGenerator) gen).writeProtoTimestamp(value);
+      } else {
+        gen.writeString(FORMATTER.format(value));
+      }
     }
   }
 
@@ -267,7 +275,11 @@ public abstract class CommitMeta {
 
     @Override
     public Instant deserialize(JsonParser p, DeserializationContext ctxt) throws IOException {
-      return Instant.parse(p.getText());
+      if (p instanceof ProtobufParser) {
+        return ((ProtobufParser) p).getProtoTimestamp();
+      } else {
+        return Instant.parse(p.getText());
+      }
     }
   }
 }

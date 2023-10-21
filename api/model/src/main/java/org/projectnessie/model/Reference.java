@@ -30,6 +30,7 @@ import org.eclipse.microprofile.openapi.annotations.media.DiscriminatorMapping;
 import org.eclipse.microprofile.openapi.annotations.media.Schema;
 import org.eclipse.microprofile.openapi.annotations.media.SchemaProperty;
 import org.immutables.value.Value;
+import org.projectnessie.jackson.protobuf.api.ProtoType;
 
 @Schema(
     type = SchemaType.OBJECT,
@@ -53,6 +54,7 @@ import org.immutables.value.Value;
   @JsonSubTypes.Type(Detached.class)
 })
 @JsonTypeInfo(use = JsonTypeInfo.Id.NAME, property = "type")
+@ProtoType(protoType = "nessie.model.Reference")
 public interface Reference extends Base {
   /** Human-readable reference name. */
   @NotBlank

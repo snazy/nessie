@@ -23,12 +23,14 @@ import javax.annotation.Nullable;
 import org.eclipse.microprofile.openapi.annotations.enums.SchemaType;
 import org.eclipse.microprofile.openapi.annotations.media.Schema;
 import org.immutables.value.Value;
+import org.projectnessie.jackson.protobuf.api.ProtoType;
 import org.projectnessie.model.ser.Views;
 
 @Schema(type = SchemaType.OBJECT, title = "DiffResponse")
 @Value.Immutable
 @JsonSerialize(as = ImmutableDiffResponse.class)
 @JsonDeserialize(as = ImmutableDiffResponse.class)
+@ProtoType(protoType = "nessie.model.DiffResponse")
 public interface DiffResponse extends PaginatedResponse {
 
   static ImmutableDiffResponse.Builder builder() {
@@ -50,6 +52,7 @@ public interface DiffResponse extends PaginatedResponse {
   @Value.Immutable
   @JsonSerialize(as = ImmutableDiffEntry.class)
   @JsonDeserialize(as = ImmutableDiffEntry.class)
+  @ProtoType(protoType = "nessie.model.DiffEntry")
   interface DiffEntry {
     @Value.Parameter(order = 1)
     ContentKey getKey();

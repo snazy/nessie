@@ -26,12 +26,14 @@ import javax.annotation.Nullable;
 import javax.validation.constraints.NotBlank;
 import javax.validation.constraints.NotNull;
 import org.immutables.value.Value;
+import org.projectnessie.jackson.protobuf.api.ProtoType;
 import org.projectnessie.model.ser.Views;
 
 @Value.Immutable
 @JsonSerialize(as = ImmutableIcebergView.class)
 @JsonDeserialize(as = ImmutableIcebergView.class)
 @JsonTypeName("ICEBERG_VIEW")
+@ProtoType(protoType = "nessie.model.IcebergView")
 public abstract class IcebergView extends IcebergContent {
 
   /**

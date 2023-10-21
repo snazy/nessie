@@ -24,6 +24,7 @@ import javax.annotation.Nullable;
 import org.eclipse.microprofile.openapi.annotations.enums.SchemaType;
 import org.eclipse.microprofile.openapi.annotations.media.Schema;
 import org.immutables.value.Value;
+import org.projectnessie.jackson.protobuf.api.ProtoType;
 
 /** API representation of a Nessie Branch. This object is akin to a Ref in Git terminology. */
 @Value.Immutable
@@ -31,6 +32,7 @@ import org.immutables.value.Value;
 @JsonSerialize(as = ImmutableBranch.class)
 @JsonDeserialize(as = ImmutableBranch.class)
 @JsonTypeName("BRANCH")
+@ProtoType(protoType = "nessie.model.Branch")
 public interface Branch extends Reference {
 
   @Override

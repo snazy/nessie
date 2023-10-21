@@ -32,6 +32,7 @@ import java.util.Objects;
 import javax.validation.constraints.NotNull;
 import org.immutables.value.Value;
 import org.immutables.value.Value.Derived;
+import org.projectnessie.jackson.protobuf.api.ProtoType;
 
 /**
  * For a given table name <b>a.b.c.tableName</b>, the {@link Namespace} would be the prefix
@@ -43,6 +44,7 @@ import org.immutables.value.Value.Derived;
 @JsonSerialize(as = ImmutableNamespace.class)
 @JsonDeserialize(as = ImmutableNamespace.class)
 @JsonTypeName("NAMESPACE")
+@ProtoType(protoType = "nessie.model.Namespace")
 public abstract class Namespace extends Content {
 
   static final String ERROR_MSG_TEMPLATE =

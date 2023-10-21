@@ -27,6 +27,7 @@ import javax.validation.constraints.Pattern;
 import org.eclipse.microprofile.openapi.annotations.enums.SchemaType;
 import org.eclipse.microprofile.openapi.annotations.media.Schema;
 import org.immutables.value.Value;
+import org.projectnessie.jackson.protobuf.api.ProtoType;
 
 /**
  * API representation of a detached Nessie commit, a commit without a named reference. The reserved
@@ -38,6 +39,7 @@ import org.immutables.value.Value;
 @JsonSerialize(as = ImmutableDetached.class)
 @JsonDeserialize(as = ImmutableDetached.class)
 @JsonTypeName("DETACHED")
+@ProtoType(protoType = "nessie.model.Detached")
 public interface Detached extends Reference {
 
   String REF_NAME = "DETACHED";

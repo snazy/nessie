@@ -30,6 +30,7 @@ import java.util.Objects;
 import javax.validation.constraints.NotNull;
 import javax.validation.constraints.Size;
 import org.immutables.value.Value;
+import org.projectnessie.jackson.protobuf.api.ProtoType;
 
 /**
  * Key for the content of an object.
@@ -40,6 +41,7 @@ import org.immutables.value.Value;
 @Value.Immutable
 @JsonSerialize(as = ImmutableContentKey.class)
 @JsonDeserialize(as = ImmutableContentKey.class)
+@ProtoType(protoType = "nessie.model.ContentKey")
 public abstract class ContentKey implements Comparable<ContentKey> {
 
   /** Maximum number of characters in a key. Note: characters can take up to 3 bytes via UTF-8. */

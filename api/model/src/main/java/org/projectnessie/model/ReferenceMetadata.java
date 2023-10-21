@@ -22,6 +22,7 @@ import javax.annotation.Nullable;
 import org.eclipse.microprofile.openapi.annotations.enums.SchemaType;
 import org.eclipse.microprofile.openapi.annotations.media.Schema;
 import org.immutables.value.Value;
+import org.projectnessie.jackson.protobuf.api.ProtoType;
 
 @Schema(
     type = SchemaType.OBJECT,
@@ -37,6 +38,7 @@ import org.immutables.value.Value;
 @JsonSerialize(as = ImmutableReferenceMetadata.class)
 @JsonDeserialize(as = ImmutableReferenceMetadata.class)
 @JsonTypeName("REFERENCE_METADATA")
+@ProtoType(protoType = "nessie.model.ReferenceMetadata")
 public interface ReferenceMetadata {
 
   @Nullable

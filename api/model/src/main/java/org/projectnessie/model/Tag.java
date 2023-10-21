@@ -24,6 +24,7 @@ import javax.annotation.Nullable;
 import org.eclipse.microprofile.openapi.annotations.enums.SchemaType;
 import org.eclipse.microprofile.openapi.annotations.media.Schema;
 import org.immutables.value.Value;
+import org.projectnessie.jackson.protobuf.api.ProtoType;
 
 /** API representation of a Nessie Tag. This object is akin to a Ref in Git terminology. */
 @Value.Immutable
@@ -31,6 +32,7 @@ import org.immutables.value.Value;
 @JsonSerialize(as = ImmutableTag.class)
 @JsonDeserialize(as = ImmutableTag.class)
 @JsonTypeName("TAG")
+@ProtoType(protoType = "nessie.model.Tag")
 public interface Tag extends Reference {
 
   @Override

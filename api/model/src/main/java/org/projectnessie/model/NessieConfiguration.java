@@ -27,6 +27,7 @@ import javax.validation.constraints.Size;
 import org.eclipse.microprofile.openapi.annotations.enums.SchemaType;
 import org.eclipse.microprofile.openapi.annotations.media.Schema;
 import org.immutables.value.Value;
+import org.projectnessie.jackson.protobuf.api.ProtoType;
 import org.projectnessie.model.CommitMeta.InstantDeserializer;
 import org.projectnessie.model.CommitMeta.InstantSerializer;
 import org.projectnessie.model.ser.Views;
@@ -39,6 +40,7 @@ import org.projectnessie.model.ser.Views;
 @Value.Immutable
 @JsonSerialize(as = ImmutableNessieConfiguration.class)
 @JsonDeserialize(as = ImmutableNessieConfiguration.class)
+@ProtoType(protoType = "nessie.model.NessieConfiguration")
 public abstract class NessieConfiguration {
 
   /**

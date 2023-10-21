@@ -22,11 +22,13 @@ import java.util.List;
 import javax.annotation.Nullable;
 import javax.validation.constraints.NotNull;
 import org.immutables.value.Value;
+import org.projectnessie.jackson.protobuf.api.ProtoType;
 
 @Value.Immutable
 @JsonSerialize(as = ImmutableDeltaLakeTable.class)
 @JsonDeserialize(as = ImmutableDeltaLakeTable.class)
 @JsonTypeName("DELTA_LAKE_TABLE")
+@ProtoType(protoType = "nessie.model.DeltaLakeTable")
 public abstract class DeltaLakeTable extends Content {
 
   @NotNull

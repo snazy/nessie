@@ -30,6 +30,7 @@ dependencies {
   implementation(platform(libs.jackson.bom))
   implementation("com.fasterxml.jackson.core:jackson-databind")
   implementation("com.fasterxml.jackson.core:jackson-annotations")
+  compileOnly(project(":nessie-jackson-protobuf-annotations"))
 
   // javax/jakarta
   compileOnly(libs.jakarta.ws.rs.api)
