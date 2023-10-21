@@ -62,15 +62,15 @@ import org.projectnessie.versioned.storage.common.persist.Reference;
 import org.projectnessie.versioned.storage.versionstore.RefMapping;
 import org.projectnessie.versioned.storage.versionstore.TypeMapping;
 import org.projectnessie.versioned.transfer.files.ExportFileSupplier;
-import org.projectnessie.versioned.transfer.serialize.TransferTypes.Commit;
-import org.projectnessie.versioned.transfer.serialize.TransferTypes.ExportVersion;
-import org.projectnessie.versioned.transfer.serialize.TransferTypes.HeadsAndForks;
-import org.projectnessie.versioned.transfer.serialize.TransferTypes.NamedReference;
-import org.projectnessie.versioned.transfer.serialize.TransferTypes.Operation;
-import org.projectnessie.versioned.transfer.serialize.TransferTypes.OperationType;
-import org.projectnessie.versioned.transfer.serialize.TransferTypes.Ref;
-import org.projectnessie.versioned.transfer.serialize.TransferTypes.RefType;
-import org.projectnessie.versioned.transfer.serialize.TransferTypes.RepositoryDescriptionProto;
+import org.projectnessie.versioned.transfer.serialize.Commit;
+import org.projectnessie.versioned.transfer.serialize.ExportVersion;
+import org.projectnessie.versioned.transfer.serialize.HeadsAndForks;
+import org.projectnessie.versioned.transfer.serialize.NamedReference;
+import org.projectnessie.versioned.transfer.serialize.Operation;
+import org.projectnessie.versioned.transfer.serialize.OperationType;
+import org.projectnessie.versioned.transfer.serialize.Ref;
+import org.projectnessie.versioned.transfer.serialize.RefType;
+import org.projectnessie.versioned.transfer.serialize.RepositoryDescriptionProto;
 
 final class ExportPersist extends ExportCommon {
 

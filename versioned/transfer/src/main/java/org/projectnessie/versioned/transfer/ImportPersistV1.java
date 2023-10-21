@@ -36,9 +36,9 @@ import org.projectnessie.versioned.storage.common.logic.ReferenceLogic;
 import org.projectnessie.versioned.storage.common.objtypes.CommitObj;
 import org.projectnessie.versioned.storage.common.objtypes.CommitOp;
 import org.projectnessie.versioned.storage.versionstore.RefMapping;
-import org.projectnessie.versioned.transfer.serialize.TransferTypes.Commit;
-import org.projectnessie.versioned.transfer.serialize.TransferTypes.ExportMeta;
-import org.projectnessie.versioned.transfer.serialize.TransferTypes.NamedReference;
+import org.projectnessie.versioned.transfer.serialize.Commit;
+import org.projectnessie.versioned.transfer.serialize.ExportMeta;
+import org.projectnessie.versioned.transfer.serialize.NamedReference;
 
 final class ImportPersistV1 extends ImportPersistCommon {
 

@@ -19,6 +19,7 @@ package nessie.storage;
 option java_package = "org.projectnessie.versioned.storage.common.proto";
 option java_outer_classname = "StorageTypes";
 option java_generate_equals_and_hash = true;
+option java_multiple_files = true;
 
 message CommitProto {
   int64 created = 1;

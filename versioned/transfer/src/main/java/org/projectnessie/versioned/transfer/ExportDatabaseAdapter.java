@@ -42,13 +42,13 @@ import org.projectnessie.versioned.persist.adapter.KeyWithBytes;
 import org.projectnessie.versioned.persist.adapter.ReferencesUtil;
 import org.projectnessie.versioned.persist.adapter.ReferencesUtil.IdentifyHeadsAndForkPoints;
 import org.projectnessie.versioned.transfer.files.ExportFileSupplier;
-import org.projectnessie.versioned.transfer.serialize.TransferTypes.Commit;
-import org.projectnessie.versioned.transfer.serialize.TransferTypes.ExportVersion;
-import org.projectnessie.versioned.transfer.serialize.TransferTypes.HeadsAndForks;
-import org.projectnessie.versioned.transfer.serialize.TransferTypes.NamedReference;
-import org.projectnessie.versioned.transfer.serialize.TransferTypes.Operation;
-import org.projectnessie.versioned.transfer.serialize.TransferTypes.OperationType;
-import org.projectnessie.versioned.transfer.serialize.TransferTypes.RefType;
+import org.projectnessie.versioned.transfer.serialize.Commit;
+import org.projectnessie.versioned.transfer.serialize.ExportVersion;
+import org.projectnessie.versioned.transfer.serialize.HeadsAndForks;
+import org.projectnessie.versioned.transfer.serialize.NamedReference;
+import org.projectnessie.versioned.transfer.serialize.Operation;
+import org.projectnessie.versioned.transfer.serialize.OperationType;
+import org.projectnessie.versioned.transfer.serialize.RefType;
 
 final class ExportDatabaseAdapter extends ExportCommon {
   ExportDatabaseAdapter(ExportFileSupplier exportFiles, NessieExporter exporter) {

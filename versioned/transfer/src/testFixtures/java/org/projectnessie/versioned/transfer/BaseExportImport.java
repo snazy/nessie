@@ -57,9 +57,9 @@ import org.projectnessie.versioned.TagName;
 import org.projectnessie.versioned.VersionStore;
 import org.projectnessie.versioned.VersionStore.MergeOp;
 import org.projectnessie.versioned.paging.PaginationIterator;
-import org.projectnessie.versioned.transfer.serialize.TransferTypes.ExportMeta;
-import org.projectnessie.versioned.transfer.serialize.TransferTypes.ExportVersion;
-import org.projectnessie.versioned.transfer.serialize.TransferTypes.HeadsAndForks;
+import org.projectnessie.versioned.transfer.serialize.ExportMeta;
+import org.projectnessie.versioned.transfer.serialize.ExportVersion;
+import org.projectnessie.versioned.transfer.serialize.HeadsAndForks;
 
 @ExtendWith(SoftAssertionsExtension.class)
 public abstract class BaseExportImport {

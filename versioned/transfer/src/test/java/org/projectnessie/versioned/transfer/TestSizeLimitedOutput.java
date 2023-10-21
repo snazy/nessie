@@ -41,8 +41,8 @@ import org.junit.jupiter.params.ParameterizedTest;
 import org.junit.jupiter.params.provider.MethodSource;
 import org.projectnessie.nessie.relocated.protobuf.AbstractMessage;
 import org.projectnessie.versioned.transfer.files.ExportFileSupplier;
-import org.projectnessie.versioned.transfer.serialize.TransferTypes.ExportMeta;
-import org.projectnessie.versioned.transfer.serialize.TransferTypes.NamedReference;
+import org.projectnessie.versioned.transfer.serialize.ExportMeta;
+import org.projectnessie.versioned.transfer.serialize.NamedReference;
 
 @ExtendWith(SoftAssertionsExtension.class)
 public class TestSizeLimitedOutput {

@@ -41,13 +41,13 @@ import org.projectnessie.versioned.persist.adapter.spi.AbstractDatabaseAdapter;
 import org.projectnessie.versioned.storage.common.objtypes.Hashes;
 import org.projectnessie.versioned.store.DefaultStoreWorker;
 import org.projectnessie.versioned.transfer.files.ExportFileSupplier;
-import org.projectnessie.versioned.transfer.serialize.TransferTypes.Commit;
-import org.projectnessie.versioned.transfer.serialize.TransferTypes.ExportVersion;
-import org.projectnessie.versioned.transfer.serialize.TransferTypes.HeadsAndForks;
-import org.projectnessie.versioned.transfer.serialize.TransferTypes.NamedReference;
-import org.projectnessie.versioned.transfer.serialize.TransferTypes.Operation;
-import org.projectnessie.versioned.transfer.serialize.TransferTypes.OperationType;
-import org.projectnessie.versioned.transfer.serialize.TransferTypes.RefType;
+import org.projectnessie.versioned.transfer.serialize.Commit;
+import org.projectnessie.versioned.transfer.serialize.ExportVersion;
+import org.projectnessie.versioned.transfer.serialize.HeadsAndForks;
+import org.projectnessie.versioned.transfer.serialize.NamedReference;
+import org.projectnessie.versioned.transfer.serialize.Operation;
+import org.projectnessie.versioned.transfer.serialize.OperationType;
+import org.projectnessie.versioned.transfer.serialize.RefType;
 
 /**
  * Creates export artifacts by generating artificial commits from the latest content object values

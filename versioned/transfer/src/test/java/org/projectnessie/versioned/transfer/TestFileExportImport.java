@@ -28,8 +28,8 @@ import org.projectnessie.versioned.transfer.files.ExportFileSupplier;
 import org.projectnessie.versioned.transfer.files.FileExporter;
 import org.projectnessie.versioned.transfer.files.FileImporter;
 import org.projectnessie.versioned.transfer.files.ImportFileSupplier;
-import org.projectnessie.versioned.transfer.serialize.TransferTypes.ExportMeta;
-import org.projectnessie.versioned.transfer.serialize.TransferTypes.HeadsAndForks;
+import org.projectnessie.versioned.transfer.serialize.ExportMeta;
+import org.projectnessie.versioned.transfer.serialize.HeadsAndForks;
 
 public class TestFileExportImport extends AbstractExportImport {
 

@@ -52,20 +52,20 @@ import org.projectnessie.versioned.storage.common.persist.ImmutableReference;
 import org.projectnessie.versioned.storage.common.persist.Obj;
 import org.projectnessie.versioned.storage.common.persist.ObjId;
 import org.projectnessie.versioned.storage.common.persist.Reference;
-import org.projectnessie.versioned.storage.common.proto.StorageTypes;
-import org.projectnessie.versioned.storage.common.proto.StorageTypes.CommitProto;
-import org.projectnessie.versioned.storage.common.proto.StorageTypes.CommitTypeProto;
-import org.projectnessie.versioned.storage.common.proto.StorageTypes.CompressionProto;
-import org.projectnessie.versioned.storage.common.proto.StorageTypes.ContentValueProto;
-import org.projectnessie.versioned.storage.common.proto.StorageTypes.HeaderEntry;
-import org.projectnessie.versioned.storage.common.proto.StorageTypes.IndexProto;
-import org.projectnessie.versioned.storage.common.proto.StorageTypes.IndexSegmentsProto;
-import org.projectnessie.versioned.storage.common.proto.StorageTypes.ObjProto;
-import org.projectnessie.versioned.storage.common.proto.StorageTypes.RefProto;
-import org.projectnessie.versioned.storage.common.proto.StorageTypes.ReferenceProto;
-import org.projectnessie.versioned.storage.common.proto.StorageTypes.StringProto;
-import org.projectnessie.versioned.storage.common.proto.StorageTypes.Stripe;
-import org.projectnessie.versioned.storage.common.proto.StorageTypes.TagProto;
+import org.projectnessie.versioned.storage.common.proto.CommitProto;
+import org.projectnessie.versioned.storage.common.proto.CommitTypeProto;
+import org.projectnessie.versioned.storage.common.proto.CompressionProto;
+import org.projectnessie.versioned.storage.common.proto.ContentValueProto;
+import org.projectnessie.versioned.storage.common.proto.HeaderEntry;
+import org.projectnessie.versioned.storage.common.proto.IndexProto;
+import org.projectnessie.versioned.storage.common.proto.IndexSegmentsProto;
+import org.projectnessie.versioned.storage.common.proto.ObjProto;
+import org.projectnessie.versioned.storage.common.proto.RefProto;
+import org.projectnessie.versioned.storage.common.proto.ReferencePreviousProto;
+import org.projectnessie.versioned.storage.common.proto.ReferenceProto;
+import org.projectnessie.versioned.storage.common.proto.StringProto;
+import org.projectnessie.versioned.storage.common.proto.Stripe;
+import org.projectnessie.versioned.storage.common.proto.TagProto;
 
 public final class ProtoSerialization {
   private ProtoSerialization() {}
@@ -89,7 +89,7 @@ public final class ProtoSerialization {
     }
     for (Reference.PreviousPointer previousPointer : reference.previousPointers()) {
       refBuilder.addPreviousPointers(
-          StorageTypes.ReferencePreviousProto.newBuilder()
+          ReferencePreviousProto.newBuilder()
               .setPointer(serializeObjId(previousPointer.pointer()))
               .setTimestamp(previousPointer.timestamp()));
     }
@@ -109,7 +109,7 @@ public final class ProtoSerialization {
               .deleted(proto.getDeleted())
               .createdAtMicros(proto.getCreatedAtMicros())
               .extendedInfoObj(deserializeObjId(proto.getExtendedInfoObj()));
-      for (StorageTypes.ReferencePreviousProto previousProto : proto.getPreviousPointersList()) {
+      for (ReferencePreviousProto previousProto : proto.getPreviousPointersList()) {
         ref.addPreviousPointers(
             Reference.PreviousPointer.previousPointer(
                 deserializeObjId(previousProto.getPointer()), previousProto.getTimestamp()));
@@ -127,7 +127,7 @@ public final class ProtoSerialization {
     try {
       ByteArrayOutputStream output = new ByteArrayOutputStream();
       for (Reference.PreviousPointer prev : previousPointers) {
-        StorageTypes.ReferencePreviousProto.newBuilder()
+        ReferencePreviousProto.newBuilder()
             .setPointer(serializeObjId(prev.pointer()))
             .setTimestamp(prev.timestamp())
             .build()
@@ -147,11 +147,10 @@ public final class ProtoSerialization {
 
     try {
       ByteArrayInputStream input = new ByteArrayInputStream(previousPointers);
-      Parser<StorageTypes.ReferencePreviousProto> parser =
-          StorageTypes.ReferencePreviousProto.parser();
+      Parser<ReferencePreviousProto> parser = ReferencePreviousProto.parser();
       List<Reference.PreviousPointer> r = new ArrayList<>();
       while (input.available() > 0) {
-        StorageTypes.ReferencePreviousProto proto = parser.parseDelimitedFrom(input);
+        ReferencePreviousProto proto = parser.parseDelimitedFrom(input);
         Reference.PreviousPointer previousPointer =
             Reference.PreviousPointer.previousPointer(
                 deserializeObjId(proto.getPointer()), proto.getTimestamp());

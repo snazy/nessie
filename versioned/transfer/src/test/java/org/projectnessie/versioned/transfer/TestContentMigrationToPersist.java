@@ -56,7 +56,7 @@ import org.projectnessie.versioned.storage.testextension.PersistExtension;
 import org.projectnessie.versioned.storage.versionstore.VersionStoreImpl;
 import org.projectnessie.versioned.transfer.files.FileExporter;
 import org.projectnessie.versioned.transfer.files.FileImporter;
-import org.projectnessie.versioned.transfer.serialize.TransferTypes.ExportMeta;
+import org.projectnessie.versioned.transfer.serialize.ExportMeta;
 
 @ExtendWith(SoftAssertionsExtension.class)
 @ExtendWith({PersistExtension.class, DatabaseAdapterExtension.class})

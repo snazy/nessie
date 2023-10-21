@@ -30,8 +30,8 @@ import org.projectnessie.versioned.transfer.files.ExportFileSupplier;
 import org.projectnessie.versioned.transfer.files.ImportFileSupplier;
 import org.projectnessie.versioned.transfer.files.ZipArchiveExporter;
 import org.projectnessie.versioned.transfer.files.ZipArchiveImporter;
-import org.projectnessie.versioned.transfer.serialize.TransferTypes.ExportMeta;
-import org.projectnessie.versioned.transfer.serialize.TransferTypes.HeadsAndForks;
+import org.projectnessie.versioned.transfer.serialize.ExportMeta;
+import org.projectnessie.versioned.transfer.serialize.HeadsAndForks;
 
 public class TestZipArchiveExportImport extends AbstractExportImport {
 

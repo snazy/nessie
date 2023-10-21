@@ -52,8 +52,8 @@ import org.projectnessie.versioned.store.DefaultStoreWorker;
 import org.projectnessie.versioned.transfer.files.ImportFileSupplier;
 import org.projectnessie.versioned.transfer.files.ZipArchiveExporter;
 import org.projectnessie.versioned.transfer.files.ZipArchiveImporter;
-import org.projectnessie.versioned.transfer.serialize.TransferTypes.ExportMeta;
-import org.projectnessie.versioned.transfer.serialize.TransferTypes.HeadsAndForks;
+import org.projectnessie.versioned.transfer.serialize.ExportMeta;
+import org.projectnessie.versioned.transfer.serialize.HeadsAndForks;
 
 @ExtendWith(DatabaseAdapterExtension.class)
 public abstract class AbstractITCommitLogOptimization {

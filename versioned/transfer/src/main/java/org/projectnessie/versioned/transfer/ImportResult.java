@@ -17,8 +17,8 @@ package org.projectnessie.versioned.transfer;
 
 import org.immutables.value.Value;
 import org.projectnessie.versioned.persist.adapter.HeadsAndForkPoints;
-import org.projectnessie.versioned.transfer.serialize.TransferTypes.ExportMeta;
-import org.projectnessie.versioned.transfer.serialize.TransferTypes.HeadsAndForks;
+import org.projectnessie.versioned.transfer.serialize.ExportMeta;
+import org.projectnessie.versioned.transfer.serialize.HeadsAndForks;
 
 /** The result of a {@link NessieImporter#importNessieRepository()} operation. */
 @Value.Immutable

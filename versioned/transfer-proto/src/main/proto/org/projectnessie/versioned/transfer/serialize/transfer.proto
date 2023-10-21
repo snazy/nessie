@@ -19,6 +19,7 @@ package nessie.transfer;
 option java_package = "org.projectnessie.versioned.transfer.serialize";
 option java_outer_classname = "TransferTypes";
 option java_generate_equals_and_hash = true;
+option java_multiple_files = true;
 
 message ExportMeta {
   int64 created_millis_epoch = 1;

@@ -123,10 +123,10 @@ import org.projectnessie.versioned.storage.common.persist.ObjId;
 import org.projectnessie.versioned.storage.common.persist.ObjType;
 import org.projectnessie.versioned.storage.common.persist.Persist;
 import org.projectnessie.versioned.storage.common.persist.Reference;
-import org.projectnessie.versioned.storage.common.proto.StorageTypes.HeaderEntry;
-import org.projectnessie.versioned.storage.common.proto.StorageTypes.Headers;
-import org.projectnessie.versioned.storage.common.proto.StorageTypes.Stripe;
-import org.projectnessie.versioned.storage.common.proto.StorageTypes.Stripes;
+import org.projectnessie.versioned.storage.common.proto.HeaderEntry;
+import org.projectnessie.versioned.storage.common.proto.Headers;
+import org.projectnessie.versioned.storage.common.proto.Stripe;
+import org.projectnessie.versioned.storage.common.proto.Stripes;
 
 public class CassandraPersist implements Persist {
 

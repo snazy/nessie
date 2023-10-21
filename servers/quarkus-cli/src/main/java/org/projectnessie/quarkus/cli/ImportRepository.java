@@ -41,8 +41,8 @@ import org.projectnessie.versioned.transfer.ProgressListener;
 import org.projectnessie.versioned.transfer.files.FileImporter;
 import org.projectnessie.versioned.transfer.files.ImportFileSupplier;
 import org.projectnessie.versioned.transfer.files.ZipArchiveImporter;
-import org.projectnessie.versioned.transfer.serialize.TransferTypes.ExportMeta;
-import org.projectnessie.versioned.transfer.serialize.TransferTypes.HeadsAndForks;
+import org.projectnessie.versioned.transfer.serialize.ExportMeta;
+import org.projectnessie.versioned.transfer.serialize.HeadsAndForks;
 import picocli.CommandLine;
 import picocli.CommandLine.PicocliException;
 

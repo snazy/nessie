@@ -17,7 +17,7 @@ package org.projectnessie.versioned.transfer;
 
 import javax.annotation.Nonnull;
 import javax.annotation.Nullable;
-import org.projectnessie.versioned.transfer.serialize.TransferTypes.ExportMeta;
+import org.projectnessie.versioned.transfer.serialize.ExportMeta;
 
 @FunctionalInterface
 public interface ProgressListener {
