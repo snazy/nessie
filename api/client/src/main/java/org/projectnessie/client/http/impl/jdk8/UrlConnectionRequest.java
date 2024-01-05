@@ -24,12 +24,13 @@ import java.net.ProtocolException;
 import java.net.SocketTimeoutException;
 import java.net.URI;
 import java.util.List;
+import java.util.concurrent.CompletableFuture;
+import java.util.concurrent.CompletionStage;
 import java.util.function.BiConsumer;
 import javax.net.ssl.HttpsURLConnection;
 import org.projectnessie.client.http.HttpClient.Method;
 import org.projectnessie.client.http.HttpClientException;
 import org.projectnessie.client.http.HttpClientReadTimeoutException;
-import org.projectnessie.client.http.HttpRequest;
 import org.projectnessie.client.http.HttpResponse;
 import org.projectnessie.client.http.RequestContext;
 import org.projectnessie.client.http.ResponseContext;
@@ -42,6 +43,12 @@ final class UrlConnectionRequest extends BaseHttpRequest {
 
   UrlConnectionRequest(HttpRuntimeConfig config) {
     super(config);
+  }
+
+  @Override
+  public CompletionStage<HttpResponse> executeAsync(Method method, Object body)
+      throws HttpClientException {
+    return CompletableFuture.supplyAsync(() -> executeRequest(method, body));
   }
 
   @Override
@@ -123,11 +130,5 @@ final class UrlConnectionRequest extends BaseHttpRequest {
   @Override
   public HttpResponse put(Object obj) throws HttpClientException {
     return executeRequest(Method.PUT, obj);
-  }
-
-  @Override
-  public HttpRequest resolveTemplate(String name, String value) {
-    uriBuilder.resolveTemplate(name, value);
-    return this;
   }
 }

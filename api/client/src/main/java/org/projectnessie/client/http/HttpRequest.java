@@ -15,6 +15,7 @@
  */
 package org.projectnessie.client.http;
 
+import java.util.concurrent.CompletionStage;
 import org.projectnessie.client.http.HttpClient.Method;
 import org.projectnessie.client.http.impl.HttpHeaders;
 import org.projectnessie.client.http.impl.HttpRuntimeConfig;
@@ -75,6 +76,9 @@ public abstract class HttpRequest
   public abstract HttpResponse executeRequest(Method method, Object body)
       throws HttpClientException;
 
+  public abstract CompletionStage<HttpResponse> executeAsync(Method method, Object body)
+      throws HttpClientException;
+
   @Override
   public HttpResponse get() throws HttpClientException {
     return executeRequest(Method.GET, null);
@@ -95,6 +99,26 @@ public abstract class HttpRequest
     return executeRequest(Method.PUT, obj);
   }
 
+  @Override
+  public CompletionStage<HttpResponse> getAsync() throws HttpClientException {
+    return executeAsync(Method.GET, null);
+  }
+
+  @Override
+  public CompletionStage<HttpResponse> deleteAsync() throws HttpClientException {
+    return executeAsync(Method.DELETE, null);
+  }
+
+  @Override
+  public CompletionStage<HttpResponse> postAsync(Object obj) throws HttpClientException {
+    return executeAsync(Method.POST, obj);
+  }
+
+  @Override
+  public CompletionStage<HttpResponse> putAsync(Object obj) throws HttpClientException {
+    return executeAsync(Method.PUT, obj);
+  }
+
   /**
    * Sets the content-type to application/x-www-form-urlencoded. The provided body will be
    * automatically encoded as form data. This is a convenience method for {@code
@@ -103,6 +127,10 @@ public abstract class HttpRequest
    */
   public HttpResponse postForm(Object obj) {
     return contentsType("application/x-www-form-urlencoded").post(obj);
+  }
+
+  public CompletionStage<HttpResponse> postFormAsync(Object obj) {
+    return contentsType("application/x-www-form-urlencoded").postAsync(obj);
   }
 
   public HttpRequest resolveTemplate(String name, String value) {

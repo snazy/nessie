@@ -34,6 +34,8 @@ import java.nio.channels.Channels;
 import java.nio.channels.Pipe;
 import java.time.Duration;
 import java.util.List;
+import java.util.concurrent.CompletionException;
+import java.util.concurrent.CompletionStage;
 import java.util.concurrent.Executor;
 import java.util.concurrent.Flow;
 import java.util.concurrent.ForkJoinPool;
@@ -54,31 +56,71 @@ import org.slf4j.LoggerFactory;
 @SuppressWarnings("Since15") // IntelliJ warns about new APIs. 15 is misleading, it means 11
 final class JavaRequest extends BaseHttpRequest {
 
-  /**
-   * A functional interface that is used to send an {@link HttpRequest} and return an {@link
-   * HttpResponse} without leaking the {@link HttpClient} instance.
-   */
-  @FunctionalInterface
-  interface HttpExchange<T> {
-
-    /**
-     * Sends the given request using the underlying client, blocking if necessary to get the
-     * response. The returned {@link HttpResponse}{@code <T>} contains the response status, headers,
-     * and body (as handled by given response body handler).
-     *
-     * @see HttpClient#send(HttpRequest, HttpResponse.BodyHandler)
-     */
-    HttpResponse<T> send(HttpRequest request, HttpResponse.BodyHandler<T> responseBodyHandler)
-        throws IOException, InterruptedException;
-  }
-
   private static final Logger LOGGER = LoggerFactory.getLogger(JavaRequest.class);
 
-  private final HttpExchange<InputStream> exchange;
+  private final HttpClient client;
 
-  JavaRequest(HttpRuntimeConfig config, HttpExchange<InputStream> exchange) {
+  JavaRequest(HttpRuntimeConfig config, HttpClient client) {
     super(config);
-    this.exchange = exchange;
+    this.client = client;
+  }
+
+  @Override
+  public CompletionStage<org.projectnessie.client.http.HttpResponse> executeAsync(
+      Method method, Object body) throws HttpClientException {
+    URI uri = uriBuilder.build();
+
+    RequestContext context = new RequestContextImpl(headers, uri, method, body);
+
+    HttpRequest request = prepareRequest(method, uri, context);
+
+    return client
+        .sendAsync(request, BodyHandlers.ofInputStream())
+        .handle(
+            (response, e) -> {
+              if (e != null) {
+                if (e instanceof CompletionException) {
+                  e = e.getCause();
+                }
+                if (e instanceof HttpConnectTimeoutException) {
+                  throw new HttpClientException(
+                      String.format(
+                          "Timeout connecting to '%s' after %ds",
+                          uri, config.getConnectionTimeoutMillis() / 1000),
+                      e);
+                }
+                if (e instanceof HttpTimeoutException) {
+                  throw new HttpClientReadTimeoutException(
+                      String.format(
+                          "Cannot finish %s request against '%s'. Timeout while waiting for response with a timeout of %ds",
+                          method, uri, config.getReadTimeoutMillis() / 1000),
+                      e);
+                }
+                if (e instanceof MalformedURLException) {
+                  throw new HttpClientException(
+                      String.format("Cannot perform %s request. Malformed Url for %s", method, uri),
+                      e);
+                }
+                if (e instanceof IOException) {
+                  throw new HttpClientException(
+                      String.format("Failed to execute %s request against '%s'.", method, uri), e);
+                }
+                if (e instanceof RuntimeException) {
+                  throw (RuntimeException) e;
+                }
+                throw new RuntimeException(e);
+              }
+
+              try {
+                JavaResponseContext responseContext =
+                    handleResponse(method, response, context, uri);
+
+                response = null;
+                return config.responseFactory().make(responseContext, config.getMapper());
+              } finally {
+                maybeCloseResponseBody(method, response, uri);
+              }
+            });
   }
 
   @Override
@@ -87,27 +129,15 @@ final class JavaRequest extends BaseHttpRequest {
 
     URI uri = uriBuilder.build();
 
-    HttpRequest.Builder request =
-        HttpRequest.newBuilder().uri(uri).timeout(Duration.ofMillis(config.getReadTimeoutMillis()));
-
     RequestContext context = new RequestContextImpl(headers, uri, method, body);
 
-    boolean doesOutput = prepareRequest(context);
-
-    for (HttpHeader header : headers.allHeaders()) {
-      for (String value : header.getValues()) {
-        request = request.header(header.getName(), value);
-      }
-    }
-
-    BodyPublisher bodyPublisher = doesOutput ? bodyPublisher(context) : BodyPublishers.noBody();
-    request = request.method(method.name(), bodyPublisher);
+    HttpRequest request = prepareRequest(method, uri, context);
 
     HttpResponse<InputStream> response = null;
     try {
       try {
         LOGGER.debug("Sending {} request to {} ...", method, uri);
-        response = exchange.send(request.build(), BodyHandlers.ofInputStream());
+        response = client.send(request, BodyHandlers.ofInputStream());
       } catch (HttpConnectTimeoutException e) {
         throw new HttpClientException(
             String.format(
@@ -130,39 +160,66 @@ final class JavaRequest extends BaseHttpRequest {
         throw new RuntimeException(e);
       }
 
-      JavaResponseContext responseContext = new JavaResponseContext(response);
-
-      List<BiConsumer<ResponseContext, Exception>> callbacks = context.getResponseCallbacks();
-      if (callbacks != null) {
-        callbacks.forEach(callback -> callback.accept(responseContext, null));
-      }
-
-      config.getResponseFilters().forEach(responseFilter -> responseFilter.filter(responseContext));
-
-      if (response.statusCode() >= 400) {
-        // This mimics the (weird) behavior of java.net.HttpURLConnection.getResponseCode() that
-        // throws an IOException for these status codes.
-        throw new HttpClientException(
-            String.format(
-                "%s request to %s failed with HTTP/%d", method, uri, response.statusCode()));
-      }
+      JavaResponseContext responseContext = handleResponse(method, response, context, uri);
 
       response = null;
       return config.responseFactory().make(responseContext, config.getMapper());
     } finally {
-      if (response != null) {
-        try {
-          LOGGER.debug(
-              "Closing unprocessed input stream for {} request to {} delegating to {} ...",
-              method,
-              uri,
-              response.body());
-          response.body().close();
-        } catch (IOException e) {
-          // ignore
-        }
+      maybeCloseResponseBody(method, response, uri);
+    }
+  }
+
+  private static void maybeCloseResponseBody(
+      Method method, HttpResponse<InputStream> response, URI uri) {
+    if (response != null) {
+      try {
+        LOGGER.debug(
+            "Closing unprocessed input stream for {} request to {} delegating to {} ...",
+            method,
+            uri,
+            response.body());
+        response.body().close();
+      } catch (IOException e) {
+        // ignore
       }
     }
+  }
+
+  private JavaResponseContext handleResponse(
+      Method method, HttpResponse<InputStream> response, RequestContext context, URI uri) {
+    JavaResponseContext responseContext = new JavaResponseContext(response);
+
+    List<BiConsumer<ResponseContext, Exception>> callbacks = context.getResponseCallbacks();
+    if (callbacks != null) {
+      callbacks.forEach(callback -> callback.accept(responseContext, null));
+    }
+
+    config.getResponseFilters().forEach(responseFilter -> responseFilter.filter(responseContext));
+
+    if (response.statusCode() >= 400) {
+      // This mimics the (weird) behavior of java.net.HttpURLConnection.getResponseCode() that
+      // throws an IOException for these status codes.
+      throw new HttpClientException(
+          String.format(
+              "%s request to %s failed with HTTP/%d", method, uri, response.statusCode()));
+    }
+    return responseContext;
+  }
+
+  private HttpRequest prepareRequest(Method method, URI uri, RequestContext context) {
+    HttpRequest.Builder request =
+        HttpRequest.newBuilder().uri(uri).timeout(Duration.ofMillis(config.getReadTimeoutMillis()));
+
+    boolean doesOutput = prepareRequest(context);
+
+    for (HttpHeader header : headers.allHeaders()) {
+      for (String value : header.getValues()) {
+        request = request.header(header.getName(), value);
+      }
+    }
+
+    BodyPublisher bodyPublisher = doesOutput ? bodyPublisher(context) : BodyPublishers.noBody();
+    return request.method(method.name(), bodyPublisher).build();
   }
 
   private BodyPublisher bodyPublisher(RequestContext context) {

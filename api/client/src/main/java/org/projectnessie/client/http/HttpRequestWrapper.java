@@ -15,6 +15,7 @@
  */
 package org.projectnessie.client.http;
 
+import java.util.concurrent.CompletionStage;
 import java.util.function.Supplier;
 
 /**
@@ -65,6 +66,55 @@ class HttpRequestWrapper<E1 extends Throwable, E2 extends Throwable>
   @Override
   public HttpResponse put(Object obj) throws E1, E2 {
     return unwrap(() -> delegate.put(obj));
+  }
+
+  @Override
+  public CompletionStage<HttpResponse> getAsync() throws E1, E2 {
+    return delegate.getAsync();
+  }
+
+  @Override
+  public CompletionStage<HttpResponse> deleteAsync() throws E1, E2 {
+    return delegate.deleteAsync();
+  }
+
+  @Override
+  public CompletionStage<HttpResponse> postAsync(Object obj) throws E1, E2 {
+    return delegate.postAsync(obj);
+  }
+
+  @Override
+  public CompletionStage<HttpResponse> putAsync(Object obj) throws E1, E2 {
+    return delegate.putAsync(obj).handleAsync(this::unwrapAsync);
+  }
+
+  private HttpResponse unwrapAsync(HttpResponse httpResponse, Throwable throwable) {
+    if (throwable instanceof HttpClientException) {
+      RuntimeException e = (HttpClientException) throwable;
+
+      Throwable cause = e.getCause();
+
+      if (ex1.isInstance(cause)) {
+        E1 casted = ex1.cast(cause);
+        if (casted instanceof RuntimeException) {
+          e = (RuntimeException) casted;
+        } else {
+          e = new RuntimeException(e);
+        }
+      }
+
+      if (ex2.isInstance(cause)) {
+        E2 casted = ex2.cast(cause);
+        if (casted instanceof RuntimeException) {
+          e = (RuntimeException) casted;
+        } else {
+          e = new RuntimeException(e);
+        }
+      }
+
+      throw e;
+    }
+    return httpResponse;
   }
 
   private HttpResponse unwrap(Supplier<HttpResponse> action) throws E1, E2 {

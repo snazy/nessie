@@ -15,6 +15,8 @@
  */
 package org.projectnessie.client.http;
 
+import java.util.concurrent.CompletionStage;
+
 /**
  * This interface defines execution methods for HTTP client requests.
  *
@@ -29,4 +31,12 @@ public interface ExecutableHttpRequest<E1 extends Throwable, E2 extends Throwabl
   HttpResponse post(Object obj) throws E1, E2;
 
   HttpResponse put(Object obj) throws E1, E2;
+
+  CompletionStage<HttpResponse> getAsync() throws E1, E2;
+
+  CompletionStage<HttpResponse> deleteAsync() throws E1, E2;
+
+  CompletionStage<HttpResponse> postAsync(Object obj) throws E1, E2;
+
+  CompletionStage<HttpResponse> putAsync(Object obj) throws E1, E2;
 }
