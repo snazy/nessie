@@ -62,6 +62,8 @@ dependencies {
   compileOnly(platform(libs.awssdk.bom))
   compileOnly("software.amazon.awssdk:auth")
 
+  compileOnly(libs.vertx.core)
+
   // javax/jakarta
   testFixturesApi(libs.jakarta.annotation.api)
 
@@ -142,6 +144,18 @@ testing {
     }
 
     configurations.named("testJava8Implementation") {
+      extendsFrom(configurations.getByName("testImplementation"))
+    }
+
+    register("testVertx", JvmTestSuite::class.java) {
+      commonCompatSuite()
+
+      dependencies {
+        implementation(libs.vertx.core)
+      }
+    }
+
+    configurations.named("testVertxImplementation") {
       extendsFrom(configurations.getByName("testImplementation"))
     }
 

@@ -29,6 +29,7 @@ import org.projectnessie.client.http.impl.HttpRuntimeConfig;
 import org.projectnessie.client.http.impl.HttpUtils;
 import org.projectnessie.client.http.impl.jdk11.JavaHttpClient;
 import org.projectnessie.client.http.impl.jdk8.UrlConnectionClient;
+import org.projectnessie.client.http.impl.vertx.VertxHttpClient;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -255,17 +256,29 @@ final class HttpClientBuilderImpl implements HttpClient.Builder {
     static {
       Function<HttpRuntimeConfig, HttpClient> factory;
       try {
-        Class.forName("java.net.http.HttpClient");
+        Class.forName("io.vertx.core.Vertx");
         factory =
-            config ->
-                // Need the system property for tests, "normal" users can use standard
-                // configuration options.
-                Boolean.getBoolean("nessie.client.force-url-connection-client")
-                        || config.forceUrlConnectionClient()
-                    ? new UrlConnectionClient(config)
-                    : new JavaHttpClient(config);
+          config ->
+            // Need the system property for tests, "normal" users can use standard
+            // configuration options.
+            Boolean.getBoolean("nessie.client.force-url-connection-client")
+              || config.forceUrlConnectionClient()
+              ? new UrlConnectionClient(config)
+              : new VertxHttpClient(config);
       } catch (ClassNotFoundException e) {
-        factory = UrlConnectionClient::new;
+        try {
+          Class.forName("java.net.http.HttpClient");
+          factory =
+              config ->
+                  // Need the system property for tests, "normal" users can use standard
+                  // configuration options.
+                  Boolean.getBoolean("nessie.client.force-url-connection-client")
+                          || config.forceUrlConnectionClient()
+                      ? new UrlConnectionClient(config)
+                      : new JavaHttpClient(config);
+        } catch (ClassNotFoundException e) {
+          factory = UrlConnectionClient::new;
+        }
       }
       FACTORY = factory;
     }
