@@ -20,6 +20,8 @@ import static jakarta.ws.rs.core.HttpHeaders.IF_MODIFIED_SINCE;
 import static jakarta.ws.rs.core.HttpHeaders.IF_NONE_MATCH;
 import static jakarta.ws.rs.core.HttpHeaders.IF_UNMODIFIED_SINCE;
 import static java.time.format.DateTimeFormatter.ISO_OFFSET_DATE_TIME;
+import static java.time.format.DateTimeFormatter.RFC_1123_DATE_TIME;
+import static java.util.Arrays.asList;
 import static org.projectnessie.s3mock.util.S3Constants.CONTINUATION_TOKEN;
 import static org.projectnessie.s3mock.util.S3Constants.ENCODING_TYPE;
 import static org.projectnessie.s3mock.util.S3Constants.LIST_TYPE;
@@ -31,6 +33,7 @@ import static org.projectnessie.s3mock.util.S3Constants.X_AMZ_REQUEST_ID;
 import com.fasterxml.jackson.databind.JsonNode;
 import com.fasterxml.jackson.databind.node.JsonNodeFactory;
 import com.fasterxml.jackson.databind.node.ObjectNode;
+import com.google.common.hash.Hashing;
 import jakarta.annotation.Nullable;
 import jakarta.inject.Inject;
 import jakarta.ws.rs.Consumes;
@@ -45,14 +48,19 @@ import jakarta.ws.rs.Path;
 import jakarta.ws.rs.PathParam;
 import jakarta.ws.rs.Produces;
 import jakarta.ws.rs.QueryParam;
+import jakarta.ws.rs.core.Context;
+import jakarta.ws.rs.core.HttpHeaders;
 import jakarta.ws.rs.core.MediaType;
 import jakarta.ws.rs.core.Response;
 import jakarta.ws.rs.core.Response.Status;
 import jakarta.ws.rs.core.StreamingOutput;
+import java.io.IOException;
+import java.io.InputStream;
 import java.time.Instant;
 import java.time.ZoneId;
 import java.time.ZonedDateTime;
 import java.util.Arrays;
+import java.util.Base64;
 import java.util.Date;
 import java.util.HashSet;
 import java.util.List;
@@ -60,6 +68,7 @@ import java.util.Set;
 import java.util.Spliterator;
 import java.util.function.Function;
 import java.util.function.Predicate;
+import java.util.stream.Collectors;
 import java.util.stream.Stream;
 import org.eclipse.microprofile.openapi.annotations.parameters.RequestBody;
 import org.projectnessie.s3mock.S3Bucket.ListElement;
@@ -179,7 +188,7 @@ public class S3Resource {
             Set<String> prefixes = new HashSet<>();
             String lastKey = null;
 
-            Function<String, List<String>> keyElements = key -> Arrays.asList(key.split(delimiter));
+            Function<String, List<String>> keyElements = key -> asList(key.split(delimiter));
 
             Spliterator<ListElement> split = listStream.spliterator();
             if (continuationToken != null) {
@@ -315,6 +324,66 @@ public class S3Resource {
           b.deleter().delete(S3ObjectIdentifier.of(objectName));
           return noContent();
         });
+  }
+
+  @PUT
+  @Path("/{bucketName:[a-z0-9.-]+}/{object:.+}")
+  @Consumes(MediaType.WILDCARD)
+  // See https://docs.aws.amazon.com/AmazonS3/latest/API/API_PutObject.html
+  public Response putObject(
+      @PathParam("bucketName") String bucketName,
+      @PathParam("object") String objectName,
+      @Context HttpHeaders headers,
+      InputStream stream
+      //    @HeaderParam(RANGE) Range range,
+      //    @HeaderParam(IF_MATCH) List<String> match,
+      //    @HeaderParam(IF_NONE_MATCH) List<String> noneMatch,
+      //    @HeaderParam(IF_MODIFIED_SINCE) Date modifiedSince,
+      //    @HeaderParam(IF_UNMODIFIED_SINCE) Date unmodifiedSince
+      ) {
+    return withBucket(
+        bucketName,
+        bucket -> {
+          byte[] data;
+
+          String contentEncoding = headers.getHeaderString("Content-Encoding");
+          try {
+            data = chunkedInput(contentEncoding, stream).readAllBytes();
+          } catch (Exception e) {
+            return Response.status(500, e.toString()).build();
+          }
+
+          byte[] md5 = Hashing.md5().hashBytes(data).asBytes();
+          String md5str = Base64.getEncoder().encodeToString(md5);
+          String contentMD5 = headers.getHeaderString("Content-MD5");
+          String contentType = headers.getHeaderString("Content-Type");
+          if (contentMD5 != null && !contentMD5.equals(md5str)) {
+            return Response.status(400, "Content-MD5 does not match content").build();
+          }
+          try {
+            bucket.putObject().putObject(objectName, contentType, data);
+            return Response.ok()
+                // .header("ETag", asQuotedHex(md5))
+                .header("Date", RFC_1123_DATE_TIME.format(Instant.now().atZone(ZoneId.of("UTC"))))
+                .build();
+          } catch (UnsupportedOperationException e) {
+            return Response.status(405, "PUT object not allowed").build();
+          }
+        });
+  }
+
+  private InputStream chunkedInput(String contentEncoding, InputStream input) throws IOException {
+    if (contentEncoding != null) {
+      List<String> contentEncodingList =
+          Arrays.stream(contentEncoding.split(",")).collect(Collectors.toList());
+      if (contentEncodingList.remove("identity")) {
+        // no-op
+        return input;
+      } else if (contentEncodingList.remove("aws-chunked")) {
+        return new AwsChunkedInputStream(input);
+      }
+    }
+    return input;
   }
 
   @GET

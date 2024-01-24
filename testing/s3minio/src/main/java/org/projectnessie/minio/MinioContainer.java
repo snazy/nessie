@@ -34,7 +34,6 @@ import org.junit.jupiter.api.extension.ExtensionContext.Store.CloseableResource;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.testcontainers.containers.GenericContainer;
-import org.testcontainers.containers.output.Slf4jLogConsumer;
 import org.testcontainers.containers.wait.strategy.HttpWaitStrategy;
 import org.testcontainers.utility.Base58;
 import software.amazon.awssdk.auth.credentials.AwsBasicCredentials;
@@ -43,13 +42,15 @@ import software.amazon.awssdk.http.urlconnection.UrlConnectionHttpClient;
 import software.amazon.awssdk.services.s3.S3Client;
 import software.amazon.awssdk.services.s3.model.CreateBucketRequest;
 
-final class MinioContainer extends GenericContainer<MinioContainer>
+public final class MinioContainer extends GenericContainer<MinioContainer>
     implements MinioAccess, CloseableResource {
 
   private static final Logger LOGGER = LoggerFactory.getLogger(MinioContainer.class);
 
   private static final String DEFAULT_IMAGE;
   private static final String DEFAULT_TAG;
+  private static final int S3_PORT = 9000;
+  private static final int CONSOLE_PORT = 9001;
 
   static {
     URL resource = MinioContainer.class.getResource("Dockerfile-minio-version");
@@ -79,6 +80,7 @@ final class MinioContainer extends GenericContainer<MinioContainer>
   private static final String MINIO_ACCESS_KEY = "MINIO_ROOT_USER";
   private static final String MINIO_SECRET_KEY = "MINIO_ROOT_PASSWORD";
   private static final String MINIO_DOMAIN = "MINIO_DOMAIN";
+  private static final String MINIO_CONSOLE_ADDRESS = "MINIO_CONSOLE_ADDRESS";
 
   private static final String DEFAULT_STORAGE_DIRECTORY = "/data";
   private static final String HEALTH_ENDPOINT = "/minio/health/ready";
@@ -109,6 +111,7 @@ final class MinioContainer extends GenericContainer<MinioContainer>
   private final String bucket;
 
   private String hostPort;
+  private String consoleENdpoint;
   private String s3endpoint;
   private S3Client s3;
   private URI bucketBaseUri;
@@ -122,8 +125,9 @@ final class MinioContainer extends GenericContainer<MinioContainer>
   public MinioContainer(String image, String accessKey, String secretKey, String bucket) {
     super(image == null ? DEFAULT_IMAGE + ":" + DEFAULT_TAG : image);
     withNetworkAliases(randomString("minio"));
-    withLogConsumer(new Slf4jLogConsumer(LoggerFactory.getLogger(MinioContainer.class)));
-    addExposedPort(DEFAULT_PORT);
+    withLogConsumer(c -> LOGGER.info("[MINIO] {}", c.getUtf8StringWithoutLineEnding()));
+    addExposedPort(S3_PORT);
+    addExposedPort(CONSOLE_PORT);
     this.accessKey = accessKey != null ? accessKey : randomString("access");
     this.secretKey = secretKey != null ? secretKey : randomString("secret");
     this.bucket = bucket != null ? bucket : randomString("bucket");
@@ -131,10 +135,11 @@ final class MinioContainer extends GenericContainer<MinioContainer>
     withEnv(MINIO_SECRET_KEY, this.secretKey);
     // S3 SDK encodes bucket names in host names - need to tell Minio which domain to use
     withEnv(MINIO_DOMAIN, MINIO_DOMAIN_NAME);
+    withEnv(MINIO_CONSOLE_ADDRESS, ":" + CONSOLE_PORT);
     withCommand("server", DEFAULT_STORAGE_DIRECTORY);
     setWaitStrategy(
         new HttpWaitStrategy()
-            .forPort(DEFAULT_PORT)
+            .forPort(S3_PORT)
             .forPath(HEALTH_ENDPOINT)
             .withStartupTimeout(Duration.ofMinutes(2)));
   }
@@ -205,9 +210,18 @@ final class MinioContainer extends GenericContainer<MinioContainer>
   public void start() {
     super.start();
 
-    this.hostPort = MINIO_DOMAIN_NAME + ":" + getMappedPort(DEFAULT_PORT);
+    this.hostPort = MINIO_DOMAIN_NAME + ":" + getMappedPort(S3_PORT);
+    this.consoleENdpoint =
+        String.format("http://%s:%d/", MINIO_DOMAIN_NAME, getMappedPort(CONSOLE_PORT));
     this.s3endpoint = String.format("http://%s/", hostPort);
     this.bucketBaseUri = URI.create(String.format("s3://%s/", bucket()));
+
+    LOGGER.info(
+        "Minio running, S3 endpoint {} - console at {} - access-key {} secret-key {}",
+        s3endpoint,
+        consoleENdpoint,
+        accessKey,
+        secretKey);
 
     this.s3 = createS3Client();
     this.s3.createBucket(CreateBucketRequest.builder().bucket(bucket()).build());

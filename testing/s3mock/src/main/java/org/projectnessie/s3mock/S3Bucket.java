@@ -47,6 +47,13 @@ public abstract class S3Bucket {
     return (String prefix) -> Stream.empty();
   }
 
+  @Value.Default
+  public PutObject putObject() {
+    return (objectName, contentType, data) -> {
+      throw new UnsupportedOperationException();
+    };
+  }
+
   @FunctionalInterface
   public interface Deleter {
     boolean delete(S3ObjectIdentifier objectIdentifier);
@@ -55,6 +62,11 @@ public abstract class S3Bucket {
   @FunctionalInterface
   public interface Lister {
     Stream<ListElement> list(String prefix);
+  }
+
+  @FunctionalInterface
+  public interface PutObject {
+    void putObject(String key, String contentType, byte[] data);
   }
 
   public interface ListElement {

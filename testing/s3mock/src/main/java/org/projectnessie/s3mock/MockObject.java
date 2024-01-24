@@ -62,4 +62,21 @@ public interface MockObject {
   interface Writer {
     void write(Range range, OutputStream output) throws IOException;
   }
+
+  class RangeAwareBytesWriter implements Writer {
+    private final byte[] data;
+
+    public RangeAwareBytesWriter(byte[] data) {
+      this.data = data;
+    }
+
+    @Override
+    public void write(Range range, OutputStream output) throws IOException {
+      if (range != null) {
+        output.write(data, (int) range.start(), (int) (range.end() - range.start()));
+      } else {
+        output.write(data);
+      }
+    }
+  }
 }

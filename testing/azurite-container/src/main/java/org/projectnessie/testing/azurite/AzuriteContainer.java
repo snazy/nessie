@@ -15,41 +15,78 @@
  */
 package org.projectnessie.testing.azurite;
 
+import static java.nio.charset.StandardCharsets.UTF_8;
+
 import com.azure.storage.common.StorageSharedKeyCredential;
 import com.azure.storage.file.datalake.DataLakeServiceClient;
 import com.azure.storage.file.datalake.DataLakeServiceClientBuilder;
+import java.io.InputStream;
+import java.net.URL;
 import java.nio.charset.StandardCharsets;
 import java.util.Base64;
 import java.util.HashMap;
 import java.util.Map;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 import org.testcontainers.containers.GenericContainer;
 import org.testcontainers.containers.wait.strategy.LogMessageWaitStrategy;
+import org.testcontainers.shaded.org.apache.commons.io.IOUtils;
 
 public class AzuriteContainer extends GenericContainer<AzuriteContainer> {
+  private static final Logger LOGGER = LoggerFactory.getLogger(AzuriteContainer.class);
 
-  private static final int DEFAULT_PORT = 10000; // default blob service port
-  private static final String DEFAULT_IMAGE = "mcr.microsoft.com/azure-storage/azurite";
-  private static final String DEFAULT_TAG = "latest";
-  private static final String LOG_WAIT_REGEX =
-      "Azurite Blob service is successfully listening at .*";
+  private static final int PORT = 10000;
 
-  public static final String ACCOUNT = "account";
+  public static final String IMAGE_TAG;
+
+  static {
+    URL resource = AzuriteContainer.class.getResource("Dockerfile-azurite-version");
+    try (InputStream in = resource.openConnection().getInputStream()) {
+      String[] imageTag =
+          IOUtils.readLines(in, UTF_8).stream()
+              .map(String::trim)
+              .filter(l -> l.startsWith("FROM "))
+              .map(l -> l.substring(5).trim().split(":"))
+              .findFirst()
+              .orElseThrow(IllegalArgumentException::new);
+      IMAGE_TAG = imageTag[0] + ':' + imageTag[1];
+    } catch (Exception e) {
+      throw new RuntimeException("Failed to extract tag from " + resource, e);
+    }
+  }
+
+  private static final String LOG_WAIT_REGEX = "Azurite Blob service successfully listens on .*";
+
+  public static final String ACCOUNT = "dummyaccount";
   public static final String ACCOUNT_FQ = ACCOUNT + ".dfs.core.windows.net";
-  public static final String KEY = "key";
+  public static final String KEY = "dummykey";
   public static final String KEY_BASE64 =
       new String(Base64.getEncoder().encode(KEY.getBytes(StandardCharsets.UTF_8)));
-  ;
+
   public static final String STORAGE_CONTAINER = "container";
 
   public AzuriteContainer() {
-    this(DEFAULT_IMAGE + ":" + DEFAULT_TAG);
+    this(null);
   }
 
   public AzuriteContainer(String image) {
-    super(image == null ? DEFAULT_IMAGE + ":" + DEFAULT_TAG : image);
-    this.addExposedPort(DEFAULT_PORT);
-    this.addEnv("AZURITE_ACCOUNTS", ACCOUNT + ":" + KEY_BASE64);
-    this.setWaitStrategy(new LogMessageWaitStrategy().withRegEx(LOG_WAIT_REGEX));
+    super(image == null ? IMAGE_TAG : image);
+    withCommand("azurite-blob", "--blobHost", "0.0.0.0");
+    withLogConsumer(c -> LOGGER.info("[AZURITE] {}", c.getUtf8StringWithoutLineEnding()));
+    addExposedPort(PORT);
+    addEnv("AZURITE_ACCOUNTS", ACCOUNT + ":" + KEY_BASE64);
+    setWaitStrategy(new LogMessageWaitStrategy().withRegEx(LOG_WAIT_REGEX));
+  }
+
+  @Override
+  public void start() {
+    super.start();
+
+    LOGGER.info(
+        "Azurite started with blob port {} mapped to {}, endpoint: {}",
+        PORT,
+        getMappedPort(PORT),
+        endpoint());
   }
 
   public void createStorageContainer() {
@@ -76,7 +113,7 @@ public class AzuriteContainer extends GenericContainer<AzuriteContainer> {
   }
 
   public String endpointHostPort() {
-    return String.format("%s:%d", getHost(), getMappedPort(DEFAULT_PORT));
+    return String.format("%s:%d", getHost(), getMappedPort(PORT));
   }
 
   public StorageSharedKeyCredential credential() {
