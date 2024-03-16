@@ -92,13 +92,11 @@ jobs:
             --scan
 
       - name: Gradle / Compile Quarkus
-        uses: gradle/actions/setup-gradle@v3
-        with:
-          arguments: |
-            :nessie-quarkus:compileAll
-            :nessie-quarkus-cli:compileAll
-            :nessie-events-quarkus:compileAll
-            --scan
+        run: |
+          # 2 Retries - to mitigate Gradle's ConcurrentModificationException (https://github.com/gradle/gradle/issues/25751)
+          ./gradle :nessie-quarkus:compileAll :nessie-quarkus-cli:compileAll :nessie-events-quarkus:compileAll --scan || \
+            ./gradle :nessie-quarkus:compileAll :nessie-quarkus-cli:compileAll :nessie-events-quarkus:compileAll --scan || \
+            ./gradle :nessie-quarkus:compileAll :nessie-quarkus-cli:compileAll :nessie-events-quarkus:compileAll --scan
 
       - name: Gradle / Checkstyle
         uses: gradle/actions/setup-gradle@v3
@@ -203,13 +201,10 @@ jobs:
           java-version: ${{ matrix.java-version }}
 
       - name: Gradle / Test Quarkus
-        uses: gradle/actions/setup-gradle@v3
-        with:
-          arguments: |
-            :nessie-client:test
-            :nessie-quarkus:test
-            :nessie-events-quarkus:test
-            --scan
+        run: |
+          ./gradlew :nessie-client:test :nessie-quarkus:test :nessie-events-quarkus:test --scan || \
+            ./gradlew :nessie-client:test :nessie-quarkus:test :nessie-events-quarkus:test --scan || \
+            ./gradlew :nessie-client:test :nessie-quarkus:test :nessie-events-quarkus:test --scan
 
       - name: Dump quarkus.log
         if: ${{ failure() }}
@@ -414,13 +409,11 @@ jobs:
           java-version: ${{ matrix.java-version }}
 
       - name: Gradle / intTest Quarkus
-        uses: gradle/actions/setup-gradle@v3
-        with:
-          arguments: |
-            :nessie-quarkus:intTest
-            :nessie-quarkus-cli:intTest
-            :nessie-events-quarkus:intTest
-            --scan
+        run: |
+          # 2 Retries - to mitigate Gradle's ConcurrentModificationException (https://github.com/gradle/gradle/issues/25751)
+          ./gradlew :nessie-quarkus:intTest :nessie-quarkus-cli:intTest :nessie-events-quarkus:intTest --scan || \
+            ./gradlew :nessie-quarkus:intTest :nessie-quarkus-cli:intTest :nessie-events-quarkus:intTest --scan || \
+            ./gradlew :nessie-quarkus:intTest :nessie-quarkus-cli:intTest :nessie-events-quarkus:intTest --scan
 
       - name: Dump quarkus.log
         if: ${{ failure() }}
