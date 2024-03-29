@@ -1,0 +1,181 @@
+/*
+ * Copyright (C) 2024 Dremio
+ *
+ * Licensed under the Apache License, Version 2.0 (the "License");
+ * you may not use this file except in compliance with the License.
+ * You may obtain a copy of the License at
+ *
+ * http://www.apache.org/licenses/LICENSE-2.0
+ *
+ * Unless required by applicable law or agreed to in writing, software
+ * distributed under the License is distributed on an "AS IS" BASIS,
+ * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+ * See the License for the specific language governing permissions and
+ * limitations under the License.
+ */
+
+//DEFAULT_LEXICAL_STATE=Script;
+TAB_SIZE=4;
+IGNORE_CASE=true;
+TREE_BUILDING_ENABLED=true;
+//LOOKAHEAD=4; // TODO ??
+//FAULT_TOLERANT; // TODO ??
+//FAULT_TOLERANT=true;
+//FAULT_TOLERANT_DEFAULT=false;
+
+// see https://parsers.org/javacc21/nested-lookahead-redux/
+LEGACY_GLITCHY_LOOKAHEAD=false;
+
+SKIP : <WHITESPACE : (" " | "\r" | "\n" | "\t" )+ > #Whitespace;
+
+TOKEN #Literal
+  : <TRUE: 'true'> #BooleanLiteral
+  | <FALSE: "false"> #BooleanLiteral
+  | <#REGULAR_CHAR : ~["\u0000"-"\u001F",'"',"\\"]>
+  | <STRING_LITERAL : '"' (<REGULAR_CHAR>)* '"'> #StringLiteral
+  | <IDENTIFIER: ["A"-"Z", "a"-"z"] ( (["A"-"Z", "a"-"z", "0"-"9", "_", "-", ".", "/"])* ["A"-"Z", "a"-"z", "0"-"9", "_", "-"])?>
+  ;
+
+TOKEN #Keyword
+  : <AT: "AT">
+  // `IF` is Needed to let something like "CREATE BRANCH IF" not become a valid statement
+  // (and to create a branch named "IF")
+  | <IF: "IF">
+  | <TO: "TO">
+  | <LOG: "LOG">
+  | <USE: "USE">
+  | <DROP: "DROP">
+  | <FROM: "FROM">
+  | <INTO: "INTO">
+  | <LIST: "LIST">
+  | <SHOW: "SHOW">
+  | <MERGE: "MERGE">
+  | <ASSIGN: "ASSIGN">
+  | <CREATE: "CREATE">
+  | <REFERENCE: "REFERENCE">
+  | <REFERENCES: "REFERENCES">
+  | <IF_NOT_EXISTS: "IF" <WHITESPACE> "NOT" <WHITESPACE> "EXISTS"> #IfNotExists
+  | <IF_EXISTS: "IF" <WHITESPACE> "EXISTS"> #IfExists
+  // TODO add "legit" source strings for auto-completion for each token by Token.TokenType
+  ;
+
+//TOKEN #SEMICOLON : <SEMICOLON: ";">;
+
+TOKEN #Ident
+  : <IDENTIFIER: ["A"-"Z", "a"-"z"] ( (["A"-"Z", "a"-"z", "0"-"9", "_", "-", ".", "/"])* ["A"-"Z", "a"-"z", "0"-"9", "_", "-"])?>
+  ;
+//  | <IDENTIFIER_PART: ["A"-"Z", "a"-"z", "0"-"9", ".", "/", "_", "-"]>
+//  | <IDENTIFIER: <REGULAR_CHAR> (<IDENTIFIER_PART>)*> #identifier
+//  ;
+
+TOKEN #ReferenceTypes
+  : <BRANCH: "BRANCH"> #Branch
+  | <TAG: "TAG"> #Tag
+  ;
+
+UNPARSED : <SINGLE_LINE_COMMENT : "//" (~["\n"])* "\n" > #SingleLineComment ;
+UNPARSED : < ?MULTI_LINE_COMMENT : "/*" (~[])* "*/" > #MultiLineComment ;
+
+Script :
+   Statement!
+   (";" Statement =>||)*!
+   (";")?
+   <EOF>
+   ;
+
+Statement
+  : CreateReferenceStatement
+  | DropReferenceStatement
+  | AssignReferenceStatement
+  | UseReferenceStatement
+  | ListReferencesStatement
+  | ShowReferenceStatement
+  | MergeBranchStatement
+  | ShowLogStatement
+  ;
+
+CreateReferenceStatement
+    : <CREATE>
+        /type/=ReferenceType
+        (   (/conditional/=<IF_NOT_EXISTS> =>||)? /ref/=ReferenceName
+          | /ref/=ReferenceName
+        )
+        (<FROM> /from/=ReferenceSpec =>||)?
+    ;
+
+AssignReferenceStatement
+    : <ASSIGN>
+        /type/=ReferenceType
+        [/ref/=ExistingReference]
+        [<TO> /to/=ExistingReference
+          [<AT> /toType/=ReferenceSpec =>||]
+          =>||]
+    ;
+
+DropReferenceStatement
+    : <DROP>
+      /type/=ReferenceType
+      (   (/conditional/=<IF_EXISTS>)? /ref/=ExistingReference
+        | /ref/=ExistingReference
+      )
+    ;
+
+UseReferenceStatement
+    : <USE> <REFERENCE>
+      /ref/=ExistingReference
+      [<AT> /at/=TimestampOrHash =>||]
+    ;
+
+ListReferencesStatement
+    : <LIST> <REFERENCES>
+    ;
+
+ShowReferenceStatement
+    : <SHOW> <REFERENCE>
+    ;
+
+MergeBranchStatement
+    : <MERGE>
+      /type/=[ReferenceType]
+      [/ref/=ExistingReference]
+      [<INTO> /into/=ExistingReference =>||]
+    ;
+
+ShowLogStatement
+    : <SHOW> <LOG>
+      [/ref/=ExistingReference]
+    ;
+
+ReferenceType
+  : <BRANCH>
+  | <TAG>
+  ;
+
+
+ReferenceSpec
+    // TODO define - can be one of:
+    //   - a reference name
+    //   - a reference name with a hash
+    //   - a hash
+    //   - a reference name with timestamp
+    //   - a timestamp (assuming the "current" named reference)
+    : <IDENTIFIER>
+    ;
+
+TimestampOrHash
+    // TODO define
+    : <IDENTIFIER>
+    ;
+
+ReferenceName
+    : Identifier
+    ;
+
+ExistingReference
+    : Identifier
+    ;
+
+Identifier
+  : <IDENTIFIER>
+  | <STRING_LITERAL>
+  ;

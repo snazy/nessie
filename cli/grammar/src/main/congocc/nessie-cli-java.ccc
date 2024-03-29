@@ -1,0 +1,156 @@
+/*
+ * Copyright (C) 2024 Dremio
+ *
+ * Licensed under the Apache License, Version 2.0 (the "License");
+ * you may not use this file except in compliance with the License.
+ * You may obtain a copy of the License at
+ *
+ * http://www.apache.org/licenses/LICENSE-2.0
+ *
+ * Unless required by applicable law or agreed to in writing, software
+ * distributed under the License is distributed on an "AS IS" BASIS,
+ * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+ * See the License for the specific language governing permissions and
+ * limitations under the License.
+ */
+
+PARSER_PACKAGE="org.projectnessie.nessie.cli.gr";
+PARSER_CLASS=NessieCliParser;
+LEXER_CLASS=NessieCliLexer;
+// GENERATE_ANNOTATIONS=true; // TODO doesn't work :(
+
+NODE_PACKAGE="org.projectnessie.nessie.cli.gr.ast";
+
+INCLUDE "nessie-cli.ccc"
+
+INJECT Script :
+import java.util.List;
+{
+  public List<NessieStatement> getStatements() {
+    return childrenOfType(NessieStatement.class);
+  }
+}
+
+INJECT Ident : implements IdentifierOrLiteral;
+INJECT Ident :
+{
+  public String getStringValue() {
+    return getSource();
+  }
+}
+
+INJECT StringLiteral : implements IdentifierOrLiteral;
+INJECT StringLiteral :
+{
+  public String getStringValue() {
+    String src = getSource();
+    // Remove quotes
+    return src.substring(1, src.length() - 1);
+  }
+}
+
+INJECT CreateReferenceStatement : implements NessieStatement;
+INJECT CreateReferenceStatement :
+{
+  public boolean isConditional() {
+    return getNamedChild("conditional")!=null;
+  }
+
+  public String getRef() {
+    return getNamedChild("ref").getSource();
+  }
+}
+
+INJECT DropReferenceStatement : implements NessieStatement;
+INJECT DropReferenceStatement :
+{
+  public boolean isConditional() {
+    return getNamedChild("conditional")!=null;
+  }
+
+  public String getRef() {
+    return getNamedChild("ref").getSource();
+  }
+}
+
+INJECT AssignReferenceStatement : implements NessieStatement;
+INJECT AssignReferenceStatement :
+{
+  public String getRef() {
+    return getNamedChild("ref").getSource();
+  }
+}
+
+INJECT UseReferenceStatement : implements NessieStatement;
+INJECT UseReferenceStatement :
+{
+  public String getRef() {
+    return getNamedChild("ref").getSource();
+  }
+}
+
+INJECT ListReferencesStatement : implements NessieStatement;
+
+INJECT ShowReferenceStatement : implements NessieStatement;
+INJECT ShowReferenceStatement :
+{
+  public String getRef() {
+    return getNamedChild("ref").getSource();
+  }
+}
+
+INJECT MergeBranchStatement : implements NessieStatement;
+INJECT MergeBranchStatement :
+{
+  public String getRef() {
+    return getNamedChild("ref").getSource();
+  }
+}
+
+INJECT ShowLogStatement : implements NessieStatement;
+
+INJECT PARSER_CLASS :
+import java.util.EnumMap;
+{
+  static final EnumMap<TokenType, String> TOKEN_STRING_VALUES = new EnumMap<>(TokenType.class);
+  static {
+    for (TokenType tokenType : new TokenType[]{
+      TokenType.AT,
+      TokenType.IF,
+      TokenType.TO,
+      TokenType.LOG,
+      TokenType.USE,
+      TokenType.DROP,
+      TokenType.FROM,
+      TokenType.INTO,
+      TokenType.LIST,
+      TokenType.SHOW,
+      TokenType.MERGE,
+      TokenType.ASSIGN,
+      TokenType.CREATE,
+      TokenType.REFERENCE,
+      TokenType.REFERENCES,
+      //
+      TokenType.BRANCH,
+      TokenType.TAG
+    }) {
+      TOKEN_STRING_VALUES.put(tokenType, tokenType.name());
+    }
+
+    TOKEN_STRING_VALUES.put(TokenType.IF_NOT_EXISTS, "IF NOT EXISTS");
+    TOKEN_STRING_VALUES.put(TokenType.IF_EXISTS, "IF EXISTS");
+  }
+
+  public String getTokenString(TokenType tokenType) {
+    return TOKEN_STRING_VALUES.get(tokenType);
+  }
+}
+
+INJECT ParseException :
+{
+  public Set<Token.TokenType> getExpectedTokenTypes() {
+    // expectedTypes is 'Set<? extends Node.NodeType> expectedTypes', but it's all TokenType, so...
+    Set x = expectedTypes;
+    return x;
+  }
+}
