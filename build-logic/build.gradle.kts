@@ -25,6 +25,9 @@ dependencies {
   implementation(baselibs.errorprone)
   implementation(baselibs.license.report)
 
+  // TODO remove this
+  implementation("io.github.cdsap:gradle-application-plugin:3.12-conf-cache-SNAPSHOT")
+
   testImplementation(platform(baselibs.junit.bom))
   testImplementation(baselibs.assertj.core)
   testImplementation("org.junit.jupiter:junit-jupiter-api")

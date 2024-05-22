@@ -80,9 +80,11 @@ annotationStripper {
 val generatedAvroSchemas =
   layout.buildDirectory.asFile.map { it.resolve("generated/avroSchemas") }.get()
 
+val deleteAvroSchemasOutputDir by tasks.registering(Delete::class) { delete(generatedAvroSchemas) }
+
 val generateAvroSchemas by
   tasks.registering(JavaExec::class) {
-    dependsOn(tasks.named("avroSchemaClasses"))
+    dependsOn(tasks.named("avroSchemaClasses"), deleteAvroSchemasOutputDir)
 
     classpath(avroSchemaRuntimeClasspath, tasks.named("compileAvroSchemaJava"))
 
@@ -90,8 +92,6 @@ val generateAvroSchemas by
     args("$generatedAvroSchemas/org/projectnessie/catalog/formats/iceberg")
 
     outputs.dir(generatedAvroSchemas)
-
-    doFirst { delete(generatedAvroSchemas) }
   }
 
 sourceSets.named("main") { resources { srcDir(generateAvroSchemas) } }

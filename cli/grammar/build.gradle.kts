@@ -63,8 +63,14 @@ val genNessieGrammarDir = project.layout.buildDirectory.dir("generated/sources/c
 val genJsonGrammarDir = project.layout.buildDirectory.dir("generated/sources/congocc/json")
 val genNessieSyntaxDir = project.layout.buildDirectory.dir("generated/resources/nessie-syntax")
 
+val prepGenerateNessieCcc by tasks.registering(Delete::class) { delete(genNessieGrammarDir) }
+val prepGenerateJsonCcc by tasks.registering(Delete::class) { delete(genJsonGrammarDir) }
+val prepGenerateNessieSyntax by tasks.registering(Delete::class) { delete(genNessieGrammarDir) }
+
 val generateNessieCcc by
   tasks.registering(Generate::class) {
+    dependsOn(prepGenerateNessieCcc)
+
     sourceDir = projectDir.resolve("src/main/congocc/nessie")
     val sourceFile =
       sourceDir.get().file("nessie-cli-java.ccc").asFile.relativeTo(projectDir).toString()
@@ -72,69 +78,77 @@ val generateNessieCcc by
 
     classpath(congocc)
 
-    doFirst { delete(genNessieGrammarDir) }
-
     mainClass = "org.congocc.app.Main"
     workingDir(projectDir)
 
-    argumentProviders.add(
-      CommandLineArgumentProvider {
-        val base =
-          listOf("-d", genNessieGrammarDir.get().asFile.toString(), "-jdk17", "-n", sourceFile)
-        if (logger.isInfoEnabled) base else (base + listOf("-q"))
-      }
-    )
+    // TODO the following does NOT work with Gradle's configuration cache
+    //    argumentProviders.add(
+    //      CommandLineArgumentProvider {
+    //        val base =
+    //          listOf("-d", genNessieGrammarDir.get().asFile.toString(), "-jdk17", "-n",
+    // sourceFile)
+    //        if (logger.isInfoEnabled) base else (base + listOf("-q"))
+    //      }
+    //    )
+    // TODO this workaround uses _absolute_ paths, which should really not be used with the build
+    //  cache
+    args("-d", genNessieGrammarDir.get().asFile, "-jdk17", "-n", sourceFile)
+    if (!logger.isInfoEnabled) {
+      args("-q")
+    }
   }
 
 val generateJsonCcc by
   tasks.registering(Generate::class) {
+    dependsOn(prepGenerateJsonCcc)
+
     sourceDir = projectDir.resolve("src/main/congocc/json")
+    val sourceFile = sourceDir.get().file("jsonc.ccc").asFile.relativeTo(projectDir)
     outputDir = genJsonGrammarDir
 
     classpath(congocc)
 
-    doFirst { delete(genJsonGrammarDir) }
-
     mainClass = "org.congocc.app.Main"
     workingDir(projectDir)
 
-    argumentProviders.add(
-      CommandLineArgumentProvider {
-        val base =
-          listOf(
-            "-d",
-            genJsonGrammarDir.get().asFile.toString(),
-            "-jdk17",
-            "-n",
-            sourceDir.get().file("jsonc.ccc").asFile.relativeTo(projectDir).toString()
-          )
-        if (logger.isInfoEnabled) base else (base + listOf("-q"))
-      }
-    )
+    // TODO the following does NOT work with Gradle's configuration cache
+    //    argumentProviders.add(
+    //      CommandLineArgumentProvider {
+    //        val base =
+    //          listOf(
+    //            "-d",
+    //            genJsonGrammarDir.get().asFile.toString(),
+    //            "-jdk17",
+    //            "-n",
+    //            sourceDir.get().file("jsonc.ccc").asFile.relativeTo(projectDir).toString()
+    //          )
+    //        if (logger.isInfoEnabled) base else (base + listOf("-q"))
+    //      }
+    //    )
+    // TODO this workaround uses _absolute_ paths, which should really not be used with the build
+    //  cache
+    args("-d", genJsonGrammarDir.get().asFile, "-jdk17", "-n", sourceFile)
+    if (!logger.isInfoEnabled) {
+      args("-q")
+    }
   }
 
 val compileJava = tasks.named("compileJava") { dependsOn(generateNessieCcc, generateJsonCcc) }
 
 val generateNessieSyntax by
   tasks.registering(Generate::class) {
-    dependsOn(compileJava)
+    dependsOn(compileJava, prepGenerateNessieSyntax)
 
     sourceDir = projectDir.resolve("src/main/congocc/nessie")
     outputDir = genNessieSyntaxDir
 
     classpath(syntaxGen, configurations.runtimeClasspath, compileJava)
 
-    doFirst { delete(genNessieGrammarDir) }
-
     mainClass = "org.projectnessie.nessie.cli.syntax.SyntaxTool"
     workingDir(projectDir)
-    argumentProviders.add(
-      CommandLineArgumentProvider {
-        listOf(
-          genNessieSyntaxDir.get().dir("org/projectnessie/nessie/cli/syntax").asFile.toString(),
-          sourceDir.get().file("nessie-cli-java.ccc").asFile.relativeTo(projectDir).toString()
-        )
-      }
+    args(
+      genNessieSyntaxDir.get().asFile.relativeTo(projectDir),
+      sourceDir.get().file("nessie-cli-java.ccc").asFile.relativeTo(projectDir)
     )
   }
 

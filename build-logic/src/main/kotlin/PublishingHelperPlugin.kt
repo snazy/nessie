@@ -42,6 +42,7 @@ import org.gradle.kotlin.dsl.configure
 import org.gradle.kotlin.dsl.provideDelegate
 import org.gradle.kotlin.dsl.register
 import org.gradle.kotlin.dsl.withType
+import org.gradle.plugins.signing.Sign
 import org.gradle.plugins.signing.SigningExtension
 import org.gradle.plugins.signing.SigningPlugin
 
@@ -59,6 +60,8 @@ constructor(private val softwareComponentFactory: SoftwareComponentFactory) : Pl
           publications {
             register<MavenPublication>("maven") {
               val mavenPublication = this
+              val e = project.extensions.getByType(PublishingHelperExtension::class.java)
+
               afterEvaluate {
                 // This MUST happen in an 'afterEvaluate' to ensure that the Shadow*Plugin has
                 // been applied.
@@ -77,26 +80,45 @@ constructor(private val softwareComponentFactory: SoftwareComponentFactory) : Pl
                 mavenPublication.version = project.version.toString()
               }
 
+              val isRootProject = rootProject == project
+              val projectName = project.name
+              val projectDescription = project.description
+              val parentGAV =
+                if (isRootProject) {
+                  mapOf()
+                } else {
+                  mapOf(
+                    "group" to parent!!.group,
+                    "name" to parent!!.name,
+                    "version" to project.version
+                  )
+                }
+
+              val developersFile =
+                rootProject.layout.projectDirectory.file("gradle/developers.csv").asFile
+              val contributorsFile =
+                rootProject.layout.projectDirectory.file("gradle/contributors.csv").asFile
+
               tasks.named("generatePomFileForMavenPublication").configure {
-                val e = project.extensions.getByType(PublishingHelperExtension::class.java)
+                notCompatibleWithConfigurationCache("Really need the Project object")
 
                 pom {
                   name.set(
                     if (e.mavenName.isPresent) {
                       e.mavenName.get()
                     } else {
-                      project.name
+                      projectName
                     }
                   )
-                  description.set(project.description)
-                  if (project != rootProject) {
+                  description.set(projectDescription)
+                  if (!isRootProject) {
                     withXml {
                       val projectNode = asNode()
 
                       val parentNode = projectNode.appendNode("parent")
-                      parentNode.appendNode("groupId", parent!!.group)
-                      parentNode.appendNode("artifactId", parent!!.name)
-                      parentNode.appendNode("version", parent!!.version)
+                      parentNode.appendNode("groupId", parentGAV["group"])
+                      parentNode.appendNode("artifactId", parentGAV["name"])
+                      parentNode.appendNode("version", parentGAV["version"])
 
                       addMissingMandatoryDependencyVersions(projectNode)
                     }
@@ -109,7 +131,7 @@ constructor(private val softwareComponentFactory: SoftwareComponentFactory) : Pl
                     inputs
                       .file(rootProject.file("gradle/contributors.csv"))
                       .withPathSensitivity(PathSensitivity.RELATIVE)
-                    doFirst {
+                    actions.addFirst {
                       inceptionYear.set(e.inceptionYear.get())
                       url.set("https://github.com/projectnessie/$nessieRepoName")
                       organization {
@@ -144,9 +166,7 @@ constructor(private val softwareComponentFactory: SoftwareComponentFactory) : Pl
                         url.set("https://github.com/projectnessie/$nessieRepoName/issues")
                       }
                       developers {
-                        rootProject.layout.projectDirectory
-                          .file("gradle/developers.csv")
-                          .asFile
+                        developersFile
                           .readLines()
                           .map { line -> line.trim() }
                           .filter { line -> line.isNotEmpty() && !line.startsWith("#") }
@@ -165,9 +185,7 @@ constructor(private val softwareComponentFactory: SoftwareComponentFactory) : Pl
                           }
                       }
                       contributors {
-                        rootProject.layout.projectDirectory
-                          .file("gradle/contributors.csv")
-                          .asFile
+                        contributorsFile
                           .readLines()
                           .map { line -> line.trim() }
                           .filter { line -> line.isNotEmpty() && !line.startsWith("#") }
@@ -209,6 +227,12 @@ constructor(private val softwareComponentFactory: SoftwareComponentFactory) : Pl
             val publishing = project.extensions.getByType(PublishingExtension::class.java)
             afterEvaluate { sign(publishing.publications.getByName("maven")) }
           }
+        }
+
+        tasks.withType(Sign::class).configureEach {
+          notCompatibleWithConfigurationCache(
+            "Better safe than sorry, we really need the Project object in the signing extension"
+          )
         }
       }
     }

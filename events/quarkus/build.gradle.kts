@@ -15,7 +15,10 @@
  */
 
 plugins {
-  alias(libs.plugins.quarkus)
+  // TODO revert this
+  id("io.quarkus")
+  // alias(libs.plugins.quarkus)
+
   id("nessie-conventions-quarkus")
   id("nessie-jacoco")
 }

@@ -112,6 +112,11 @@ tasks.named<Test>("test").configure { systemProperty("expectedNessieVersion", pr
 
 val mainClassName = "org.projectnessie.gc.tool.cli.CLI"
 
+val completionScriptsDir =
+  project.layout.buildDirectory.dir("classes/java/main/META-INF/completion")
+
+val createCompletionScriptsDir by tasks.registering { mkdir(completionScriptsDir) }
+
 val generateAutoComplete by
   tasks.creating(JavaExec::class.java) {
     group = "build"
@@ -119,12 +124,7 @@ val generateAutoComplete by
 
     val compileJava = tasks.named<JavaCompile>("compileJava")
 
-    dependsOn(compileJava)
-
-    val completionScriptsDir =
-      project.layout.buildDirectory.dir("classes/java/main/META-INF/completion")
-
-    doFirst { mkdir(completionScriptsDir) }
+    dependsOn(compileJava, createCompletionScriptsDir)
 
     mainClass = "picocli.AutoComplete"
     classpath(configurations.named("runtimeClasspath"), compileJava)

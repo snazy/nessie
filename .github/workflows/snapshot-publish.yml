@@ -49,9 +49,9 @@ jobs:
             ./gradlew compileAll jar 
 
           # 2 Retries - due to Gradle's old and unfixed CME bug
-          ./gradlew publishToSonatype closeAndReleaseSonatypeStagingRepository -Prelease -Puber-jar || \
-            ./gradlew publishToSonatype closeAndReleaseSonatypeStagingRepository -Prelease -Puber-jar || \
-            ./gradlew publishToSonatype closeAndReleaseSonatypeStagingRepository -Prelease -Puber-jar
+          ./gradlew --no-configuration-cache publishToSonatype closeAndReleaseSonatypeStagingRepository -Prelease -Puber-jar || \
+            ./gradlew --no-configuration-cache publishToSonatype closeAndReleaseSonatypeStagingRepository -Prelease -Puber-jar || \
+            ./gradlew --no-configuration-cache publishToSonatype closeAndReleaseSonatypeStagingRepository -Prelease -Puber-jar
 
   publish-images:
     name: Publish Images

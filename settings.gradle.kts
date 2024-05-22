@@ -32,6 +32,9 @@ pluginManagement {
     if (System.getProperty("withMavenLocal").toBoolean()) {
       mavenLocal()
     }
+
+    // TODO remove this
+    maven { url = uri("https://s01.oss.sonatype.org/content/repositories/snapshots/") }
   }
 }
 
@@ -54,6 +57,9 @@ dependencyResolutionManagement {
         mavenPom()
       }
     }
+
+    // TODO remove this
+    maven { url = uri("https://s01.oss.sonatype.org/content/repositories/snapshots/") }
   }
 }
 
