@@ -59,6 +59,10 @@ services:
       # OpenTelemetry settings.
       # This example uses Jaeger as the OpenTelemetry traces collector.
       - quarkus.otel.exporter.otlp.endpoint=http://jaeger:4317
+      - nessie.server.authorization.enabled=true
+      - nessie.server.authorization.rules.iceberg_client=role=='service-account-iceberg-client'
+      - nessie.server.authorization.rules.user1=role=='service-account-user1' && !path.startsWith('sales')
+      - nessie.server.authorization.rules.user2=role=='service-account-user2' && !path.startsWith('eng')
     healthcheck:
       test: "exec 3<>/dev/tcp/localhost/9000 && echo -e 'GET /q/health HTTP/1.1\\r\\nHost: localhost\\r\\nConnection: close\\r\\n\\r\\n' >&3 && cat <&3 | grep -q '200 OK'"
       interval: 5s
