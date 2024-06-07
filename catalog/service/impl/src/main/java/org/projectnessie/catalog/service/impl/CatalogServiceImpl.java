@@ -334,7 +334,8 @@ public class CatalogServiceImpl implements CatalogService {
         nessieApi
             .getContent()
             .refName(reference.name())
-            .hashOnRef(reference.hashWithRelativeSpec());
+            .hashOnRef(reference.hashWithRelativeSpec())
+            .forWrite(true);
     commit.getOperations().forEach(op -> contentRequest.key(op.getKey()));
     GetMultipleContentsResponse contentsResponse = contentRequest.getWithResponse();
 
