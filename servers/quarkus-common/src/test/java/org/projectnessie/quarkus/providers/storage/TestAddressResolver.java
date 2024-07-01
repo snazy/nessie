@@ -77,9 +77,12 @@ public class TestAddressResolver {
   }
 
   @Test
-  @DisabledOnOs(value = OS.MAC, disabledReason = "Resolving 'localhost' doesn't work on macOS")
   public void resolveGoodName() throws Exception {
     addressResolver = new AddressResolver(vertx);
+
+    AddressResolver addressResolverWithSearch =
+        new AddressResolver(addressResolver.dnsClient(), List.of("org"));
+
     List<String> withoutSearchList =
         addressResolver
             .resolveAll(singletonList("projectnessie.org"))
@@ -88,15 +91,24 @@ public class TestAddressResolver {
             .get(1, TimeUnit.MINUTES);
     soft.assertThat(withoutSearchList).isNotEmpty();
 
-    AddressResolver addressResolverWithSearch =
-        new AddressResolver(AddressResolver.createDnsClient(vertx), List.of("org"));
-    List<String> withSearchList =
+    List<String> withSearchList1 =
+        addressResolverWithSearch
+            .resolveAll(singletonList("projectnessie.org"))
+            .toCompletionStage()
+            .toCompletableFuture()
+            .get(1, TimeUnit.MINUTES);
+    soft.assertThat(withoutSearchList).isNotEmpty();
+    soft.assertThat(withSearchList1).isNotEmpty().isNotEmpty();
+    soft.assertThat(withSearchList1).containsExactlyInAnyOrderElementsOf(withoutSearchList);
+
+    List<String> withSearchList2 =
         addressResolverWithSearch
             .resolveAll(singletonList("projectnessie"))
             .toCompletionStage()
             .toCompletableFuture()
             .get(1, TimeUnit.MINUTES);
-    soft.assertThat(withSearchList).isNotEmpty().isNotEmpty();
+    soft.assertThat(withSearchList2).isNotEmpty();
+    soft.assertThat(withSearchList2).containsExactlyInAnyOrderElementsOf(withoutSearchList);
 
     List<String> withSearchListQualified =
         addressResolverWithSearch
@@ -104,9 +116,8 @@ public class TestAddressResolver {
             .toCompletionStage()
             .toCompletableFuture()
             .get(1, TimeUnit.MINUTES);
-    soft.assertThat(withSearchListQualified).isNotEmpty().isNotEmpty();
+    soft.assertThat(withSearchListQualified).isNotEmpty();
 
-    soft.assertThat(withSearchList).containsExactlyInAnyOrderElementsOf(withoutSearchList);
     soft.assertThat(withSearchListQualified).containsExactlyInAnyOrderElementsOf(withoutSearchList);
   }
 
