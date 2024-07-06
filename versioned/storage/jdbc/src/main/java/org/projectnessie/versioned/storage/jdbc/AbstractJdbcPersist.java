@@ -40,6 +40,7 @@ import static org.projectnessie.versioned.storage.jdbc.SqlConstants.PURGE_REFERE
 import static org.projectnessie.versioned.storage.jdbc.SqlConstants.REFS_CREATED_AT_COND;
 import static org.projectnessie.versioned.storage.jdbc.SqlConstants.REFS_EXTENDED_INFO_COND;
 import static org.projectnessie.versioned.storage.jdbc.SqlConstants.SCAN_OBJS;
+import static org.projectnessie.versioned.storage.jdbc.SqlConstants.SCAN_OBJS_ALL;
 import static org.projectnessie.versioned.storage.jdbc.SqlConstants.TABLE_OBJS;
 import static org.projectnessie.versioned.storage.jdbc.SqlConstants.UPDATE_REFERENCE_POINTER;
 import static org.projectnessie.versioned.storage.serialize.ProtoSerialization.serializePreviousPointers;
@@ -604,7 +605,9 @@ abstract class AbstractJdbcPersist implements Persist {
   }
 
   protected CloseableIterator<Obj> scanAllObjects(Connection conn, Set<ObjType> returnedObjTypes) {
-    return new ScanAllObjectsIterator(conn, returnedObjTypes);
+    return returnedObjTypes.isEmpty()
+        ? new ScanAllObjectsIterator(conn)
+        : new ScanAllObjectsIterator(conn, returnedObjTypes);
   }
 
   @VisibleForTesting
@@ -639,6 +642,15 @@ abstract class AbstractJdbcPersist implements Persist {
             for (ObjType returnedObjType : returnedObjTypes) {
               ps.setString(idx++, returnedObjType.name());
             }
+          });
+    }
+
+    ScanAllObjectsIterator(Connection conn) {
+      super(
+          conn,
+          SCAN_OBJS_ALL,
+          ps -> {
+            ps.setString(1, config.repositoryId());
           });
     }
 

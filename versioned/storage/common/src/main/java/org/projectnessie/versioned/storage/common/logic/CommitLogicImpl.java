@@ -20,6 +20,8 @@ import static com.google.common.collect.Maps.newHashMapWithExpectedSize;
 import static com.google.common.collect.Sets.newHashSetWithExpectedSize;
 import static java.util.Collections.emptyIterator;
 import static java.util.Collections.emptyList;
+import static java.util.Collections.emptySet;
+import static java.util.Collections.singleton;
 import static java.util.Collections.singletonList;
 import static java.util.Objects.requireNonNull;
 import static org.projectnessie.nessie.relocated.protobuf.ByteString.copyFromUtf8;
@@ -33,7 +35,6 @@ import static org.projectnessie.versioned.storage.common.logic.CommitConflict.Co
 import static org.projectnessie.versioned.storage.common.logic.CommitConflict.ConflictType.PAYLOAD_DIFFERS;
 import static org.projectnessie.versioned.storage.common.logic.CommitConflict.ConflictType.VALUE_DIFFERS;
 import static org.projectnessie.versioned.storage.common.logic.CommitConflict.commitConflict;
-import static org.projectnessie.versioned.storage.common.logic.ConflictHandler.ConflictResolution.CONFLICT;
 import static org.projectnessie.versioned.storage.common.logic.CreateCommit.Add.commitAdd;
 import static org.projectnessie.versioned.storage.common.logic.CreateCommit.Remove.commitRemove;
 import static org.projectnessie.versioned.storage.common.logic.DiffEntry.diffEntry;
@@ -54,7 +55,6 @@ import jakarta.annotation.Nonnull;
 import jakarta.annotation.Nullable;
 import java.util.ArrayList;
 import java.util.Arrays;
-import java.util.Collections;
 import java.util.HashSet;
 import java.util.Iterator;
 import java.util.List;
@@ -87,6 +87,7 @@ import org.projectnessie.versioned.storage.common.persist.CloseableIterator;
 import org.projectnessie.versioned.storage.common.persist.Obj;
 import org.projectnessie.versioned.storage.common.persist.ObjId;
 import org.projectnessie.versioned.storage.common.persist.ObjIdHasher;
+import org.projectnessie.versioned.storage.common.persist.ObjType;
 import org.projectnessie.versioned.storage.common.persist.Persist;
 import org.projectnessie.versioned.storage.common.persist.Reference;
 import org.slf4j.Logger;
@@ -1081,7 +1082,10 @@ final class CommitLogicImpl implements CommitLogic {
 
   @Override
   public HeadsAndForkPoints identifyAllHeadsAndForkPoints(
-      int expectedCommitCount, Consumer<CommitObj> commitHandler) {
+      int expectedCommitCount,
+      Consumer<CommitObj> commitHandler,
+      boolean allObjs,
+      Consumer<Obj> objHandler) {
 
     // Need to remember the time when the identification started, so that a follow-up
     // identifyReferencedAndUnreferencedHeads() knows when it can stop scanning a named-reference's
@@ -1099,18 +1103,24 @@ final class CommitLogicImpl implements CommitLogic {
 
     // scanAllCommitLogEntries() returns all commits in no specific order, parents may be scanned
     // before or after their children.
-    try (CloseableIterator<Obj> scan = persist.scanAllObjects(Collections.singleton(COMMIT))) {
+    Set<ObjType> types = allObjs ? emptySet() : singleton(COMMIT);
+    try (CloseableIterator<Obj> scan = persist.scanAllObjects(types)) {
       while (scan.hasNext()) {
-        CommitObj commit = (CommitObj) scan.next();
+        Obj obj = scan.next();
+        if (obj.type().equals(COMMIT)) {
+          CommitObj commit = (CommitObj) obj;
 
-        // Ignore commits on internal references
-        if (commit.commitType() == CommitType.INTERNAL) {
-          continue;
-        }
+          // Ignore commits on internal references
+          if (commit.commitType() == CommitType.INTERNAL) {
+            continue;
+          }
 
-        if (identify.handleCommit(commit)) {
-          commitHandler.accept(commit);
-          // no need to bother with secondary parents, we are scanning everything anyway
+          if (identify.handleCommit(commit)) {
+            commitHandler.accept(commit);
+            // no need to bother with secondary parents, we are scanning everything anyway
+          }
+        } else {
+          objHandler.accept(obj);
         }
       }
     }

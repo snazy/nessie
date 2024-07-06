@@ -56,6 +56,7 @@ import java.util.Set;
 import java.util.concurrent.CompletionStage;
 import java.util.concurrent.atomic.AtomicIntegerArray;
 import java.util.function.Function;
+import java.util.function.Predicate;
 import java.util.stream.Collectors;
 import org.projectnessie.versioned.storage.cassandra.CassandraBackend.BatchedQuery;
 import org.projectnessie.versioned.storage.cassandra.serializers.ObjSerializer;
@@ -478,16 +479,17 @@ public class CassandraPersist implements Persist {
   @Override
   @Nonnull
   public CloseableIterator<Obj> scanAllObjects(@Nonnull Set<ObjType> returnedObjTypes) {
-    return new ScanAllObjectsIterator(returnedObjTypes);
+    return new ScanAllObjectsIterator(
+        returnedObjTypes.isEmpty() ? x -> true : returnedObjTypes::contains);
   }
 
   private class ScanAllObjectsIterator extends AbstractIterator<Obj>
       implements CloseableIterator<Obj> {
 
     private final Iterator<Row> rs;
-    private final Set<ObjType> returnedObjTypes;
+    private final Predicate<ObjType> returnedObjTypes;
 
-    ScanAllObjectsIterator(Set<ObjType> returnedObjTypes) {
+    ScanAllObjectsIterator(Predicate<ObjType> returnedObjTypes) {
       this.returnedObjTypes = returnedObjTypes;
       BoundStatement stmt = backend.buildStatement(SCAN_OBJS, true, config.repositoryId());
       rs = backend.execute(stmt).iterator();
@@ -506,7 +508,7 @@ public class CassandraPersist implements Persist {
 
         Row row = rs.next();
         ObjType type = objTypeByName(requireNonNull(row.getString(1)));
-        if (!returnedObjTypes.contains(type)) {
+        if (!returnedObjTypes.test(type)) {
           continue;
         }
 

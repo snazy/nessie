@@ -826,7 +826,8 @@ public class AbstractConsistencyLogicTests {
 
     prepareReferences(commitLogic, numCommits, numBranches, heads::add, forkPoints::add);
 
-    HeadsAndForkPoints headsAndForkPoints = commitLogic.identifyAllHeadsAndForkPoints(100, e -> {});
+    HeadsAndForkPoints headsAndForkPoints =
+        commitLogic.identifyAllHeadsAndForkPoints(100, e -> {}, false, o -> {});
 
     soft.assertThat(headsAndForkPoints.getHeads()).containsExactlyInAnyOrderElementsOf(heads);
     soft.assertThat(headsAndForkPoints.getForkPoints())

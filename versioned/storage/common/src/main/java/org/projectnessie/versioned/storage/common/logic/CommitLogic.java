@@ -36,6 +36,7 @@ import org.projectnessie.versioned.storage.common.objtypes.CommitObj;
 import org.projectnessie.versioned.storage.common.objtypes.CommitOp;
 import org.projectnessie.versioned.storage.common.objtypes.CommitType;
 import org.projectnessie.versioned.storage.common.objtypes.ContentValueObj;
+import org.projectnessie.versioned.storage.common.objtypes.StandardObjType;
 import org.projectnessie.versioned.storage.common.persist.Obj;
 import org.projectnessie.versioned.storage.common.persist.ObjId;
 import org.projectnessie.versioned.storage.common.persist.Reference;
@@ -238,7 +239,13 @@ public interface CommitLogic {
    * @param expectedCommitCount it is recommended to tell the implementation the total number of
    *     commits in the Nessie repository
    * @param commitHandler called for every commit while scanning all commits
+   * @param allObjs Whether to return all objects and not only commits
+   * @param objHandler receives all objects that are not of type {@link StandardObjType#COMMIT}, if
+   *     {@code allObjs} is {@code true}.
    */
   HeadsAndForkPoints identifyAllHeadsAndForkPoints(
-      int expectedCommitCount, Consumer<CommitObj> commitHandler);
+      int expectedCommitCount,
+      Consumer<CommitObj> commitHandler,
+      boolean allObjs,
+      Consumer<Obj> objHandler);
 }

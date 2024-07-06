@@ -595,7 +595,8 @@ public class BigTablePersist implements Persist {
   @Nonnull
   @Override
   public CloseableIterator<Obj> scanAllObjects(@Nonnull Set<ObjType> returnedObjTypes) {
-    return new ScanAllObjectsIterator(returnedObjTypes::contains);
+    return new ScanAllObjectsIterator(
+        returnedObjTypes.isEmpty() ? null : returnedObjTypes::contains);
   }
 
   private class ScanAllObjectsIterator extends AbstractIterator<Obj>
@@ -615,25 +616,27 @@ public class BigTablePersist implements Persist {
 
       Filters.InterleaveFilter typeFilter = null;
       boolean all = true;
-      for (ObjType type : ObjTypes.allObjTypes()) {
-        boolean match = filter.test(type);
-        if (match) {
-          if (typeFilter == null) {
-            typeFilter = FILTERS.interleave();
+      if (filter != null) {
+        for (ObjType type : ObjTypes.allObjTypes()) {
+          boolean match = filter.test(type);
+          if (match) {
+            if (typeFilter == null) {
+              typeFilter = FILTERS.interleave();
+            }
+            typeFilter.filter(
+                FILTERS
+                    .chain()
+                    .filter(FILTERS.qualifier().exactMatch(QUALIFIER_OBJ_TYPE))
+                    .filter(FILTERS.value().exactMatch(OBJ_TYPE_VALUES.get(type))));
+          } else {
+            all = false;
           }
-          typeFilter.filter(
-              FILTERS
-                  .chain()
-                  .filter(FILTERS.qualifier().exactMatch(QUALIFIER_OBJ_TYPE))
-                  .filter(FILTERS.value().exactMatch(OBJ_TYPE_VALUES.get(type))));
-        } else {
-          all = false;
         }
       }
-      if (typeFilter == null) {
-        throw new IllegalArgumentException("No object types matched the provided predicate");
-      }
       if (!all) {
+        if (typeFilter == null) {
+          throw new IllegalArgumentException("No object types matched the provided predicate");
+        }
         // Condition filters are generally not recommended because they are slower, but
         // scanAllObjects is not meant to be particularly efficient. The fact that we are also
         // limiting the query to a row prefix should alleviate the performance impact.

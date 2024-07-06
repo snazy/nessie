@@ -146,7 +146,8 @@ final class ExportPersist extends ExportCommon {
   private HeadsAndForkPoints scanDatabase(Consumer<CommitObj> commitHandler) {
     return exporter
         .commitLogic()
-        .identifyAllHeadsAndForkPoints(exporter.expectedCommitCount(), commitHandler);
+        .identifyAllHeadsAndForkPoints(
+            exporter.expectedCommitCount(), commitHandler, false, o -> {});
   }
 
   @Override

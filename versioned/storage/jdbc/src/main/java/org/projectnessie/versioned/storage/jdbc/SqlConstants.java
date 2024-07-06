@@ -203,5 +203,14 @@ final class SqlConstants {
           + COL_OBJ_TYPE
           + " IN (?)";
 
+  static final String SCAN_OBJS_ALL =
+      "SELECT "
+          + String.join(", ", COLS_OBJS_ALL.keySet())
+          + " FROM "
+          + TABLE_OBJS
+          + " WHERE "
+          + COL_REPO_ID
+          + "=?";
+
   private SqlConstants() {}
 }
