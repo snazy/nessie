@@ -237,21 +237,21 @@ java -jar nessie-gc.jar deferred-deletes --live-set-id 0baaa1ff-90db-4ee5-b6d2-b
 ```
 
 !!! note
-The _sweep_ phase does not access Nessie. It does use Iceberg and accesses the data lake.
-If _deferred deletion_ is requested, no files will be deleted.
+    The _sweep_ phase does not access Nessie. It does use Iceberg and accesses the data lake.
+    If _deferred deletion_ is requested, no files will be deleted.
 
 !!! note
-Since data lakes can easily contain a huge amount of files, the _expire_ phase does not remember
-every live data file (see the Iceberg assets above) individually, but uses a probabilistic data
-structure (bloom filter). The default settings expect, for each content ID, 1,000,000 files and
-uses a false-positive-probability of 0.0001 (those defaults may change, but can be inspected
-with `java -jar nessie-gc.jar help expire`). The _expire_ phase will abort, if it hits a content-ID 
-that _massively_ exceeds the configured false-positive-probability, because it hits way more live
-file references.
+    Since data lakes can easily contain a huge amount of files, the _expire_ phase does not remember
+    every live data file (see the Iceberg assets above) individually, but uses a probabilistic data
+    structure (bloom filter). The default settings expect, for each content ID, 1,000,000 files and
+    uses a false-positive-probability of 0.0001 (those defaults may change, but can be inspected
+    with `java -jar nessie-gc.jar help expire`). The _expire_ phase will abort, if it hits a content-ID 
+    that _massively_ exceeds the configured false-positive-probability, because it hits way more live
+    file references.
 
 !!! note
-Nessie GC's _expire_ phase processes up to 4 content-IDs in parallel. This setting can be
-changed using the `--expiry-parallelism` command line option.
+    Nessie GC's _expire_ phase processes up to 4 content-IDs in parallel. This setting can be
+    changed using the `--expiry-parallelism` command line option.
 
 ### Recommended production setup for Nessie GC
 
