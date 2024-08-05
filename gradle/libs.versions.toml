@@ -62,6 +62,7 @@ errorprone-annotations = { module = "com.google.errorprone:error_prone_annotatio
 errorprone-core = { module = "com.google.errorprone:error_prone_core", version.ref = "errorprone" }
 errorprone-slf4j = { module = "jp.skypencil.errorprone.slf4j:errorprone-slf4j", version.ref = "errorproneSlf4j" }
 findbugs-jsr305 = { module = "com.google.code.findbugs:jsr305", version = "3.0.2" }
+foundationdb-java = { module = "org.foundationdb:fdb-java", version = "7.3.47" }
 gatling-charts-highcharts = { module = "io.gatling.highcharts:gatling-charts-highcharts", version.ref = "gatling" }
 google-cloud-bigtable-bom = { module = "com.google.cloud:google-cloud-bigtable-bom", version = "2.41.0" }
 google-cloud-gcs-connector = { module = "com.google.cloud.bigdataoss:gcs-connector", version = "hadoop3-2.2.21" }

@@ -85,6 +85,8 @@ dependencies {
     api(project(":nessie-versioned-storage-common-tests"))
     api(project(":nessie-versioned-storage-dynamodb"))
     api(project(":nessie-versioned-storage-dynamodb-tests"))
+    api(project(":nessie-versioned-storage-foundationdb"))
+    api(project(":nessie-versioned-storage-foundationdb-tests"))
     api(project(":nessie-versioned-storage-inmemory"))
     api(project(":nessie-versioned-storage-inmemory-tests"))
     api(project(":nessie-versioned-storage-jdbc"))
