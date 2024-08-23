@@ -138,6 +138,7 @@ public interface CommitObj extends Obj {
   }
 
   /** Creation timestamp in microseconds since epoch. */
+  @Value.Auxiliary
   long created();
 
   /**

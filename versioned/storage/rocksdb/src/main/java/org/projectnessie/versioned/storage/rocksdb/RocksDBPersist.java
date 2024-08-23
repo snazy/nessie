@@ -349,7 +349,8 @@ class RocksDBPersist implements Persist {
           ignoreSoftSizeRestrictions ? Integer.MAX_VALUE : effectiveIncrementalIndexSizeLimit();
       int indexSizeLimit =
           ignoreSoftSizeRestrictions ? Integer.MAX_VALUE : effectiveIndexSegmentSizeLimit();
-      byte[] serialized = serializeObj(obj, incrementalIndexSizeLimit, indexSizeLimit, true);
+      byte[] serialized =
+          serializeObj(objWithCreated(obj), incrementalIndexSizeLimit, indexSizeLimit, true);
 
       db.put(cf, key, serialized);
       return true;
@@ -413,7 +414,10 @@ class RocksDBPersist implements Persist {
 
       byte[] serialized =
           serializeObj(
-              obj, effectiveIncrementalIndexSizeLimit(), effectiveIndexSegmentSizeLimit(), true);
+              objWithCreated(obj),
+              effectiveIncrementalIndexSizeLimit(),
+              effectiveIndexSegmentSizeLimit(),
+              true);
 
       db.put(cf, key, serialized);
     } catch (RocksDBException e) {
@@ -494,7 +498,7 @@ class RocksDBPersist implements Persist {
 
       byte[] serialized =
           serializeObj(
-              newValue,
+              objWithCreated(newValue),
               effectiveIncrementalIndexSizeLimit(),
               effectiveIndexSegmentSizeLimit(),
               true);

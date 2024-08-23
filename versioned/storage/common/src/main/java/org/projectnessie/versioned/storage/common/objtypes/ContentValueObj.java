@@ -37,18 +37,24 @@ public interface ContentValueObj extends Obj {
   @Value.Parameter(order = 1)
   ObjId id();
 
+  @Override
   @Value.Parameter(order = 2)
-  String contentId();
+  @Value.Auxiliary
+  long created();
 
   @Value.Parameter(order = 3)
-  int payload();
+  String contentId();
 
   @Value.Parameter(order = 4)
+  int payload();
+
+  @Value.Parameter(order = 5)
   ByteString data();
 
-  static ContentValueObj contentValue(ObjId id, String contentId, int payload, ByteString data) {
+  static ContentValueObj contentValue(
+      ObjId id, long created, String contentId, int payload, ByteString data) {
     checkArgument(payload >= 0 && payload <= 127);
-    return ImmutableContentValueObj.of(id, contentId, payload, data);
+    return ImmutableContentValueObj.of(id, created, contentId, payload, data);
   }
 
   static ContentValueObj contentValue(String contentId, int payload, ByteString data) {
@@ -58,6 +64,7 @@ public interface ContentValueObj extends Obj {
             .hash(payload)
             .hash(data.asReadOnlyByteBuffer())
             .generate(),
+        0L,
         contentId,
         payload,
         data);

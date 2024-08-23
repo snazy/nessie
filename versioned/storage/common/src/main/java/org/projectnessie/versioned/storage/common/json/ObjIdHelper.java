@@ -31,6 +31,8 @@ public final class ObjIdHelper {
    */
   public static final String OBJ_ID_KEY = "nessie.storage.ObjId";
 
+  public static final String OBJ_CREATED_KEY = "nessie.storage.ObjCreated";
+
   public static final String OBJ_VERS_KEY = "nessie.storage.ObjVersion";
 
   public static final String OBJ_TYPE_KEY = "nessie.storage.ObjType";
@@ -41,12 +43,13 @@ public final class ObjIdHelper {
    * #OBJ_VERS_KEY}.
    */
   public static ObjectReader readerWithObjIdAndVersionToken(
-      ObjectMapper mapper, ObjType objType, ObjId id, String objVersionToken) {
+      ObjectMapper mapper, ObjType objType, ObjId id, long created, String objVersionToken) {
     InjectableValues values =
         new InjectableValues.Std()
             .addValue(OBJ_ID_KEY, id)
             .addValue(OBJ_VERS_KEY, objVersionToken)
-            .addValue(OBJ_TYPE_KEY, objType);
+            .addValue(OBJ_TYPE_KEY, objType)
+            .addValue(OBJ_CREATED_KEY, created);
     return mapper.reader(values).forType(objType.targetClass());
   }
 

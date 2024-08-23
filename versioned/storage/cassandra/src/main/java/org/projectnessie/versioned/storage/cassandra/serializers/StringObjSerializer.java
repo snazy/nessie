@@ -73,9 +73,10 @@ public class StringObjSerializer extends ObjSerializer<StringObj> {
   }
 
   @Override
-  public StringObj deserialize(Row row, ObjType type, ObjId id, String versionToken) {
+  public StringObj deserialize(Row row, ObjType type, ObjId id, long created, String versionToken) {
     return stringData(
         id,
+        created,
         row.getString(COL_STRING_CONTENT_TYPE.name()),
         Compression.valueOf(row.getString(COL_STRING_COMPRESSION.name())),
         row.getString(COL_STRING_FILENAME.name()),

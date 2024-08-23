@@ -50,7 +50,6 @@ public class CommitObjSerializer implements ObjSerializer<CommitObj> {
 
   public static final ObjSerializer<CommitObj> INSTANCE = new CommitObjSerializer();
 
-  private static final String COL_COMMIT_CREATED = "c_created";
   private static final String COL_COMMIT_SEQ = "c_seq";
   private static final String COL_COMMIT_MESSAGE = "c_message";
   private static final String COL_COMMIT_HEADERS = "c_headers";
@@ -64,7 +63,6 @@ public class CommitObjSerializer implements ObjSerializer<CommitObj> {
 
   private static final Map<String, JdbcColumnType> COLS =
       ImmutableMap.<String, JdbcColumnType>builder()
-          .put(COL_COMMIT_CREATED, JdbcColumnType.BIGINT)
           .put(COL_COMMIT_SEQ, JdbcColumnType.BIGINT)
           .put(COL_COMMIT_MESSAGE, JdbcColumnType.VARCHAR)
           .put(COL_COMMIT_HEADERS, JdbcColumnType.VARBINARY)
@@ -93,7 +91,6 @@ public class CommitObjSerializer implements ObjSerializer<CommitObj> {
       Function<String, Integer> nameToIdx,
       DatabaseSpecific databaseSpecific)
       throws SQLException, ObjTooLargeException {
-    ps.setLong(nameToIdx.apply(COL_COMMIT_CREATED), obj.created());
     ps.setLong(nameToIdx.apply(COL_COMMIT_SEQ), obj.seq());
     ps.setString(nameToIdx.apply(COL_COMMIT_MESSAGE), obj.message());
 
@@ -140,12 +137,12 @@ public class CommitObjSerializer implements ObjSerializer<CommitObj> {
   }
 
   @Override
-  public CommitObj deserialize(ResultSet rs, ObjType type, ObjId id, String versionToken)
-      throws SQLException {
+  public CommitObj deserialize(
+      ResultSet rs, ObjType type, ObjId id, long created, String versionToken) throws SQLException {
     CommitObj.Builder b =
         CommitObj.commitBuilder()
             .id(id)
-            .created(rs.getLong(COL_COMMIT_CREATED))
+            .created(created)
             .seq(rs.getLong(COL_COMMIT_SEQ))
             .message(rs.getString(COL_COMMIT_MESSAGE))
             .referenceIndex(deserializeObjId(rs, COL_COMMIT_REFERENCE_INDEX))

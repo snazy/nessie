@@ -54,9 +54,11 @@ public class UniqueIdObjSerializer extends ObjSerializer<UniqueIdObj> {
   }
 
   @Override
-  public UniqueIdObj deserialize(Row row, ObjType type, ObjId id, String versionToken) {
+  public UniqueIdObj deserialize(
+      Row row, ObjType type, ObjId id, long created, String versionToken) {
     return uniqueId(
         id,
+        created,
         row.getString(COL_UNIQUE_SPACE.name()),
         CassandraSerde.deserializeBytes(row, COL_UNIQUE_VALUE.name()));
   }

@@ -49,9 +49,11 @@ public class UniqueIdObjSerializer implements ObjSerializer<UniqueIdObj> {
   }
 
   @Override
-  public UniqueIdObj docToObj(ObjId id, ObjType type, Document doc, String versionToken) {
+  public UniqueIdObj docToObj(
+      ObjId id, long created, ObjType type, Document doc, String versionToken) {
     return uniqueId(
         id,
+        created,
         doc.getString(COL_UNIQUE_SPACE),
         binaryToBytes(doc.get(COL_UNIQUE_VALUE, Binary.class)));
   }

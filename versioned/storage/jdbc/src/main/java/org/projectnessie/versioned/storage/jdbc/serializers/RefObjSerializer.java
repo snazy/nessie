@@ -72,10 +72,11 @@ public class RefObjSerializer implements ObjSerializer<RefObj> {
   }
 
   @Override
-  public RefObj deserialize(ResultSet rs, ObjType type, ObjId id, String versionToken)
+  public RefObj deserialize(ResultSet rs, ObjType type, ObjId id, long created, String versionToken)
       throws SQLException {
     return ref(
         id,
+        created,
         rs.getString(COL_REF_NAME),
         deserializeObjId(rs, COL_REF_INITIAL_POINTER),
         rs.getLong(COL_REF_CREATED_AT),

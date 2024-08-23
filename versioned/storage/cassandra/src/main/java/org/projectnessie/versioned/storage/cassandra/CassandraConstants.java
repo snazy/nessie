@@ -36,6 +36,7 @@ public final class CassandraConstants {
   static final CqlColumn COL_OBJ_ID = new CqlColumn("obj_id", CqlColumnType.OBJ_ID);
   static final CqlColumn COL_OBJ_TYPE = new CqlColumn("obj_type", CqlColumnType.NAME);
   static final CqlColumn COL_OBJ_VERS = new CqlColumn("obj_vers", CqlColumnType.VARCHAR);
+  static final CqlColumn COL_OBJ_CREATED = new CqlColumn("c_created", CqlColumnType.BIGINT);
 
   static final String DELETE_OBJ =
       "DELETE FROM %s." + TABLE_OBJS + " WHERE " + COL_REPO_ID + "=? AND " + COL_OBJ_ID + "=?";
@@ -78,6 +79,8 @@ public final class CassandraConstants {
           + ", "
           + COL_OBJ_ID
           + ", "
+          + COL_OBJ_CREATED
+          + ", "
           + COL_OBJ_TYPE
           + ", "
           + COL_OBJ_VERS
@@ -88,6 +91,8 @@ public final class CassandraConstants {
           + COL_REPO_ID
           + ", :"
           + COL_OBJ_ID
+          + ", :"
+          + COL_OBJ_CREATED
           + ", :"
           + COL_OBJ_TYPE
           + ", :"

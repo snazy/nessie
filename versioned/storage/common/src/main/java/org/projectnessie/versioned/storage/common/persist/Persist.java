@@ -439,4 +439,12 @@ public interface Persist {
    * can lead to a <em>very</em> long runtime of this method.
    */
   void erase();
+
+  // Helper
+
+  default Obj objWithCreated(Obj obj) {
+    return obj == null
+        ? null
+        : obj.created() != 0L ? obj : obj.withCreated(config().currentTimeMicros());
+  }
 }

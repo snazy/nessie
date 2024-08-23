@@ -475,7 +475,10 @@ public class BigTablePersist implements Persist {
 
       byte[] serialized =
           serializeObj(
-              obj, effectiveIncrementalIndexSizeLimit(), effectiveIndexSegmentSizeLimit(), false);
+              objWithCreated(obj),
+              effectiveIncrementalIndexSizeLimit(),
+              effectiveIndexSegmentSizeLimit(),
+              false);
 
       backend
           .client()
@@ -504,7 +507,10 @@ public class BigTablePersist implements Persist {
 
         byte[] serialized =
             serializeObj(
-                obj, effectiveIncrementalIndexSizeLimit(), effectiveIndexSegmentSizeLimit(), false);
+                objWithCreated(obj),
+                effectiveIncrementalIndexSizeLimit(),
+                effectiveIndexSegmentSizeLimit(),
+                false);
 
         batcher.add(objToMutation(obj, RowMutationEntry.create(key), serialized));
       }
@@ -568,7 +574,8 @@ public class BigTablePersist implements Persist {
         ignoreSoftSizeRestrictions ? Integer.MAX_VALUE : effectiveIncrementalIndexSizeLimit();
     int indexSizeLimit =
         ignoreSoftSizeRestrictions ? Integer.MAX_VALUE : effectiveIndexSegmentSizeLimit();
-    byte[] serialized = serializeObj(obj, incrementalIndexSizeLimit, indexSizeLimit, false);
+    byte[] serialized =
+        serializeObj(objWithCreated(obj), incrementalIndexSizeLimit, indexSizeLimit, false);
 
     return objToMutation(obj, Mutation.create(), serialized);
   }

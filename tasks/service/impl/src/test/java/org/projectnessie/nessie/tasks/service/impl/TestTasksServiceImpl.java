@@ -669,7 +669,7 @@ public class TestTasksServiceImpl {
     verifyNoMoreInteractions(metrics1);
     verifyNoMoreInteractions(metrics2);
 
-    soft.assertThat(taskFuture1.get())
+    soft.assertThat(taskFuture1.get().withCreated(taskFuture2.get().created()))
         .asInstanceOf(type(BasicTaskObj.class))
         .isEqualTo(taskFuture2.get())
         .extracting(BasicTaskObj::taskResult)

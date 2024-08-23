@@ -20,12 +20,14 @@ import static java.util.Collections.emptyList;
 import static java.util.Collections.emptyListIterator;
 import static java.util.Collections.singleton;
 import static java.util.Collections.singletonMap;
+import static java.util.Objects.requireNonNull;
 import static org.projectnessie.versioned.storage.common.persist.ObjId.objIdFromString;
 import static org.projectnessie.versioned.storage.common.persist.ObjTypes.objTypeByName;
 import static org.projectnessie.versioned.storage.common.persist.Reference.reference;
 import static org.projectnessie.versioned.storage.dynamodb.DynamoDBBackend.condition;
 import static org.projectnessie.versioned.storage.dynamodb.DynamoDBBackend.keyPrefix;
 import static org.projectnessie.versioned.storage.dynamodb.DynamoDBConstants.BATCH_GET_LIMIT;
+import static org.projectnessie.versioned.storage.dynamodb.DynamoDBConstants.COL_OBJ_CREATED;
 import static org.projectnessie.versioned.storage.dynamodb.DynamoDBConstants.COL_OBJ_TYPE;
 import static org.projectnessie.versioned.storage.dynamodb.DynamoDBConstants.COL_OBJ_VERS;
 import static org.projectnessie.versioned.storage.dynamodb.DynamoDBConstants.COL_REFERENCES_CONDITION_COMMON;
@@ -438,7 +440,8 @@ public class DynamoDBPersist implements Persist {
     ObjId id = obj.id();
     checkArgument(id != null, "Obj to store must have a non-null ID");
 
-    Map<String, AttributeValue> item = objToItem(obj, id, ignoreSoftSizeRestrictions);
+    Map<String, AttributeValue> item =
+        objToItem(objWithCreated(obj), id, ignoreSoftSizeRestrictions);
 
     try {
       backend
@@ -487,7 +490,7 @@ public class DynamoDBPersist implements Persist {
     ObjId id = obj.id();
     checkArgument(id != null, "Obj to store must have a non-null ID");
 
-    Map<String, AttributeValue> item = objToItem(obj, id, false);
+    Map<String, AttributeValue> item = objToItem(objWithCreated(obj), id, false);
 
     try {
       backend.client().putItem(b -> b.tableName(backend.tableObjs).item(item));
@@ -512,7 +515,7 @@ public class DynamoDBPersist implements Persist {
           ObjId id = obj.id();
           checkArgument(id != null, "Obj to store must have a non-null ID");
 
-          Map<String, AttributeValue> item = objToItem(obj, id, false);
+          Map<String, AttributeValue> item = objToItem(objWithCreated(obj), id, false);
 
           batchWrite.addPut(item);
         }
@@ -553,7 +556,7 @@ public class DynamoDBPersist implements Persist {
     Map<String, ExpectedAttributeValue> expectedValues = conditionalUpdateExpectedValues(expected);
 
     Map<String, AttributeValueUpdate> updates =
-        objToItem(newValue, id, false).entrySet().stream()
+        objToItem(objWithCreated(newValue), id, false).entrySet().stream()
             .filter(e -> !COL_OBJ_TYPE.equals(e.getKey()) && !KEY_NAME.equals(e.getKey()))
             .collect(
                 Collectors.toMap(
@@ -614,8 +617,10 @@ public class DynamoDBPersist implements Persist {
     ObjSerializer<?> serializer = ObjSerializers.forType(type);
     Map<String, AttributeValue> inner = item.get(serializer.attributeName()).m();
     String versionToken = attributeToString(item, COL_OBJ_VERS);
+    String createdString = attributeToString(item, COL_OBJ_CREATED);
+    long created = createdString != null ? Long.parseLong(requireNonNull(createdString)) : 0L;
     @SuppressWarnings("unchecked")
-    T typed = (T) serializer.fromMap(id, type, inner, versionToken);
+    T typed = (T) serializer.fromMap(id, created, type, inner, versionToken);
     return typed;
   }
 
@@ -629,6 +634,7 @@ public class DynamoDBPersist implements Persist {
     Map<String, AttributeValue> inner = new HashMap<>();
     item.put(KEY_NAME, objKey(id));
     item.put(COL_OBJ_TYPE, fromS(type.shortName()));
+    item.put(COL_OBJ_CREATED, fromS(Long.toString(obj.created())));
     UpdateableObj.extractVersionToken(obj).ifPresent(token -> item.put(COL_OBJ_VERS, fromS(token)));
     int incrementalIndexSizeLimit =
         ignoreSoftSizeRestrictions ? Integer.MAX_VALUE : effectiveIncrementalIndexSizeLimit();

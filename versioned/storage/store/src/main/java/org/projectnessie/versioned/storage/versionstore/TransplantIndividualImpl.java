@@ -120,7 +120,7 @@ final class TransplantIndividualImpl extends BaseCommitHelper implements Transpl
         // If not equal, we have to assume that the commit already existed - aka a "fast-forward
         // transplant". This is only to maintain compatibility with (pre-)existing behavior.
         // (This .equals has been introduced with https://github.com/projectnessie/nessie/pull/8533)
-        if (newCommit.equals(committed)) {
+        if (newCommit.equals(committed) && newCommit.created() == committed.created()) {
           newCommit = committed;
           mergeResult.addCreatedCommits(commitObjToCommit(newCommit));
         }

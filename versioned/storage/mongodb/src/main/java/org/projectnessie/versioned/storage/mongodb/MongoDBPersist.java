@@ -28,6 +28,7 @@ import static java.util.Collections.singleton;
 import static java.util.stream.Collectors.toList;
 import static org.projectnessie.versioned.storage.common.persist.ObjTypes.objTypeByName;
 import static org.projectnessie.versioned.storage.common.persist.Reference.reference;
+import static org.projectnessie.versioned.storage.mongodb.MongoDBConstants.COL_OBJ_CREATED;
 import static org.projectnessie.versioned.storage.mongodb.MongoDBConstants.COL_OBJ_ID;
 import static org.projectnessie.versioned.storage.mongodb.MongoDBConstants.COL_OBJ_TYPE;
 import static org.projectnessie.versioned.storage.mongodb.MongoDBConstants.COL_OBJ_VERS;
@@ -436,7 +437,7 @@ public class MongoDBPersist implements Persist {
   @Override
   public boolean storeObj(@Nonnull Obj obj, boolean ignoreSoftSizeRestrictions)
       throws ObjTooLargeException {
-    Document doc = objToDoc(obj, ignoreSoftSizeRestrictions);
+    Document doc = objToDoc(objWithCreated(obj), ignoreSoftSizeRestrictions);
     try {
       backend.objs().insertOne(doc);
     } catch (MongoWriteException e) {
@@ -457,7 +458,7 @@ public class MongoDBPersist implements Persist {
     List<WriteModel<Document>> docs = new ArrayList<>(objs.length);
     for (Obj obj : objs) {
       if (obj != null) {
-        docs.add(new InsertOneModel<>(objToDoc(obj, false)));
+        docs.add(new InsertOneModel<>(objToDoc(objWithCreated(obj), false)));
       }
     }
 
@@ -544,7 +545,7 @@ public class MongoDBPersist implements Persist {
 
     ReplaceOptions options = upsertOptions();
 
-    Document doc = objToDoc(obj, false);
+    Document doc = objToDoc(objWithCreated(obj), false);
     UpdateResult result;
     try {
       result = backend.objs().replaceOne(eq(ID_PROPERTY_NAME, idObjDoc(id)), doc, options);
@@ -574,7 +575,7 @@ public class MongoDBPersist implements Persist {
         ObjId id = obj.id();
         docs.add(
             new ReplaceOneModel<>(
-                eq(ID_PROPERTY_NAME, idObjDoc(id)), objToDoc(obj, false), options));
+                eq(ID_PROPERTY_NAME, idObjDoc(id)), objToDoc(objWithCreated(obj), false), options));
       }
     }
 
@@ -622,7 +623,7 @@ public class MongoDBPersist implements Persist {
     checkArgument(expected.type().equals(newValue.type()));
     checkArgument(!expected.versionToken().equals(newValue.versionToken()));
 
-    Document doc = objToDoc(newValue, false);
+    Document doc = objToDoc(objWithCreated(newValue), false);
 
     List<Bson> updates =
         doc.entrySet().stream()
@@ -672,11 +673,13 @@ public class MongoDBPersist implements Persist {
     if (t != null && !t.equals(type)) {
       return null;
     }
+    Long createdLong = doc.getLong(COL_OBJ_CREATED);
+    long created = createdLong != null ? createdLong : 0L;
     @SuppressWarnings("unchecked")
     ObjSerializer<T> serializer = (ObjSerializer<T>) ObjSerializers.forType(type);
     Document inner = doc.get(serializer.fieldName(), Document.class);
     String versionToken = doc.getString(COL_OBJ_VERS);
-    return serializer.docToObj(id, type, inner, versionToken);
+    return serializer.docToObj(id, created, type, inner, versionToken);
   }
 
   private Document objToDoc(@Nonnull Obj obj, boolean ignoreSoftSizeRestrictions)
@@ -691,6 +694,7 @@ public class MongoDBPersist implements Persist {
     Document inner = new Document();
     doc.put(ID_PROPERTY_NAME, idObjDoc(id));
     doc.put(COL_OBJ_TYPE, type.shortName());
+    doc.put(COL_OBJ_CREATED, obj.created());
     UpdateableObj.extractVersionToken(obj).ifPresent(token -> doc.put(COL_OBJ_VERS, token));
     int incrementalIndexSizeLimit =
         ignoreSoftSizeRestrictions ? Integer.MAX_VALUE : effectiveIncrementalIndexSizeLimit();

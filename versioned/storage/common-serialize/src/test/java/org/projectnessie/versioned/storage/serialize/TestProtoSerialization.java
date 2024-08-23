@@ -192,7 +192,7 @@ public class TestProtoSerialization {
 
   static Stream<Obj> objs() {
     return Stream.of(
-        ref(randomObjId(), "hello", randomObjId(), 42L, randomObjId()),
+        ref(randomObjId(), 42L, "hello", randomObjId(), 42L, randomObjId()),
         CommitObj.commitBuilder()
             .id(randomObjId())
             .seq(1L)
@@ -219,26 +219,30 @@ public class TestProtoSerialization {
             .build(),
         tag(
             randomObjId(),
+            42L,
             "tab-msg",
             newCommitHeaders().add("Foo", "bar").build(),
             ByteString.copyFrom(new byte[1])),
-        contentValue(randomObjId(), "cid", 0, ByteString.copyFrom(new byte[1])),
+        contentValue(randomObjId(), 42L, "cid", 0, ByteString.copyFrom(new byte[1])),
         stringData(
             randomObjId(),
+            42L,
             "foo",
             Compression.NONE,
             "foo",
             emptyList(),
             ByteString.copyFrom(new byte[1])),
-        indexSegments(randomObjId(), emptyList()),
+        indexSegments(randomObjId(), 42L, emptyList()),
         indexSegments(
             randomObjId(),
+            42L,
             asList(
                 indexStripe(key("a"), key("b"), randomObjId()),
                 indexStripe(key("c"), key("d"), randomObjId()))),
-        index(randomObjId(), emptyImmutableIndex(COMMIT_OP_SERIALIZER).serialize()),
+        index(randomObjId(), 0L, emptyImmutableIndex(COMMIT_OP_SERIALIZER).serialize()),
         JsonObj.json(
             randomObjId(),
+            42L,
             ImmutableJsonTestModel.builder()
                 .parent(randomObjId())
                 .text("foo")
@@ -252,6 +256,7 @@ public class TestProtoSerialization {
         SimpleTestObj.builder().id(randomObjId()).build(),
         AnotherTestObj.builder()
             .id(randomObjId())
+            .created(42L)
             .parent(randomObjId())
             .text("foo".repeat(4000))
             .number(42.42d)
@@ -260,7 +265,12 @@ public class TestProtoSerialization {
             .optional("optional")
             .instant(Instant.ofEpochMilli(1234567890L))
             .build(),
-        VersionedTestObj.builder().id(randomObjId()).someValue("foo").versionToken("1").build());
+        VersionedTestObj.builder()
+            .id(randomObjId())
+            .created(42L)
+            .someValue("foo")
+            .versionToken("1")
+            .build());
   }
 
   @Value.Immutable

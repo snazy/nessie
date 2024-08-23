@@ -30,6 +30,7 @@ final class MongoDBConstants {
   static final String COL_REFERENCES_PREVIOUS = "h";
 
   static final String COL_OBJ_ID = "i";
+  static final String COL_OBJ_CREATED = "z";
   static final String COL_REPO = "r";
   static final String COL_OBJ_TYPE = "y";
   static final String COL_OBJ_VERS = "V";

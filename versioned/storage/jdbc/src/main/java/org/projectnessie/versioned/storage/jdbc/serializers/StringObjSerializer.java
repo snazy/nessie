@@ -77,10 +77,11 @@ public class StringObjSerializer implements ObjSerializer<StringObj> {
   }
 
   @Override
-  public StringObj deserialize(ResultSet rs, ObjType type, ObjId id, String versionToken)
-      throws SQLException {
+  public StringObj deserialize(
+      ResultSet rs, ObjType type, ObjId id, long created, String versionToken) throws SQLException {
     return stringData(
         id,
+        created,
         rs.getString(COL_STRING_CONTENT_TYPE),
         Compression.valueOf(rs.getString(COL_STRING_COMPRESSION)),
         rs.getString(COL_STRING_FILENAME),

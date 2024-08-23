@@ -33,7 +33,6 @@ import static org.projectnessie.versioned.storage.common.logic.CommitConflict.Co
 import static org.projectnessie.versioned.storage.common.logic.CommitConflict.ConflictType.PAYLOAD_DIFFERS;
 import static org.projectnessie.versioned.storage.common.logic.CommitConflict.ConflictType.VALUE_DIFFERS;
 import static org.projectnessie.versioned.storage.common.logic.CommitConflict.commitConflict;
-import static org.projectnessie.versioned.storage.common.logic.ConflictHandler.ConflictResolution.CONFLICT;
 import static org.projectnessie.versioned.storage.common.logic.CreateCommit.Add.commitAdd;
 import static org.projectnessie.versioned.storage.common.logic.CreateCommit.Remove.commitRemove;
 import static org.projectnessie.versioned.storage.common.logic.DiffEntry.diffEntry;
@@ -280,12 +279,13 @@ final class CommitLogicImpl implements CommitLogic {
   @Override
   public CommitObj storeCommit(@Nonnull CommitObj commit, @Nonnull List<Obj> additionalObjects) {
     int numAdditional = additionalObjects.size();
+    boolean commitStored;
     try {
       Obj[] allObjs = additionalObjects.toArray(new Obj[numAdditional + 1]);
       allObjs[numAdditional] = commit;
 
       boolean[] stored = persist.storeObjs(allObjs);
-      return mitigateHashCollision(stored[numAdditional], commit);
+      commitStored = stored[numAdditional];
     } catch (ObjTooLargeException e) {
       // The incremental index became too big - need to spill out the INCREMENTAL_* operations to
       // the reference index.
@@ -299,12 +299,14 @@ final class CommitLogicImpl implements CommitLogic {
       commit = indexTooBigStoreUpdate(commit);
 
       try {
-        return mitigateHashCollision(persist.storeObj(commit, true), commit);
+        commitStored = persist.storeObj(commit, true);
       } catch (ObjTooLargeException ex) {
         // Hit the "Hard database object size limit"
         throw new RuntimeException(ex);
       }
     }
+
+    return mitigateHashCollision(commitStored, commit);
   }
 
   /**
@@ -323,9 +325,7 @@ final class CommitLogicImpl implements CommitLogic {
     // timestamp of the commit-obj).
     try {
       CommitObj existing = persist.fetchTypedObj(commit.id(), COMMIT, CommitObj.class);
-      CommitObj commitWithNewCreatedTimestamp =
-          CommitObj.commitBuilder().from(commit).created(existing.created()).build();
-      return commitWithNewCreatedTimestamp.equals(existing) ? existing : null;
+      return commit.equals(existing) ? existing : null;
     } catch (ObjNotFoundException e) {
       return null;
     }

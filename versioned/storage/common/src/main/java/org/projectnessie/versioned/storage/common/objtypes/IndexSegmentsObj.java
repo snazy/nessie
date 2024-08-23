@@ -39,16 +39,23 @@ public interface IndexSegmentsObj extends Obj {
   @Nullable
   ObjId id();
 
+  @Override
   @Value.Parameter(order = 2)
+  @Value.Auxiliary
+  long created();
+
+  @Value.Parameter(order = 3)
   List<IndexStripe> stripes();
 
   @Nonnull
-  static IndexSegmentsObj indexSegments(@Nullable ObjId id, @Nonnull List<IndexStripe> stripes) {
-    return ImmutableIndexSegmentsObj.of(id, stripes);
+  static IndexSegmentsObj indexSegments(
+      @Nullable ObjId id, long created, @Nonnull List<IndexStripe> stripes) {
+    return ImmutableIndexSegmentsObj.of(id, created, stripes);
   }
 
   @Nonnull
   static IndexSegmentsObj indexSegments(@Nonnull List<IndexStripe> stripes) {
-    return indexSegments(objIdHasher(INDEX_SEGMENTS).hashCollection(stripes).generate(), stripes);
+    return indexSegments(
+        objIdHasher(INDEX_SEGMENTS).hashCollection(stripes).generate(), 0L, stripes);
   }
 }

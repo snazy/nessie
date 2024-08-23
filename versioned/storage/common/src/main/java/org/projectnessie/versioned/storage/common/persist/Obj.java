@@ -15,10 +15,12 @@
  */
 package org.projectnessie.versioned.storage.common.persist;
 
+import static org.projectnessie.versioned.storage.common.json.ObjIdHelper.OBJ_CREATED_KEY;
 import static org.projectnessie.versioned.storage.common.json.ObjIdHelper.OBJ_ID_KEY;
 
 import com.fasterxml.jackson.annotation.JacksonInject;
 import com.fasterxml.jackson.annotation.JsonIgnore;
+import org.immutables.value.Value;
 
 public interface Obj {
 
@@ -29,4 +31,14 @@ public interface Obj {
 
   @JsonIgnore
   ObjType type();
+
+  /** Creation timestamp in microseconds since epoch. */
+  @Value.Default
+  @Value.Auxiliary
+  @JacksonInject(OBJ_CREATED_KEY)
+  default long created() {
+    return 0L;
+  }
+
+  Obj withCreated(long created);
 }

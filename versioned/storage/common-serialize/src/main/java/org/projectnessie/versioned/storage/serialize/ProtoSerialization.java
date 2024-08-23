@@ -214,7 +214,7 @@ public final class ProtoSerialization {
     if (obj == null) {
       return null;
     }
-    ObjProto.Builder b = ObjProto.newBuilder();
+    ObjProto.Builder b = ObjProto.newBuilder().setCreated(obj.created());
     if (obj.type() instanceof StandardObjType) {
       switch (((StandardObjType) obj.type())) {
         case COMMIT:
@@ -272,38 +272,39 @@ public final class ProtoSerialization {
   }
 
   public static Obj deserializeObjProto(ObjId id, ObjProto obj, String versionToken) {
+    long created = obj.hasCreated() ? obj.getCreated() : 0L;
     if (obj.hasCommit()) {
-      return deserializeCommit(id, obj.getCommit());
+      return deserializeCommit(id, created, obj.getCommit());
     }
     if (obj.hasContentValue()) {
-      return deserializeContentValue(id, obj.getContentValue());
+      return deserializeContentValue(id, created, obj.getContentValue());
     }
     if (obj.hasRef()) {
-      return deserializeRef(id, obj.getRef());
+      return deserializeRef(id, created, obj.getRef());
     }
     if (obj.hasIndexSegments()) {
-      return deserializeIndexSegments(id, obj.getIndexSegments());
+      return deserializeIndexSegments(id, created, obj.getIndexSegments());
     }
     if (obj.hasIndex()) {
-      return deserializeIndex(id, obj.getIndex());
+      return deserializeIndex(id, created, obj.getIndex());
     }
     if (obj.hasStringData()) {
-      return deserializeStringData(id, obj.getStringData());
+      return deserializeStringData(id, created, obj.getStringData());
     }
     if (obj.hasTag()) {
-      return deserializeTag(id, obj.getTag());
+      return deserializeTag(id, created, obj.getTag());
     }
     if (obj.hasUniqueId()) {
-      return deserializeUniqueId(id, obj.getUniqueId());
+      return deserializeUniqueId(id, created, obj.getUniqueId());
     }
     if (obj.hasCustom()) {
       CustomProto custom = obj.getCustom();
-      return deserializeCustom(id, custom, versionToken);
+      return deserializeCustom(id, created, custom, versionToken);
     }
     throw new UnsupportedOperationException("Cannot deserialize " + obj);
   }
 
-  private static CommitObj deserializeCommit(ObjId id, CommitProto commit) {
+  private static CommitObj deserializeCommit(ObjId id, long created, CommitProto commit) {
     CommitObj.Builder b =
         commitBuilder()
             .id(id)
@@ -373,9 +374,14 @@ public final class ProtoSerialization {
     return index;
   }
 
-  private static ContentValueObj deserializeContentValue(ObjId id, ContentValueProto contentValue) {
+  private static ContentValueObj deserializeContentValue(
+      ObjId id, long created, ContentValueProto contentValue) {
     return contentValue(
-        id, contentValue.getContentId(), contentValue.getPayload(), contentValue.getData());
+        id,
+        created,
+        contentValue.getContentId(),
+        contentValue.getPayload(),
+        contentValue.getData());
   }
 
   private static ContentValueProto.Builder serializeContentValue(ContentValueObj obj) {
@@ -385,9 +391,10 @@ public final class ProtoSerialization {
         .setData(obj.data());
   }
 
-  private static RefObj deserializeRef(ObjId id, RefProto ref) {
+  private static RefObj deserializeRef(ObjId id, long created, RefProto ref) {
     return ref(
         id,
+        created,
         ref.getName(),
         deserializeObjId(ref.getInitialPointer()),
         ref.getCreatedAtMicros(),
@@ -408,7 +415,7 @@ public final class ProtoSerialization {
   }
 
   private static IndexSegmentsObj deserializeIndexSegments(
-      ObjId id, IndexSegmentsProto indexSegments) {
+      ObjId id, long created, IndexSegmentsProto indexSegments) {
     List<IndexStripe> stripes = new ArrayList<>(indexSegments.getStripesCount());
     for (Stripe s : indexSegments.getStripesList()) {
       stripes.add(
@@ -417,7 +424,7 @@ public final class ProtoSerialization {
               keyFromString(s.getLastKey()),
               deserializeObjId(s.getSegment())));
     }
-    return indexSegments(id, stripes);
+    return indexSegments(id, created, stripes);
   }
 
   private static IndexSegmentsProto.Builder serializeIndexSegments(IndexSegmentsObj obj) {
@@ -432,8 +439,8 @@ public final class ProtoSerialization {
     return b;
   }
 
-  private static IndexObj deserializeIndex(ObjId id, IndexProto index) {
-    return index(id, index.getIndex());
+  private static IndexObj deserializeIndex(ObjId id, long created, IndexProto index) {
+    return index(id, created, index.getIndex());
   }
 
   private static IndexProto.Builder serializeIndex(IndexObj obj, int indexSizeLimit)
@@ -441,9 +448,10 @@ public final class ProtoSerialization {
     return IndexProto.newBuilder().setIndex(verifySize(obj.index(), indexSizeLimit));
   }
 
-  private static StringObj deserializeStringData(ObjId id, StringProto stringData) {
+  private static StringObj deserializeStringData(ObjId id, long created, StringProto stringData) {
     return stringData(
         id,
+        created,
         stringData.getContentType(),
         Compression.valueOf(stringData.getCompression().name()),
         stringData.hasFilename() ? stringData.getFilename() : null,
@@ -464,7 +472,7 @@ public final class ProtoSerialization {
     return b;
   }
 
-  private static TagObj deserializeTag(ObjId id, TagProto tag) {
+  private static TagObj deserializeTag(ObjId id, long created, TagProto tag) {
     CommitHeaders tagHeaders = null;
     if (tag.getHeadersCount() > 0) {
       CommitHeaders.Builder h = CommitHeaders.newCommitHeaders();
@@ -477,7 +485,7 @@ public final class ProtoSerialization {
     }
     String message = tag.hasMessage() ? tag.getMessage() : null;
     ByteString signature = tag.hasSignature() ? tag.getSignature() : null;
-    return tag(id, message, tagHeaders, signature);
+    return tag(id, created, message, tagHeaders, signature);
   }
 
   private static TagProto.Builder serializeTag(TagObj obj) {
@@ -497,15 +505,16 @@ public final class ProtoSerialization {
     return tag;
   }
 
-  private static UniqueIdObj deserializeUniqueId(ObjId id, UniqueIdProto uniqueId) {
-    return uniqueId(id, uniqueId.getSpace(), uniqueId.getValue());
+  private static UniqueIdObj deserializeUniqueId(ObjId id, long created, UniqueIdProto uniqueId) {
+    return uniqueId(id, created, uniqueId.getSpace(), uniqueId.getValue());
   }
 
   private static UniqueIdProto.Builder serializeUniqueId(UniqueIdObj obj) {
     return UniqueIdProto.newBuilder().setSpace(obj.space()).setValue(obj.value());
   }
 
-  private static Obj deserializeCustom(ObjId id, CustomProto custom, String versionToken) {
+  private static Obj deserializeCustom(
+      ObjId id, long created, CustomProto custom, String versionToken) {
     ObjType type = objTypeByName(custom.getObjType());
     if (versionToken == null && custom.hasVersionToken()) {
       // versionToken is set when reading objects from the database, but cache-deserialization has
@@ -513,7 +522,12 @@ public final class ProtoSerialization {
       versionToken = custom.getVersionToken();
     }
     return SmileSerialization.deserializeObj(
-        id, versionToken, custom.getData().toByteArray(), type, custom.getCompression().name());
+        id,
+        created,
+        versionToken,
+        custom.getData().toByteArray(),
+        type,
+        custom.getCompression().name());
   }
 
   private static CustomProto.Builder serializeCustom(Obj obj, boolean includeVersionToken) {

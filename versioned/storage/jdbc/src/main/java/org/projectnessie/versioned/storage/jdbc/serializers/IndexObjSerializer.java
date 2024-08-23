@@ -66,11 +66,11 @@ public class IndexObjSerializer implements ObjSerializer<IndexObj> {
   }
 
   @Override
-  public IndexObj deserialize(ResultSet rs, ObjType type, ObjId id, String versionToken)
-      throws SQLException {
+  public IndexObj deserialize(
+      ResultSet rs, ObjType type, ObjId id, long created, String versionToken) throws SQLException {
     ByteString index = deserializeBytes(rs, COL_INDEX_INDEX);
     if (index != null) {
-      return index(id, index);
+      return index(id, created, index);
     }
     throw new IllegalStateException("Index column for object ID " + id + " is null");
   }

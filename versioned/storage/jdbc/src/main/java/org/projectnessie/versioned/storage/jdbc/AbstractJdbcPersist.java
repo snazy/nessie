@@ -24,6 +24,7 @@ import static org.projectnessie.versioned.storage.jdbc.JdbcSerde.deserializeObjI
 import static org.projectnessie.versioned.storage.jdbc.JdbcSerde.serializeObjId;
 import static org.projectnessie.versioned.storage.jdbc.SqlConstants.ADD_REFERENCE;
 import static org.projectnessie.versioned.storage.jdbc.SqlConstants.COLS_OBJS_ALL;
+import static org.projectnessie.versioned.storage.jdbc.SqlConstants.COL_OBJ_CREATED;
 import static org.projectnessie.versioned.storage.jdbc.SqlConstants.COL_OBJ_ID;
 import static org.projectnessie.versioned.storage.jdbc.SqlConstants.COL_OBJ_TYPE;
 import static org.projectnessie.versioned.storage.jdbc.SqlConstants.COL_OBJ_VERS;
@@ -407,11 +408,12 @@ abstract class AbstractJdbcPersist implements Persist {
 
   private Obj deserializeObj(ResultSet rs) throws SQLException {
     ObjId id = deserializeObjId(rs, COL_OBJ_ID);
+    long created = rs.getLong(COL_OBJ_CREATED);
     String objType = rs.getString(COL_OBJ_TYPE);
     String versionToken = rs.getString(COL_OBJ_VERS);
     ObjType type = objTypeByName(objType);
     ObjSerializer<Obj> serializer = ObjSerializers.forType(type);
-    return serializer.deserialize(rs, type, id, versionToken);
+    return serializer.deserialize(rs, type, id, created, versionToken);
   }
 
   protected final boolean storeObj(
@@ -498,7 +500,7 @@ abstract class AbstractJdbcPersist implements Persist {
 
       int batchIndex = 0;
       for (int i = 0; i < objs.length; i++) {
-        Obj obj = objs[i];
+        Obj obj = objWithCreated(objs[i]);
         if (obj == null) {
           continue;
         }
@@ -515,6 +517,7 @@ abstract class AbstractJdbcPersist implements Persist {
 
         ps.setString(storeObjSqlParams.get(COL_REPO_ID), config.repositoryId());
         serializeObjId(ps, storeObjSqlParams.get(COL_OBJ_ID), id, databaseSpecific);
+        ps.setLong(storeObjSqlParams.get(COL_OBJ_CREATED), obj.created());
         ps.setString(storeObjSqlParams.get(COL_OBJ_TYPE), type.name());
         Optional<String> versionToken = UpdateableObj.extractVersionToken(obj);
         if (versionToken.isPresent()) {

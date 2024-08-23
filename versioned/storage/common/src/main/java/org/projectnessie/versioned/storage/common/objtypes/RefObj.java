@@ -41,29 +41,42 @@ public interface RefObj extends Obj {
   String name();
 
   @Override
-  @Value.Parameter(order = 1)
+  @Value.Parameter(order = 2)
   @Nullable
   ObjId id();
+
+  @Override
+  @Value.Parameter(order = 3)
+  @Value.Default
+  @Value.Auxiliary
+  default long created() {
+    return createdAtMicros();
+  }
 
   /**
    * The tip/HEAD of the reference at reference creation. This value does <em>not</em> track the
    * <em>current</em> tip/HEAD of the reference. This value is used to implement create-reference
    * resume/recovery, see implementations of {@link ReferenceLogic}.
    */
-  @Value.Parameter(order = 2)
+  @Value.Parameter(order = 4)
   ObjId initialPointer();
 
   /** Timestamp when the reference has been created, in microseconds since epoch. */
-  @Value.Parameter(order = 3)
+  @Value.Parameter(order = 5)
   long createdAtMicros();
 
-  @Value.Parameter(order = 4)
+  @Value.Parameter(order = 6)
   @Nullable
   ObjId extendedInfoObj();
 
   static RefObj ref(
-      ObjId id, String name, ObjId initialPointer, long createdAtMicros, ObjId extendedInfoObj) {
-    return ImmutableRefObj.of(name, id, initialPointer, createdAtMicros, extendedInfoObj);
+      ObjId id,
+      long created,
+      String name,
+      ObjId initialPointer,
+      long createdAtMicros,
+      ObjId extendedInfoObj) {
+    return ImmutableRefObj.of(name, id, created, initialPointer, createdAtMicros, extendedInfoObj);
   }
 
   static RefObj ref(
@@ -74,6 +87,7 @@ public interface RefObj extends Obj {
             .hash(initialPointer.asByteArray())
             .hash(createdAtMicros)
             .generate(),
+        0L,
         name,
         initialPointer,
         createdAtMicros,

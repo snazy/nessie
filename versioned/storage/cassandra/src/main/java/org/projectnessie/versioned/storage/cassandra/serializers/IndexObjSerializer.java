@@ -58,10 +58,10 @@ public class IndexObjSerializer extends ObjSerializer<IndexObj> {
   }
 
   @Override
-  public IndexObj deserialize(Row row, ObjType type, ObjId id, String versionToken) {
+  public IndexObj deserialize(Row row, ObjType type, ObjId id, long created, String versionToken) {
     ByteString indexValue = CassandraSerde.deserializeBytes(row, COL_INDEX_INDEX.name());
     if (indexValue != null) {
-      return index(id, indexValue);
+      return index(id, created, indexValue);
     }
     throw new IllegalStateException("Index value of obj " + id + " of type INDEX is null");
   }

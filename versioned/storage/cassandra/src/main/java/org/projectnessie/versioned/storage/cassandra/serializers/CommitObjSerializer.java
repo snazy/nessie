@@ -42,8 +42,6 @@ import org.projectnessie.versioned.storage.common.proto.StorageTypes.Stripes;
 
 public class CommitObjSerializer extends ObjSerializer<CommitObj> {
 
-  private static final CqlColumn COL_COMMIT_CREATED =
-      new CqlColumn("c_created", CqlColumnType.BIGINT);
   private static final CqlColumn COL_COMMIT_SEQ = new CqlColumn("c_seq", CqlColumnType.BIGINT);
   private static final CqlColumn COL_COMMIT_MESSAGE =
       new CqlColumn("c_message", CqlColumnType.VARCHAR);
@@ -66,7 +64,6 @@ public class CommitObjSerializer extends ObjSerializer<CommitObj> {
 
   private static final Set<CqlColumn> COLS =
       ImmutableSet.<CqlColumn>builder()
-          .add(COL_COMMIT_CREATED)
           .add(COL_COMMIT_SEQ)
           .add(COL_COMMIT_MESSAGE)
           .add(COL_COMMIT_HEADERS)
@@ -94,7 +91,6 @@ public class CommitObjSerializer extends ObjSerializer<CommitObj> {
       int maxSerializedIndexSize)
       throws ObjTooLargeException {
 
-    stmt.setLong(COL_COMMIT_CREATED.name(), obj.created());
     stmt.setLong(COL_COMMIT_SEQ.name(), obj.seq());
     stmt.setString(COL_COMMIT_MESSAGE.name(), obj.message());
 
@@ -135,11 +131,11 @@ public class CommitObjSerializer extends ObjSerializer<CommitObj> {
   }
 
   @Override
-  public CommitObj deserialize(Row row, ObjType type, ObjId id, String versionToken) {
+  public CommitObj deserialize(Row row, ObjType type, ObjId id, long created, String versionToken) {
     CommitObj.Builder b =
         CommitObj.commitBuilder()
             .id(id)
-            .created(row.getLong(COL_COMMIT_CREATED.name()))
+            .created(created)
             .seq(row.getLong(COL_COMMIT_SEQ.name()))
             .message(row.getString(COL_COMMIT_MESSAGE.name()))
             .referenceIndex(

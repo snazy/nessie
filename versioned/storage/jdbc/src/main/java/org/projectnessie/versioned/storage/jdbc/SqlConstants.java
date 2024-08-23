@@ -32,6 +32,7 @@ final class SqlConstants {
   static final String COL_REPO_ID = "repo";
   static final String COL_OBJ_TYPE = "obj_type";
   static final String COL_OBJ_ID = "obj_id";
+  static final String COL_OBJ_CREATED = "c_created";
   static final String COL_OBJ_VERS = "obj_vers";
 
   static final String ERASE_OBJS =
@@ -161,6 +162,7 @@ final class SqlConstants {
       Stream.concat(
               Stream.of(
                   entry(COL_OBJ_ID, JdbcColumnType.OBJ_ID),
+                  entry(COL_OBJ_CREATED, JdbcColumnType.BIGINT),
                   entry(COL_OBJ_TYPE, JdbcColumnType.NAME),
                   entry(COL_OBJ_VERS, JdbcColumnType.VARCHAR)),
               ObjSerializers.ALL_SERIALIZERS.stream()

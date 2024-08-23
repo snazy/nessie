@@ -45,12 +45,17 @@ public interface UniqueIdObj extends Obj {
   @Nullable
   ObjId id();
 
-  /** The "ID space", for example {@code content-id}. */
+  @Override
   @Value.Parameter(order = 2)
+  @Value.Auxiliary
+  long created();
+
+  /** The "ID space", for example {@code content-id}. */
+  @Value.Parameter(order = 3)
   String space();
 
   /** The value of the ID within the {@link #space()}. */
-  @Value.Parameter(order = 3)
+  @Value.Parameter(order = 4)
   ByteString value();
 
   @Value.NonAttribute
@@ -61,13 +66,14 @@ public interface UniqueIdObj extends Obj {
     return new UUID(msb, lsb);
   }
 
-  static UniqueIdObj uniqueId(ObjId id, String space, ByteString value) {
-    return ImmutableUniqueIdObj.of(id, space, value);
+  static UniqueIdObj uniqueId(ObjId id, long created, String space, ByteString value) {
+    return ImmutableUniqueIdObj.of(id, created, space, value);
   }
 
   static UniqueIdObj uniqueId(String space, ByteString value) {
     return uniqueId(
         objIdHasher(UNIQUE).hash(space).hash(value.asReadOnlyByteBuffer()).generate(),
+        0L,
         space,
         value);
   }

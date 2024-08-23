@@ -21,6 +21,7 @@ import static java.util.Collections.singletonList;
 import static java.util.Objects.requireNonNull;
 import static org.projectnessie.versioned.storage.cassandra.CassandraBackend.unhandledException;
 import static org.projectnessie.versioned.storage.cassandra.CassandraConstants.ADD_REFERENCE;
+import static org.projectnessie.versioned.storage.cassandra.CassandraConstants.COL_OBJ_CREATED;
 import static org.projectnessie.versioned.storage.cassandra.CassandraConstants.COL_OBJ_ID;
 import static org.projectnessie.versioned.storage.cassandra.CassandraConstants.COL_OBJ_TYPE;
 import static org.projectnessie.versioned.storage.cassandra.CassandraConstants.COL_OBJ_VERS;
@@ -280,8 +281,12 @@ public class CassandraPersist implements Persist {
           }
           ObjId id = deserializeObjId(row.getString(COL_OBJ_ID.name()));
           String versionToken = row.getString(COL_OBJ_VERS.name());
+          long created = row.getLong(COL_OBJ_CREATED.name());
           @SuppressWarnings("unchecked")
-          T typed = (T) ObjSerializers.forType(objType).deserialize(row, objType, id, versionToken);
+          T typed =
+              (T)
+                  ObjSerializers.forType(objType)
+                      .deserialize(row, objType, id, created, versionToken);
           return typed;
         };
 
@@ -358,6 +363,7 @@ public class CassandraPersist implements Persist {
             .newBoundStatementBuilder(serializer.updateConditionalCql(), false)
             .setString(COL_REPO_ID.name(), config.repositoryId())
             .setString(COL_OBJ_ID.name(), serializeObjId(id))
+            .setLong(COL_OBJ_CREATED.name(), objWithCreated(newValue).created())
             .setString(COL_OBJ_TYPE.name() + EXPECTED_SUFFIX, type.name())
             .setString(COL_OBJ_VERS.name() + EXPECTED_SUFFIX, expectedVersion)
             .setString(COL_OBJ_VERS.name(), newVersion);
@@ -375,7 +381,7 @@ public class CassandraPersist implements Persist {
     try (LimitedConcurrentRequests requests =
         new LimitedConcurrentRequests(MAX_CONCURRENT_STORES)) {
       for (int i = 0; i < objs.length; i++) {
-        Obj o = objs[i];
+        Obj o = objWithCreated(objs[i]);
         if (o != null) {
           int idx = i;
           CompletionStage<?> cs =
@@ -434,10 +440,11 @@ public class CassandraPersist implements Persist {
             .setString(COL_REPO_ID.name(), config.repositoryId())
             .setString(COL_OBJ_ID.name(), serializeObjId(id))
             .setString(COL_OBJ_TYPE.name(), type.name())
-            .setString(COL_OBJ_VERS.name(), versionToken);
+            .setString(COL_OBJ_VERS.name(), versionToken)
+            .setLong(COL_OBJ_CREATED.name(), obj.created());
 
     serializer.serialize(
-        obj,
+        objWithCreated(obj),
         stmt,
         ignoreSoftSizeRestrictions ? Integer.MAX_VALUE : effectiveIncrementalIndexSizeLimit(),
         ignoreSoftSizeRestrictions ? Integer.MAX_VALUE : effectiveIndexSegmentSizeLimit());
@@ -511,7 +518,8 @@ public class CassandraPersist implements Persist {
 
         ObjId id = deserializeObjId(row.getString(COL_OBJ_ID.name()));
         String versionToken = row.getString(COL_OBJ_VERS.name());
-        return ObjSerializers.forType(type).deserialize(row, type, id, versionToken);
+        long created = row.getLong(COL_OBJ_CREATED.name());
+        return ObjSerializers.forType(type).deserialize(row, type, id, created, versionToken);
       }
     }
   }

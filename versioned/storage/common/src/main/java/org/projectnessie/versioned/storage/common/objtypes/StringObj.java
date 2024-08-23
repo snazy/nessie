@@ -40,14 +40,19 @@ public interface StringObj extends Obj {
   @Nullable
   ObjId id();
 
+  @Override
   @Value.Parameter(order = 2)
-  String contentType();
+  @Value.Auxiliary
+  long created();
 
   @Value.Parameter(order = 3)
+  String contentType();
+
+  @Value.Parameter(order = 4)
   Compression compression();
 
   @Nullable
-  @Value.Parameter(order = 4)
+  @Value.Parameter(order = 5)
   String filename();
 
   /**
@@ -56,7 +61,7 @@ public interface StringObj extends Obj {
    *
    * <p>If empty, the {@link #text()} represents the full content.
    */
-  @Value.Parameter(order = 5)
+  @Value.Parameter(order = 6)
   List<ObjId> predecessors();
 
   /**
@@ -66,17 +71,19 @@ public interface StringObj extends Obj {
    * <p>Contains the UTF-8 representation of a {@link String}, if <nobr>{@link #compression()}{@code
    * ==}{@link Compression#NONE}</nobr> or the compressed representation of it.
    */
-  @Value.Parameter(order = 6)
+  @Value.Parameter(order = 7)
   ByteString text();
 
   static StringObj stringData(
       ObjId id,
+      long created,
       String contentType,
       Compression compression,
       @Nullable String filename,
       List<ObjId> predecessors,
       ByteString text) {
-    return ImmutableStringObj.of(id, contentType, compression, filename, predecessors, text);
+    return ImmutableStringObj.of(
+        id, created, contentType, compression, filename, predecessors, text);
   }
 
   static StringObj stringData(
@@ -90,6 +97,7 @@ public interface StringObj extends Obj {
     predecessors.forEach(id -> hasher.hash(id.asByteArray()));
     hasher.hash(text.asReadOnlyByteBuffer());
 
-    return stringData(hasher.generate(), contentType, compression, filename, predecessors, text);
+    return stringData(
+        hasher.generate(), 0L, contentType, compression, filename, predecessors, text);
   }
 }

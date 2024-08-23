@@ -39,22 +39,28 @@ public interface TagObj extends Obj {
   @Nullable
   ObjId id();
 
-  /** The tag message as plain text. */
+  @Override
   @Value.Parameter(order = 2)
+  @Value.Auxiliary
+  long created();
+
+  /** The tag message as plain text. */
+  @Value.Parameter(order = 3)
   @Nullable
   String message();
 
   /** All headers and values. Headers are multi-valued. */
-  @Value.Parameter(order = 3)
+  @Value.Parameter(order = 4)
   @Nullable
   CommitHeaders headers();
 
-  @Value.Parameter(order = 4)
+  @Value.Parameter(order = 5)
   @Nullable
   ByteString signature();
 
-  static TagObj tag(ObjId id, String message, CommitHeaders headers, ByteString signature) {
-    return ImmutableTagObj.of(id, message, headers, signature);
+  static TagObj tag(
+      ObjId id, long created, String message, CommitHeaders headers, ByteString signature) {
+    return ImmutableTagObj.of(id, created, message, headers, signature);
   }
 
   static TagObj tag(String message, CommitHeaders headers, ByteString signature) {
@@ -69,6 +75,6 @@ public interface TagObj extends Obj {
       hasher.hash(signature.asReadOnlyByteBuffer());
     }
 
-    return tag(hasher.generate(), message, headers, signature);
+    return tag(hasher.generate(), 0L, message, headers, signature);
   }
 }

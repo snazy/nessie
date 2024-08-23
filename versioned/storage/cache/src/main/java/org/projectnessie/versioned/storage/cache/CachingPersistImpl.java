@@ -132,6 +132,7 @@ class CachingPersistImpl implements Persist {
     return fetchObjsPost(backendIds, backendResult, r, null);
   }
 
+  @SuppressWarnings("DataFlowIssue")
   @Nonnull
   @Override
   public <T extends Obj> T[] fetchTypedObjs(
@@ -239,6 +240,7 @@ class CachingPersistImpl implements Persist {
   @Override
   public boolean storeObj(@Nonnull Obj obj, boolean ignoreSoftSizeRestrictions)
       throws ObjTooLargeException {
+    obj = objWithCreated(obj);
     if (persist.storeObj(obj, ignoreSoftSizeRestrictions)) {
       cache.put(obj);
       return true;
@@ -249,6 +251,10 @@ class CachingPersistImpl implements Persist {
   @Override
   @Nonnull
   public boolean[] storeObjs(@Nonnull Obj[] objs) throws ObjTooLargeException {
+    for (int i = 0; i < objs.length; i++) {
+      objs[i] = objWithCreated(objs[i]);
+    }
+
     boolean[] stored = persist.storeObjs(objs);
     for (int i = 0; i < stored.length; i++) {
       if (stored[i]) {
@@ -314,6 +320,7 @@ class CachingPersistImpl implements Persist {
   @Override
   public boolean updateConditional(@Nonnull UpdateableObj expected, @Nonnull UpdateableObj newValue)
       throws ObjTooLargeException {
+    newValue = (UpdateableObj) objWithCreated(newValue);
     if (persist.updateConditional(expected, newValue)) {
       cache.put(newValue);
       return true;

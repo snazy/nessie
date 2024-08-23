@@ -62,9 +62,10 @@ public class CustomObjSerializer implements ObjSerializer<Obj> {
   }
 
   @Override
-  public Obj fromMap(ObjId id, ObjType type, Map<String, AttributeValue> i, String versionToken) {
+  public Obj fromMap(
+      ObjId id, long created, ObjType type, Map<String, AttributeValue> i, String versionToken) {
     ByteBuffer buffer = requireNonNull(attributeToBytes(i, COL_CUSTOM_DATA)).asReadOnlyByteBuffer();
     return SmileSerialization.deserializeObj(
-        id, versionToken, buffer, type, attributeToString(i, COL_CUSTOM_COMPRESSION));
+        id, created, versionToken, buffer, type, attributeToString(i, COL_CUSTOM_COMPRESSION));
   }
 }
