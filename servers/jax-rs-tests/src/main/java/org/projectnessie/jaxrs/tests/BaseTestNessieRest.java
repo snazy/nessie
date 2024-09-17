@@ -126,7 +126,7 @@ public abstract class BaseTestNessieRest extends BaseTestNessieApi {
       boolean buildMissingNamespaces) {
     ImmutableOperations.Builder contents =
         ImmutableOperations.builder()
-            .commitMeta(CommitMeta.builder().author("test author").message("").build());
+            .commitMeta(CommitMeta.builder().author("test author").message("msg").build());
     if (buildMissingNamespaces) {
       if (contentKey.getElementCount() > 1) {
         contents.addOperations(Put.of(contentKey.getParent(), contentKey.getNamespace()));

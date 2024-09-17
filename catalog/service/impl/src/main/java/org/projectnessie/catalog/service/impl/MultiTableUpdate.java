@@ -16,6 +16,7 @@
 package org.projectnessie.catalog.service.impl;
 
 import static com.google.common.base.Preconditions.checkState;
+import static org.projectnessie.versioned.CheckedOperation.checkedOperation;
 
 import java.util.ArrayList;
 import java.util.List;
@@ -24,17 +25,19 @@ import org.projectnessie.catalog.model.snapshot.NessieEntitySnapshot;
 import org.projectnessie.error.NessieConflictException;
 import org.projectnessie.error.NessieNotFoundException;
 import org.projectnessie.model.Branch;
+import org.projectnessie.model.CommitMeta;
 import org.projectnessie.model.CommitResponse;
 import org.projectnessie.model.Content;
 import org.projectnessie.model.ContentKey;
-import org.projectnessie.model.ImmutableOperations;
-import org.projectnessie.model.Operation;
+import org.projectnessie.model.Operation.Put;
+import org.projectnessie.services.authz.AccessCheckParams;
 import org.projectnessie.services.spi.TreeService;
+import org.projectnessie.versioned.CheckedOperation;
 
 /** Maintains state across all individual updates of a commit. */
 final class MultiTableUpdate {
   private final TreeService treeService;
-  private final ImmutableOperations.Builder operations;
+  private final List<CheckedOperation> operations = new ArrayList<>();
   private final List<SingleTableUpdate> tableUpdates = new ArrayList<>();
   private final List<String> storedLocations = new ArrayList<>();
   private Map<ContentKey, String> addedContentsMap;
@@ -43,21 +46,17 @@ final class MultiTableUpdate {
 
   MultiTableUpdate(TreeService treeService, Branch target) {
     this.treeService = treeService;
-    this.operations = ImmutableOperations.builder();
     this.targetBranch = target;
   }
 
-  ImmutableOperations.Builder operations() {
-    return operations;
-  }
-
-  MultiTableUpdate commit() throws NessieConflictException, NessieNotFoundException {
+  MultiTableUpdate commit(CommitMeta commitMeta)
+      throws NessieConflictException, NessieNotFoundException {
     synchronized (this) {
       committed = true;
       if (!tableUpdates.isEmpty()) {
         CommitResponse commitResponse =
             treeService.commitMultipleOperations(
-                targetBranch().getName(), targetBranch.getHash(), operations.build());
+                targetBranch().getName(), targetBranch.getHash(), commitMeta, operations);
 
         addedContentsMap =
             commitResponse.getAddedContents() != null
@@ -97,7 +96,9 @@ final class MultiTableUpdate {
     checkState(!committed, "Already committed");
     synchronized (this) {
       tableUpdates.add(singleTableUpdate);
-      operations.addOperations(Operation.Put.of(key, singleTableUpdate.content));
+      operations.add(
+          checkedOperation(
+              Put.of(key, singleTableUpdate.content), singleTableUpdate.accessCheckParams));
     }
   }
 
@@ -112,11 +113,17 @@ final class MultiTableUpdate {
     final NessieEntitySnapshot<?> snapshot;
     final Content content;
     final ContentKey key;
+    final AccessCheckParams accessCheckParams;
 
-    SingleTableUpdate(NessieEntitySnapshot<?> snapshot, Content content, ContentKey key) {
+    SingleTableUpdate(
+        NessieEntitySnapshot<?> snapshot,
+        Content content,
+        ContentKey key,
+        AccessCheckParams accessCheckParams) {
       this.snapshot = snapshot;
       this.content = content;
       this.key = key;
+      this.accessCheckParams = accessCheckParams;
     }
   }
 }

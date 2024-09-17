@@ -34,6 +34,8 @@ public interface AccessCheckParams {
   AccessCheckParams CATALOG_CONTENT_CHECK_FOR_CREATE = withComponents(true, Set.of());
   AccessCheckParams CATALOG_CONTENT_CHECK_FOR_DROP = withComponents(true, Set.of());
   AccessCheckParams CATALOG_CONTENT_CHECK_FOR_UPDATE = withComponents(true, Set.of());
+  AccessCheckParams CATALOG_CONTENT_CHECK_FOR_RENAME_FROM = withComponents(true, Set.of());
+  AccessCheckParams CATALOG_CONTENT_CHECK_FOR_RENAME_TO = withComponents(true, Set.of());
   AccessCheckParams CATALOG_CONTENT_READ_FOR_COMMIT = withComponents(true, Set.of());
 
   AccessCheckParams CATALOG_CONTENT_CHECK_FOR_FILE_READ = withComponents(false, Set.of());
@@ -68,6 +70,9 @@ public interface AccessCheckParams {
 
   interface Builder {
     @CanIgnoreReturnValue
+    Builder from(AccessCheckParams instance);
+
+    @CanIgnoreReturnValue
     Builder forWrite(boolean forWrite);
 
     @CanIgnoreReturnValue
@@ -75,6 +80,9 @@ public interface AccessCheckParams {
 
     @CanIgnoreReturnValue
     Builder addComponents(Check.Component... elements);
+
+    @CanIgnoreReturnValue
+    Builder addAllComponents(Iterable<? extends Check.Component> elements);
 
     @CanIgnoreReturnValue
     Builder components(Iterable<? extends Check.Component> elements);

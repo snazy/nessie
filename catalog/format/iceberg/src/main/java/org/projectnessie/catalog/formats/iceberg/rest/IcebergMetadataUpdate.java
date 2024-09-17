@@ -49,6 +49,7 @@ import org.projectnessie.catalog.formats.iceberg.nessie.IcebergTableMetadataUpda
 import org.projectnessie.catalog.formats.iceberg.nessie.IcebergViewMetadataUpdateState;
 import org.projectnessie.catalog.formats.iceberg.nessie.NessieModelIceberg;
 import org.projectnessie.nessie.immutables.NessieImmutable;
+import org.projectnessie.services.authz.Check;
 
 /** Iceberg metadata update objects serialized according to the Iceberg REST Catalog schema. */
 @JsonNaming(PropertyNamingStrategies.KebabCaseStrategy.class)
@@ -129,11 +130,13 @@ public interface IcebergMetadataUpdate {
 
     @Override
     default void applyToTable(IcebergTableMetadataUpdateState state) {
+      state.checkComponent(Check.Component.part("UPGRADE_FORMAT_VERSION"));
       NessieModelIceberg.upgradeFormatVersion(formatVersion(), state.snapshot(), state.builder());
     }
 
     @Override
     default void applyToView(IcebergViewMetadataUpdateState state) {
+      state.checkComponent(Check.Component.part("UPGRADE_FORMAT_VERSION"));
       NessieModelIceberg.upgradeFormatVersion(formatVersion(), state.snapshot(), state.builder());
     }
   }
@@ -164,11 +167,13 @@ public interface IcebergMetadataUpdate {
 
     @Override
     default void applyToTable(IcebergTableMetadataUpdateState state) {
+      state.checkComponent(Check.Component.part("REMOVE_PROPERTIES"));
       NessieModelIceberg.removeProperties(this, state.snapshot(), state.builder());
     }
 
     @Override
     default void applyToView(IcebergViewMetadataUpdateState state) {
+      state.checkComponent(Check.Component.part("REMOVE_PROPERTIES"));
       NessieModelIceberg.removeProperties(this, state.snapshot(), state.builder());
     }
   }
@@ -183,6 +188,7 @@ public interface IcebergMetadataUpdate {
 
     @Override
     default void applyToView(IcebergViewMetadataUpdateState state) {
+      state.checkComponent(Check.Component.part("ADD_VIEW_VERSION"));
       NessieModelIceberg.addViewVersion(this, state);
     }
 
@@ -213,6 +219,7 @@ public interface IcebergMetadataUpdate {
 
     @Override
     default void applyToView(IcebergViewMetadataUpdateState state) {
+      state.checkComponent(Check.Component.part("SET_CURRENT_VIEW_VERSION"));
       NessieModelIceberg.setCurrentViewVersion(this, state);
     }
 
@@ -233,6 +240,7 @@ public interface IcebergMetadataUpdate {
 
     @Override
     default void applyToTable(IcebergTableMetadataUpdateState state) {
+      state.checkComponent(Check.Component.part("SET_STATISTICS"));
       long snapshotId = Objects.requireNonNull(state.snapshot().icebergSnapshotId());
       if (snapshotId == snapshotId()) {
         state.builder().statisticsFiles(singleton(icebergStatisticsFileToNessie(statistics())));
@@ -250,6 +258,7 @@ public interface IcebergMetadataUpdate {
 
     @Override
     default void applyToTable(IcebergTableMetadataUpdateState state) {
+      state.checkComponent(Check.Component.part("REMOVE_STATISTICS"));
       long snapshotId = Objects.requireNonNull(state.snapshot().icebergSnapshotId());
       if (snapshotId == snapshotId()) {
         state.builder().statisticsFiles(emptyList());
@@ -267,6 +276,7 @@ public interface IcebergMetadataUpdate {
 
     @Override
     default void applyToTable(IcebergTableMetadataUpdateState state) {
+      state.checkComponent(Check.Component.part("SET_PARTITION_STATISTICS"));
       long snapshotId = Objects.requireNonNull(state.snapshot().icebergSnapshotId());
       if (snapshotId == partitionStatistics().snapshotId()) {
         state
@@ -288,6 +298,7 @@ public interface IcebergMetadataUpdate {
 
     @Override
     default void applyToTable(IcebergTableMetadataUpdateState state) {
+      state.checkComponent(Check.Component.part("REMOVE_PARTITION_STATISTICS"));
       long snapshotId = Objects.requireNonNull(state.snapshot().icebergSnapshotId());
       if (snapshotId == snapshotId()) {
         state.builder().partitionStatisticsFiles(emptyList());
@@ -304,11 +315,13 @@ public interface IcebergMetadataUpdate {
 
     @Override
     default void applyToTable(IcebergTableMetadataUpdateState state) {
+      state.checkComponent(Check.Component.part("ASSIGN_UUID"));
       NessieModelIceberg.assignUUID(this, state.snapshot());
     }
 
     @Override
     default void applyToView(IcebergViewMetadataUpdateState state) {
+      state.checkComponent(Check.Component.part("ASSIGN_UUID"));
       NessieModelIceberg.assignUUID(this, state.snapshot());
     }
 
@@ -328,11 +341,13 @@ public interface IcebergMetadataUpdate {
 
     @Override
     default void applyToTable(IcebergTableMetadataUpdateState state) {
+      state.checkComponent(Check.Component.part("ADD_SCHEMA"));
       NessieModelIceberg.addSchema(this, state);
     }
 
     @Override
     default void applyToView(IcebergViewMetadataUpdateState state) {
+      state.checkComponent(Check.Component.part("ADD_SCHEMA"));
       NessieModelIceberg.addSchema(this, state);
     }
 
@@ -351,12 +366,14 @@ public interface IcebergMetadataUpdate {
 
     @Override
     default void applyToTable(IcebergTableMetadataUpdateState state) {
+      state.checkComponent(Check.Component.part("SET_CURRENT_SCHEMA"));
       NessieModelIceberg.setCurrentSchema(
           this, state.lastAddedSchemaId(), state.snapshot(), state.builder());
     }
 
     @Override
     default void applyToView(IcebergViewMetadataUpdateState state) {
+      state.checkComponent(Check.Component.part("SET_CURRENT_SCHEMA"));
       NessieModelIceberg.setCurrentSchema(
           this, state.lastAddedSchemaId(), state.snapshot(), state.builder());
     }
@@ -375,6 +392,7 @@ public interface IcebergMetadataUpdate {
 
     @Override
     default void applyToTable(IcebergTableMetadataUpdateState state) {
+      state.checkComponent(Check.Component.part("ADD_PARTITION_SPEC"));
       NessieModelIceberg.addPartitionSpec(this, state);
     }
 
@@ -402,6 +420,7 @@ public interface IcebergMetadataUpdate {
 
     @Override
     default void applyToTable(IcebergTableMetadataUpdateState state) {
+      state.checkComponent(Check.Component.part("SET_DEFAULT_PARTITION_SPEC"));
       NessieModelIceberg.setDefaultPartitionSpec(this, state);
     }
 
@@ -419,6 +438,7 @@ public interface IcebergMetadataUpdate {
 
     @Override
     default void applyToTable(IcebergTableMetadataUpdateState state) {
+      state.checkComponent(Check.Component.part("ADD_SNAPSHOT"));
       NessieModelIceberg.addSnapshot(this, state);
     }
   }
@@ -432,6 +452,7 @@ public interface IcebergMetadataUpdate {
 
     @Override
     default void applyToTable(IcebergTableMetadataUpdateState state) {
+      state.checkComponent(Check.Component.part("ADD_SORT_ORDER"));
       NessieModelIceberg.addSortOrder(this, state);
     }
 
@@ -465,6 +486,7 @@ public interface IcebergMetadataUpdate {
 
     @Override
     default void applyToTable(IcebergTableMetadataUpdateState state) {
+      state.checkComponent(Check.Component.part("SET_DEFAULT_SORT_ORDER"));
       NessieModelIceberg.setDefaultSortOrder(this, state);
     }
 
@@ -482,11 +504,13 @@ public interface IcebergMetadataUpdate {
 
     @Override
     default void applyToTable(IcebergTableMetadataUpdateState state) {
+      state.checkComponent(Check.Component.part("SET_LOCATION"));
       // don't trust locations sent by clients
     }
 
     @Override
     default void applyToView(IcebergViewMetadataUpdateState state) {
+      state.checkComponent(Check.Component.part("SET_LOCATION"));
       // don't trust locations sent by clients
     }
   }
@@ -496,11 +520,13 @@ public interface IcebergMetadataUpdate {
 
     @Override
     default void applyToTable(IcebergTableMetadataUpdateState state) {
+      state.checkComponent(Check.Component.part("SET_TRUSTED_LOCATION"));
       NessieModelIceberg.setLocation(this, state.builder());
     }
 
     @Override
     default void applyToView(IcebergViewMetadataUpdateState state) {
+      state.checkComponent(Check.Component.part("SET_TRUSTED_LOCATION"));
       NessieModelIceberg.setLocation(this, state.builder());
     }
 
@@ -519,11 +545,19 @@ public interface IcebergMetadataUpdate {
 
     @Override
     default void applyToTable(IcebergTableMetadataUpdateState state) {
+      state.checkComponent(Check.Component.part("SET_PROPERTIES"));
+      if (updates().keySet().stream().anyMatch("location"::equalsIgnoreCase)) {
+        state.checkComponent(Check.Component.part("SET_ICEBERG_LOCATION"));
+      }
       NessieModelIceberg.setProperties(this, state.snapshot(), state.builder());
     }
 
     @Override
     default void applyToView(IcebergViewMetadataUpdateState state) {
+      state.checkComponent(Check.Component.part("SET_PROPERTIES"));
+      if (updates().keySet().stream().anyMatch("location"::equalsIgnoreCase)) {
+        state.checkComponent(Check.Component.part("SET_ICEBERG_LOCATION"));
+      }
       NessieModelIceberg.setProperties(this, state.snapshot(), state.builder());
     }
 
@@ -557,6 +591,7 @@ public interface IcebergMetadataUpdate {
 
     @Override
     default void applyToTable(IcebergTableMetadataUpdateState state) {
+      state.checkComponent(Check.Component.part("SET_SNAPSHOT_REF"));
       // NOP - This class is used for JSON deserialization only.
       // Nessie has catalog-level branches and tags.
     }
@@ -572,6 +607,7 @@ public interface IcebergMetadataUpdate {
 
     @Override
     default void applyToTable(IcebergTableMetadataUpdateState state) {
+      state.checkComponent(Check.Component.part("REMOVE_SNAPSHOT_REF"));
       // NOP - This class is used for JSON deserialization only.
       // Nessie has catalog-level branches and tags.
     }

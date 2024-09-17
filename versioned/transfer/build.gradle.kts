@@ -28,6 +28,7 @@ sourceSets {
 dependencies {
   implementation(project(":nessie-model"))
   implementation(project(":nessie-versioned-spi"))
+  implementation(project(":nessie-versioned-types"))
   implementation(project(":nessie-versioned-transfer-proto"))
   implementation(project(":nessie-versioned-transfer-related"))
   implementation(project(":nessie-versioned-storage-batching"))
@@ -61,6 +62,8 @@ dependencies {
   testFixturesApi(project(":nessie-server-store"))
   testFixturesApi(project(":nessie-versioned-transfer-proto"))
   testFixturesApi(project(":nessie-versioned-spi"))
+  testFixturesApi(project(":nessie-versioned-types"))
+  testFixturesApi(project(":nessie-authz-spi"))
 
   testFixturesApi(project(":nessie-versioned-storage-cache"))
   testFixturesApi(project(":nessie-versioned-storage-common"))

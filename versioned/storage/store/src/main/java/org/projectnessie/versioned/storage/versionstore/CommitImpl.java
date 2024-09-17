@@ -61,19 +61,20 @@ import org.projectnessie.error.BaseNessieClientServerException;
 import org.projectnessie.model.CommitMeta;
 import org.projectnessie.model.Content;
 import org.projectnessie.model.ContentKey;
+import org.projectnessie.model.Operation;
+import org.projectnessie.model.Operation.Delete;
+import org.projectnessie.model.Operation.Put;
+import org.projectnessie.model.Operation.Unchanged;
 import org.projectnessie.versioned.BranchName;
+import org.projectnessie.versioned.CheckedOperation;
 import org.projectnessie.versioned.Commit;
 import org.projectnessie.versioned.CommitResult;
 import org.projectnessie.versioned.CommitValidation;
-import org.projectnessie.versioned.Delete;
 import org.projectnessie.versioned.Hash;
 import org.projectnessie.versioned.ImmutableCommitResult;
 import org.projectnessie.versioned.ImmutableCommitValidation;
-import org.projectnessie.versioned.Operation;
-import org.projectnessie.versioned.Put;
 import org.projectnessie.versioned.ReferenceConflictException;
 import org.projectnessie.versioned.ReferenceNotFoundException;
-import org.projectnessie.versioned.Unchanged;
 import org.projectnessie.versioned.VersionStore.CommitValidator;
 import org.projectnessie.versioned.VersionStoreException;
 import org.projectnessie.versioned.storage.common.exceptions.CommitConflictException;
@@ -156,7 +157,7 @@ class CommitImpl extends BaseCommitHelper {
   CommitResult<Commit> commit(
       @Nonnull Optional<?> retryState,
       @Nonnull CommitMeta metadata,
-      @Nonnull List<Operation> operations,
+      @Nonnull List<CheckedOperation> operations,
       @Nonnull CommitValidator validator,
       @Nonnull BiConsumer<ContentKey, String> addedContents)
       throws ReferenceNotFoundException,
@@ -237,23 +238,24 @@ class CommitImpl extends BaseCommitHelper {
   }
 
   void commitAddOperations(
-      List<Operation> operations,
+      List<CheckedOperation> operations,
       CreateCommit.Builder commit,
       Consumer<Obj> contentToStore,
       CommitRetryState commitRetryState,
       ImmutableCommitValidation.Builder commitValidation)
       throws ObjNotFoundException, ReferenceConflictException {
     int num = operations.size();
-    Map<ContentKey, Operation> allKeys = newHashMapWithExpectedSize(num);
+    Map<ContentKey, CheckedOperation> allKeys = newHashMapWithExpectedSize(num);
 
     Set<StoreKey> storeKeysForHead =
         expectedIndex() != headIndex() ? newHashSetWithExpectedSize(operations.size()) : null;
 
     List<StoreKey> storeKeys = new ArrayList<>(num);
     for (int i = 0; i < num; i++) {
-      Operation operation = operations.get(i);
+      CheckedOperation checkedOperation = operations.get(i);
+      Operation operation = checkedOperation.operation();
       ContentKey key = operation.getKey();
-      Operation previous = allKeys.put(key, operation);
+      CheckedOperation previous = allKeys.put(key, checkedOperation);
       checkDuplicateKey(previous, operation);
       if (key.getElementCount() == 0) {
         throw new IllegalStateException("Content key must not be empty");
@@ -276,7 +278,8 @@ class CommitImpl extends BaseCommitHelper {
         new Object2IntHashMap<>(operations.size() * 2, DEFAULT_LOAD_FACTOR, -1);
     // Must handle delete operations before put operations
     for (int i = 0; i < operations.size(); i++) {
-      Operation operation = operations.get(i);
+      CheckedOperation checkedOperation = operations.get(i);
+      Operation operation = checkedOperation.operation();
       StoreKey storeKey = storeKeys.get(i);
 
       if (operation instanceof Delete) {
@@ -291,7 +294,8 @@ class CommitImpl extends BaseCommitHelper {
       }
     }
     for (int i = 0; i < operations.size(); i++) {
-      Operation operation = operations.get(i);
+      CheckedOperation checkedOperation = operations.get(i);
+      Operation operation = checkedOperation.operation();
       StoreKey storeKey = storeKeys.get(i);
 
       if (operation instanceof Put) {
@@ -318,12 +322,13 @@ class CommitImpl extends BaseCommitHelper {
     validateNamespaces(newContent, deletedKeysAndPayload, headIndex());
   }
 
-  private static void checkDuplicateKey(Operation previous, Operation current) {
+  private static void checkDuplicateKey(CheckedOperation previous, Operation current) {
     if (previous != null) {
+      Operation previousOp = previous.operation();
       boolean reAdd =
-          previous instanceof Delete
+          previousOp instanceof Delete
               && current instanceof Put
-              && ((Put) current).getValue().getId() == null;
+              && ((Put) current).getContent().getId() == null;
       if (!reAdd) {
         throw new IllegalArgumentException(
             "Duplicate key in commit operations: " + current.getKey());
@@ -430,7 +435,7 @@ class CommitImpl extends BaseCommitHelper {
       Map<ContentKey, Content> newContent,
       ImmutableCommitValidation.Builder commitValidation)
       throws ObjNotFoundException {
-    Content putValue = put.getValue();
+    Content putValue = put.getContent();
     ContentKey putKey = put.getKey();
     String putValueId = putValue.getId();
 

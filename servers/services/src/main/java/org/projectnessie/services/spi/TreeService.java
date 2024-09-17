@@ -40,10 +40,10 @@ import org.projectnessie.model.LogResponse.LogEntry;
 import org.projectnessie.model.MergeBehavior;
 import org.projectnessie.model.MergeKeyBehavior;
 import org.projectnessie.model.MergeResponse;
-import org.projectnessie.model.Operations;
 import org.projectnessie.model.Reference;
 import org.projectnessie.model.Reference.ReferenceType;
 import org.projectnessie.model.ReferenceHistoryResponse;
+import org.projectnessie.versioned.CheckedOperation;
 import org.projectnessie.versioned.NamedRef;
 import org.projectnessie.versioned.WithHash;
 
@@ -201,6 +201,7 @@ public interface TreeService {
               regexp = HASH_OR_RELATIVE_COMMIT_SPEC_REGEX,
               message = HASH_OR_RELATIVE_COMMIT_SPEC_MESSAGE)
           String expectedHash,
-      @Valid Operations operations)
+      @Valid CommitMeta commitMeta,
+      @Valid List<CheckedOperation> operations)
       throws NessieNotFoundException, NessieConflictException;
 }

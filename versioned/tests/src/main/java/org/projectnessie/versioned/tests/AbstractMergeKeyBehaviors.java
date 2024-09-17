@@ -16,12 +16,13 @@
 package org.projectnessie.versioned.tests;
 
 import static java.util.Arrays.asList;
-import static java.util.Collections.singletonList;
 import static org.junit.jupiter.params.provider.Arguments.arguments;
 import static org.projectnessie.model.CommitMeta.fromMessage;
 import static org.projectnessie.model.MergeBehavior.DROP;
 import static org.projectnessie.model.MergeBehavior.FORCE;
 import static org.projectnessie.model.MergeBehavior.NORMAL;
+import static org.projectnessie.services.authz.AccessCheckParams.NESSIE_API_FOR_WRITE;
+import static org.projectnessie.versioned.CheckedOperation.checkedOperation;
 
 import com.google.common.collect.ImmutableMap;
 import java.util.List;
@@ -42,11 +43,11 @@ import org.projectnessie.model.IcebergTable;
 import org.projectnessie.model.ImmutableIcebergTable;
 import org.projectnessie.model.MergeBehavior;
 import org.projectnessie.model.MergeKeyBehavior;
+import org.projectnessie.model.Operation.Put;
 import org.projectnessie.versioned.BranchName;
 import org.projectnessie.versioned.Commit;
 import org.projectnessie.versioned.Hash;
 import org.projectnessie.versioned.MergeResult;
-import org.projectnessie.versioned.Put;
 import org.projectnessie.versioned.VersionStore;
 import org.projectnessie.versioned.VersionStore.MergeOp;
 
@@ -200,7 +201,7 @@ public abstract class AbstractMergeKeyBehaviors extends AbstractNestedVersionSto
                 targetName,
                 Optional.of(target),
                 fromMessage("initial"),
-                singletonList(Put.of(keyInitial, initialTable)))
+                List.of(checkedOperation(Put.of(keyInitial, initialTable), NESSIE_API_FOR_WRITE)))
             .getCommitHash();
 
     BranchName sourceName = BranchName.of("source");
@@ -212,10 +213,12 @@ public abstract class AbstractMergeKeyBehaviors extends AbstractNestedVersionSto
                 targetName,
                 Optional.of(target),
                 fromMessage("target 2"),
-                asList(
-                    Put.of(keyTarget1, targetTable1),
-                    Put.of(keyCommon1, commonTable1onTarget),
-                    Put.of(keyCommon2, commonTable2onTarget)))
+                List.of(
+                    checkedOperation(Put.of(keyTarget1, targetTable1), NESSIE_API_FOR_WRITE),
+                    checkedOperation(
+                        Put.of(keyCommon1, commonTable1onTarget), NESSIE_API_FOR_WRITE),
+                    checkedOperation(
+                        Put.of(keyCommon2, commonTable2onTarget), NESSIE_API_FOR_WRITE)))
             .getCommitHash();
     source =
         store()
@@ -223,10 +226,12 @@ public abstract class AbstractMergeKeyBehaviors extends AbstractNestedVersionSto
                 sourceName,
                 Optional.of(source),
                 fromMessage("source 2"),
-                asList(
-                    Put.of(keySource1, sourceTable1),
-                    Put.of(keyCommon1, commonTable1onSource),
-                    Put.of(keyCommon2, commonTable2onSource)))
+                List.of(
+                    checkedOperation(Put.of(keySource1, sourceTable1), NESSIE_API_FOR_WRITE),
+                    checkedOperation(
+                        Put.of(keyCommon1, commonTable1onSource), NESSIE_API_FOR_WRITE),
+                    checkedOperation(
+                        Put.of(keyCommon2, commonTable2onSource), NESSIE_API_FOR_WRITE)))
             .getCommitHash();
 
     MergeResult<Commit> mergeResult =

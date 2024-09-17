@@ -26,6 +26,7 @@ import static org.projectnessie.catalog.formats.iceberg.rest.IcebergMetadataUpda
 import static org.projectnessie.catalog.formats.iceberg.rest.IcebergMetadataUpdate.SetProperties.setProperties;
 import static org.projectnessie.catalog.formats.iceberg.rest.IcebergMetadataUpdate.UpgradeFormatVersion.upgradeFormatVersion;
 import static org.projectnessie.model.Content.Type.ICEBERG_VIEW;
+import static org.projectnessie.versioned.CheckedOperation.checkedOperation;
 
 import io.smallrye.common.annotation.Blocking;
 import io.smallrye.mutiny.Uni;
@@ -67,9 +68,7 @@ import org.projectnessie.model.Branch;
 import org.projectnessie.model.ContentKey;
 import org.projectnessie.model.ContentResponse;
 import org.projectnessie.model.IcebergView;
-import org.projectnessie.model.ImmutableOperations;
 import org.projectnessie.model.Operation.Delete;
-import org.projectnessie.model.Operations;
 import org.projectnessie.services.authz.AccessCheckParams;
 
 /** Handles Iceberg REST API v1 endpoints that are associated with views. */
@@ -154,17 +153,15 @@ public class IcebergApiV1ViewResource extends IcebergApiV1ResourceBase {
       throws IOException {
     TableRef tableRef = decodeTableRef(prefix, namespace, view);
 
-    ContentResponse resp =
-        fetchIcebergView(tableRef, AccessCheckParams.CATALOG_CONTENT_CHECK_FOR_DROP);
+    AccessCheckParams accessCheckParams = AccessCheckParams.CATALOG_CONTENT_CHECK_FOR_DROP;
+    ContentResponse resp = fetchIcebergView(tableRef, accessCheckParams);
     Branch ref = checkBranch(resp.getEffectiveReference());
 
-    Operations ops =
-        ImmutableOperations.builder()
-            .addOperations(Delete.of(tableRef.contentKey()))
-            .commitMeta(updateCommitMeta(format("Drop ICEBERG_VIEW %s", tableRef.contentKey())))
-            .build();
-
-    treeService.commitMultipleOperations(ref.getName(), ref.getHash(), ops);
+    treeService.commitMultipleOperations(
+        ref.getName(),
+        ref.getHash(),
+        updateCommitMeta(format("Drop ICEBERG_VIEW %s", tableRef.contentKey())),
+        List.of(checkedOperation(Delete.of(tableRef.contentKey()), accessCheckParams)));
   }
 
   private ContentResponse fetchIcebergView(TableRef tableRef, AccessCheckParams accessCheckParams)

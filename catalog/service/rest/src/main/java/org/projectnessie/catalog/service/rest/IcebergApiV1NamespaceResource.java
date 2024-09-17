@@ -18,7 +18,11 @@ package org.projectnessie.catalog.service.rest;
 import static java.lang.String.format;
 import static org.projectnessie.error.ContentKeyErrorDetails.contentKeyErrorDetails;
 import static org.projectnessie.model.Content.Type.NAMESPACE;
+import static org.projectnessie.services.authz.AccessCheckParams.CATALOG_CONTENT_CHECK_FOR_CREATE;
+import static org.projectnessie.services.authz.AccessCheckParams.CATALOG_CONTENT_CHECK_FOR_DROP;
+import static org.projectnessie.services.authz.AccessCheckParams.CATALOG_CONTENT_CHECK_FOR_UPDATE;
 import static org.projectnessie.services.impl.RefUtil.toReference;
+import static org.projectnessie.versioned.CheckedOperation.checkedOperation;
 
 import io.smallrye.common.annotation.Blocking;
 import jakarta.enterprise.context.RequestScoped;
@@ -65,11 +69,12 @@ import org.projectnessie.model.ContentResponse;
 import org.projectnessie.model.EntriesResponse;
 import org.projectnessie.model.GetMultipleContentsResponse;
 import org.projectnessie.model.ImmutableNamespace;
-import org.projectnessie.model.ImmutableOperations;
 import org.projectnessie.model.Namespace;
-import org.projectnessie.model.Operations;
+import org.projectnessie.model.Operation.Delete;
+import org.projectnessie.model.Operation.Put;
 import org.projectnessie.model.Reference;
 import org.projectnessie.services.authz.AccessCheckParams;
+import org.projectnessie.services.authz.Check;
 import org.projectnessie.services.spi.PagedResponseHandler;
 import org.projectnessie.storage.uri.StorageUri;
 
@@ -135,17 +140,20 @@ public class IcebergApiV1NamespaceResource extends IcebergApiV1ResourceBase {
                 "Another content object with name '%s' already exists", key.toCanonicalString()));
       }
     }
-
-    Operations ops =
-        ImmutableOperations.builder()
-            .addOperations(org.projectnessie.model.Operation.Put.of(key, namespace))
-            .commitMeta(updateCommitMeta("update namespace " + key))
-            .build();
+    AccessCheckParams.Builder accessCheckParams =
+        AccessCheckParams.builder()
+            .from(CATALOG_CONTENT_CHECK_FOR_CREATE)
+            .addComponents(Check.Component.part("UPDATE_PROPERTIES"));
+    if (createNamespaceRequest.properties().keySet().stream()
+        .anyMatch("location"::equalsIgnoreCase)) {
+      accessCheckParams.addComponents(Check.Component.part("UPDATE_ICEBERG_LOCATION"));
+    }
 
     treeService.commitMultipleOperations(
         contentsResponse.getEffectiveReference().getName(),
         contentsResponse.getEffectiveReference().getHash(),
-        ops);
+        updateCommitMeta("update namespace " + key),
+        List.of(checkedOperation(Put.of(key, namespace), accessCheckParams.build())));
 
     return IcebergCreateNamespaceResponse.builder()
         .namespace(createNamespaceRequest.namespace())
@@ -169,7 +177,7 @@ public class IcebergApiV1NamespaceResource extends IcebergApiV1ResourceBase {
             namespaceRef.referenceName(),
             namespaceRef.hashWithRelativeSpec(),
             false,
-            AccessCheckParams.CATALOG_CONTENT_CHECK_FOR_DROP);
+            CATALOG_CONTENT_CHECK_FOR_DROP);
     if (!(contentResponse.getContent() instanceof Namespace)) {
       throw new NessieNamespaceNotFoundException(
           contentKeyErrorDetails(key),
@@ -218,13 +226,11 @@ public class IcebergApiV1NamespaceResource extends IcebergApiV1ResourceBase {
           String.format("Namespace '%s' is not empty", key.toCanonicalString()));
     }
 
-    Operations ops =
-        ImmutableOperations.builder()
-            .addOperations(org.projectnessie.model.Operation.Delete.of(key))
-            .commitMeta(updateCommitMeta("delete namespace " + key))
-            .build();
-
-    treeService.commitMultipleOperations(ref.getName(), ref.getHash(), ops);
+    treeService.commitMultipleOperations(
+        ref.getName(),
+        ref.getHash(),
+        updateCommitMeta("delete namespace " + key),
+        List.of(checkedOperation(Delete.of(key), CATALOG_CONTENT_CHECK_FOR_DROP)));
   }
 
   @Operation(operationId = "iceberg.v1.listNamespaces")
@@ -360,7 +366,18 @@ public class IcebergApiV1NamespaceResource extends IcebergApiV1ResourceBase {
       throws IOException {
     NamespaceRef namespaceRef = decodeNamespaceRef(prefix, namespace);
 
-    // TODO might want to prevent setting 'location'
+    AccessCheckParams.Builder accessCheckParams =
+        AccessCheckParams.builder()
+            .from(CATALOG_CONTENT_CHECK_FOR_UPDATE)
+            .addComponents(Check.Component.part("UPDATE_PROPERTIES"));
+    if (updateNamespacePropertiesRequest.removals().stream()
+        .anyMatch("location"::equalsIgnoreCase)) {
+      accessCheckParams.addComponents(Check.Component.part("REMOVE_ICEBERG_LOCATION"));
+    }
+    if (updateNamespacePropertiesRequest.updates().keySet().stream()
+        .anyMatch("location"::equalsIgnoreCase)) {
+      accessCheckParams.addComponents(Check.Component.part("UPDATE_ICEBERG_LOCATION"));
+    }
 
     ContentKey key = namespaceRef.namespace().toContentKey();
     GetMultipleContentsResponse namespaces =
@@ -369,7 +386,7 @@ public class IcebergApiV1NamespaceResource extends IcebergApiV1ResourceBase {
             namespaceRef.hashWithRelativeSpec(),
             List.of(key),
             false,
-            AccessCheckParams.CATALOG_CONTENT_CHECK_FOR_UPDATE);
+            CATALOG_CONTENT_CHECK_FOR_UPDATE);
     Reference ref = namespaces.getEffectiveReference();
     Map<ContentKey, Content> namespacesMap = namespaces.toContentsMap();
 
@@ -386,13 +403,11 @@ public class IcebergApiV1NamespaceResource extends IcebergApiV1ResourceBase {
     Namespace updatedNamespace =
         Namespace.builder().from(oldNamespace).properties(newProperties).build();
 
-    Operations ops =
-        ImmutableOperations.builder()
-            .addOperations(org.projectnessie.model.Operation.Put.of(key, updatedNamespace))
-            .commitMeta(updateCommitMeta("update namespace " + key))
-            .build();
-
-    treeService.commitMultipleOperations(ref.getName(), ref.getHash(), ops);
+    treeService.commitMultipleOperations(
+        ref.getName(),
+        ref.getHash(),
+        updateCommitMeta("update namespace " + key),
+        List.of(checkedOperation(Put.of(key, updatedNamespace), accessCheckParams.build())));
 
     IcebergUpdateNamespacePropertiesResponse.Builder response =
         IcebergUpdateNamespacePropertiesResponse.builder();

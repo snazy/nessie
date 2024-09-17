@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 2020 Dremio
+ * Copyright (C) 2024 Dremio
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -101,7 +101,7 @@ public interface VersionStore {
       @Nonnull BranchName branch,
       @Nonnull Optional<Hash> referenceHash,
       @Nonnull CommitMeta metadata,
-      @Nonnull List<Operation> operations,
+      @Nonnull List<CheckedOperation> operations,
       @Nonnull CommitValidator validator,
       @Nonnull BiConsumer<ContentKey, String> addedContents)
       throws ReferenceNotFoundException, ReferenceConflictException;
@@ -110,7 +110,7 @@ public interface VersionStore {
       @Nonnull BranchName branch,
       @Nonnull Optional<Hash> referenceHash,
       @Nonnull CommitMeta metadata,
-      @Nonnull List<Operation> operations)
+      @Nonnull List<CheckedOperation> operations)
       throws ReferenceNotFoundException, ReferenceConflictException {
     return commit(branch, referenceHash, metadata, operations, x -> {}, (k, c) -> {});
   }

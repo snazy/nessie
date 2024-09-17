@@ -16,6 +16,8 @@
 package org.projectnessie.versioned.tests;
 
 import static java.util.Collections.emptyList;
+import static org.projectnessie.services.authz.AccessCheckParams.NESSIE_API_FOR_WRITE;
+import static org.projectnessie.versioned.CheckedOperation.checkedOperation;
 
 import java.util.ArrayList;
 import java.util.List;
@@ -24,19 +26,19 @@ import org.junit.jupiter.api.Assertions;
 import org.projectnessie.model.CommitMeta;
 import org.projectnessie.model.Content;
 import org.projectnessie.model.ContentKey;
+import org.projectnessie.model.Operation.Delete;
+import org.projectnessie.model.Operation.Put;
+import org.projectnessie.model.Operation.Unchanged;
 import org.projectnessie.versioned.BranchName;
-import org.projectnessie.versioned.Delete;
+import org.projectnessie.versioned.CheckedOperation;
 import org.projectnessie.versioned.Hash;
-import org.projectnessie.versioned.Operation;
-import org.projectnessie.versioned.Put;
 import org.projectnessie.versioned.ReferenceConflictException;
 import org.projectnessie.versioned.ReferenceNotFoundException;
-import org.projectnessie.versioned.Unchanged;
 import org.projectnessie.versioned.VersionStore;
 
 /** Helper to generate commits against a store. */
 public class CommitBuilder {
-  private final List<Operation> operations = new ArrayList<>();
+  private final List<CheckedOperation> operations = new ArrayList<>();
   private final VersionStore store;
   private CommitMeta metadata = null;
   private Optional<Hash> referenceHash = Optional.empty();
@@ -65,7 +67,7 @@ public class CommitBuilder {
    * @return the builder instance
    */
   public CommitBuilder put(ContentKey key, Content value) {
-    return add(Put.of(key, value));
+    return add(checkedOperation(Put.of(key, value), NESSIE_API_FOR_WRITE));
   }
 
   /**
@@ -85,7 +87,7 @@ public class CommitBuilder {
    * @return the builder instance
    */
   public CommitBuilder delete(ContentKey key) {
-    return add(Delete.of(key));
+    return add(checkedOperation(Delete.of(key), NESSIE_API_FOR_WRITE));
   }
 
   /**
@@ -105,7 +107,7 @@ public class CommitBuilder {
    * @return the builder instance
    */
   public CommitBuilder unchanged(ContentKey key) {
-    return add(Unchanged.of(key));
+    return add(checkedOperation(Unchanged.of(key), NESSIE_API_FOR_WRITE));
   }
 
   /**
@@ -114,7 +116,7 @@ public class CommitBuilder {
    * @param operation operation to commit
    * @return the builder instance
    */
-  public CommitBuilder add(Operation operation) {
+  public CommitBuilder add(CheckedOperation operation) {
     operations.add(operation);
     return this;
   }

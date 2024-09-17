@@ -24,6 +24,7 @@ dependencies {
   implementation(project(":nessie-authz-spi"))
   implementation(project(":nessie-model"))
   implementation(project(":nessie-services-config"))
+  implementation(project(":nessie-versioned-types"))
   implementation(project(":nessie-versioned-spi"))
   implementation(libs.slf4j.api) { version { require(libs.versions.slf4j.compat.get()) } }
 
@@ -50,6 +51,7 @@ dependencies {
   testFixturesApi(project(":nessie-authz-spi"))
   testFixturesApi(project(":nessie-model"))
   testFixturesApi(project(":nessie-versioned-spi"))
+  testFixturesApi(project(":nessie-versioned-types"))
 
   testFixturesApi(platform(libs.junit.bom))
   testFixturesApi(libs.bundles.junit.testing)

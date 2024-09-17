@@ -152,6 +152,7 @@ dependencies {
   testFixturesApi(project(":nessie-catalog-format-iceberg-fixturegen"))
   testFixturesApi(project(":nessie-container-spec-helper"))
   testFixturesApi(project(":nessie-catalog-secrets-api"))
+  testFixturesApi(project(path = ":nessie-protobuf-relocated", configuration = "shadow"))
 
   testFixturesApi(platform(libs.awssdk.bom))
   testFixturesApi("software.amazon.awssdk:secretsmanager")

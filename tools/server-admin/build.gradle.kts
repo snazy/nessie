@@ -37,6 +37,7 @@ dependencies {
   implementation(project(":nessie-services-config"))
   implementation(project(":nessie-server-store"))
   implementation(project(":nessie-versioned-spi"))
+  implementation(project(":nessie-versioned-types"))
   implementation(project(":nessie-versioned-transfer"))
   implementation(project(":nessie-versioned-transfer-proto"))
   implementation(project(":nessie-model"))

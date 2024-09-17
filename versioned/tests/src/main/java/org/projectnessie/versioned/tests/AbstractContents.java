@@ -16,13 +16,13 @@
 package org.projectnessie.versioned.tests;
 
 import static java.util.Collections.emptyList;
-import static java.util.Collections.singletonList;
 import static java.util.Objects.requireNonNull;
 import static org.projectnessie.model.IdentifiedContentKey.identifiedContentKeyFromContent;
+import static org.projectnessie.services.authz.AccessCheckParams.NESSIE_API_FOR_WRITE;
+import static org.projectnessie.versioned.CheckedOperation.checkedOperation;
 import static org.projectnessie.versioned.ContentResult.contentResult;
 import static org.projectnessie.versioned.testworker.OnRefOnly.newOnRef;
 
-import com.google.common.collect.ImmutableList;
 import java.util.List;
 import java.util.Map;
 import java.util.Optional;
@@ -36,12 +36,12 @@ import org.projectnessie.model.Content;
 import org.projectnessie.model.ContentKey;
 import org.projectnessie.model.IdentifiedContentKey;
 import org.projectnessie.model.Namespace;
+import org.projectnessie.model.Operation.Delete;
+import org.projectnessie.model.Operation.Put;
 import org.projectnessie.versioned.BranchName;
 import org.projectnessie.versioned.Commit;
 import org.projectnessie.versioned.CommitResult;
-import org.projectnessie.versioned.Delete;
 import org.projectnessie.versioned.Hash;
-import org.projectnessie.versioned.Put;
 import org.projectnessie.versioned.VersionStore;
 
 @ExtendWith(SoftAssertionsExtension.class)
@@ -117,7 +117,7 @@ public abstract class AbstractContents extends AbstractNestedVersionStore {
                 branch,
                 Optional.empty(),
                 CommitMeta.fromMessage("create table"),
-                singletonList(Put.of(key, initialState)));
+                List.of(checkedOperation(Put.of(key, initialState), NESSIE_API_FOR_WRITE)));
     soft.assertThat(contentWithoutId(store().getValue(branch, key, false))).isEqualTo(initialState);
     soft.assertThat(contentWithoutId(store().getValue(ancestor.getCommitHash(), key, false)))
         .isEqualTo(initialState);
@@ -128,7 +128,7 @@ public abstract class AbstractContents extends AbstractNestedVersionStore {
                 branch,
                 Optional.empty(),
                 CommitMeta.fromMessage("drop table"),
-                ImmutableList.of(Delete.of(key)));
+                List.of(checkedOperation(Delete.of(key), NESSIE_API_FOR_WRITE)));
     soft.assertThat(store().getValue(branch, key, false)).isNull();
     soft.assertThat(store().getValue(delete.getCommitHash(), key, false)).isNull();
 
@@ -139,7 +139,7 @@ public abstract class AbstractContents extends AbstractNestedVersionStore {
                 branch,
                 Optional.empty(),
                 CommitMeta.fromMessage("drop table"),
-                ImmutableList.of(Put.of(key, recreateState)));
+                List.of(checkedOperation(Put.of(key, recreateState), NESSIE_API_FOR_WRITE)));
     soft.assertThat(contentWithoutId(store().getValue(branch, key, false)))
         .isEqualTo(recreateState);
     soft.assertThat(contentWithoutId(store().getValue(recreate.getCommitHash(), key, false)))

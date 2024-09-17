@@ -15,9 +15,10 @@
  */
 package org.projectnessie.versioned.tests;
 
+import static org.projectnessie.services.authz.AccessCheckParams.NESSIE_API_FOR_WRITE;
+import static org.projectnessie.versioned.CheckedOperation.checkedOperation;
 import static org.projectnessie.versioned.testworker.OnRefOnly.newOnRef;
 
-import com.google.common.collect.ImmutableList;
 import java.util.List;
 import java.util.Optional;
 import org.assertj.core.api.SoftAssertions;
@@ -29,10 +30,10 @@ import org.junit.jupiter.api.extension.ExtendWith;
 import org.projectnessie.model.CommitMeta;
 import org.projectnessie.model.Content;
 import org.projectnessie.model.ContentKey;
+import org.projectnessie.model.Operation.Put;
 import org.projectnessie.versioned.BranchName;
+import org.projectnessie.versioned.CheckedOperation;
 import org.projectnessie.versioned.Hash;
-import org.projectnessie.versioned.Operation;
-import org.projectnessie.versioned.Put;
 import org.projectnessie.versioned.VersionStore;
 
 @ExtendWith(SoftAssertionsExtension.class)
@@ -61,7 +62,10 @@ public abstract class AbstractDuplicateTable extends AbstractNestedVersionStore 
                 branch0,
                 Optional.empty(),
                 CommitMeta.fromMessage("initial commit"),
-                ImmutableList.of(Put.of(ContentKey.of("unrelated-table"), newOnRef("value"))))
+                List.of(
+                    checkedOperation(
+                        Put.of(ContentKey.of("unrelated-table"), newOnRef("value")),
+                        NESSIE_API_FOR_WRITE)))
             .getCommitHash();
 
     // Create a table with the same name on two branches.
@@ -70,13 +74,13 @@ public abstract class AbstractDuplicateTable extends AbstractNestedVersionStore 
     soft.assertThat(store().create(branch1, Optional.of(ancestor)).getHash()).isEqualTo(ancestor);
     soft.assertThat(store().create(branch2, Optional.of(ancestor)).getHash()).isEqualTo(ancestor);
 
-    List<Operation> putForBranch1;
-    List<Operation> putForBranch2;
+    List<CheckedOperation> putForBranch1;
+    List<CheckedOperation> putForBranch2;
     Content valuebranch1 = newOnRef("create table");
     Content valuebranch2 = newOnRef("create table");
 
-    putForBranch1 = ImmutableList.of(Put.of(key, valuebranch1));
-    putForBranch2 = ImmutableList.of(Put.of(key, valuebranch2));
+    putForBranch1 = List.of(checkedOperation(Put.of(key, valuebranch1), NESSIE_API_FOR_WRITE));
+    putForBranch2 = List.of(checkedOperation(Put.of(key, valuebranch2), NESSIE_API_FOR_WRITE));
 
     store()
         .commit(branch1, Optional.empty(), CommitMeta.fromMessage("create table"), putForBranch1);

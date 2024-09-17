@@ -90,6 +90,7 @@ import org.projectnessie.model.ContentKey;
 import org.projectnessie.model.IdentifiedContentKey;
 import org.projectnessie.model.RepositoryConfig;
 import org.projectnessie.versioned.BranchName;
+import org.projectnessie.versioned.CheckedOperation;
 import org.projectnessie.versioned.Commit;
 import org.projectnessie.versioned.CommitResult;
 import org.projectnessie.versioned.ContentResult;
@@ -108,7 +109,6 @@ import org.projectnessie.versioned.KeyEntry;
 import org.projectnessie.versioned.MergeConflictException;
 import org.projectnessie.versioned.MergeResult;
 import org.projectnessie.versioned.NamedRef;
-import org.projectnessie.versioned.Operation;
 import org.projectnessie.versioned.Ref;
 import org.projectnessie.versioned.ReferenceAlreadyExistsException;
 import org.projectnessie.versioned.ReferenceAssignedResult;
@@ -1015,7 +1015,7 @@ public class VersionStoreImpl implements VersionStore {
       @Nonnull BranchName branch,
       @Nonnull Optional<Hash> referenceHash,
       @Nonnull CommitMeta metadata,
-      @Nonnull List<Operation> operations,
+      @Nonnull List<CheckedOperation> operations,
       @Nonnull CommitValidator validator,
       @Nonnull BiConsumer<ContentKey, String> addedContents)
       throws ReferenceNotFoundException, ReferenceConflictException {

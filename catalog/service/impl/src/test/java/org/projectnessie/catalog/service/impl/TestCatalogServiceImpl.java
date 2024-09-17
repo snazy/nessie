@@ -251,8 +251,8 @@ public class TestCatalogServiceImpl extends AbstractCatalogService {
 
   /**
    * Verify behavior of {@link CatalogService#retrieveSnapshot(SnapshotReqParams, ContentKey,
-   * Content.Type, org.projectnessie.services.authz.AccessCheckParams)} against related Nessie
-   * {@link CheckType check types} for read and write intents.
+   * Content.Type, AccessCheckParams)} against related Nessie {@link CheckType check types} for read
+   * and write intents.
    */
   @Test
   public void retrieveSnapshotAccessChecks() throws Exception {

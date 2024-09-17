@@ -17,7 +17,6 @@ package org.projectnessie.versioned.tests;
 
 import static com.google.common.collect.Streams.stream;
 import static java.util.Collections.emptyList;
-import static java.util.Collections.singletonList;
 import static java.util.Objects.requireNonNull;
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.catchThrowable;
@@ -25,6 +24,8 @@ import static org.assertj.core.api.Assertions.tuple;
 import static org.assertj.core.api.InstanceOfAssertFactories.list;
 import static org.assertj.core.api.InstanceOfAssertFactories.type;
 import static org.junit.jupiter.params.provider.Arguments.arguments;
+import static org.projectnessie.services.authz.AccessCheckParams.NESSIE_API_FOR_WRITE;
+import static org.projectnessie.versioned.CheckedOperation.checkedOperation;
 import static org.projectnessie.versioned.VersionStore.KeyRestrictions.NO_KEY_RESTRICTIONS;
 import static org.projectnessie.versioned.tests.AbstractCommits.OperationOrder.DELETE_THEN_PUT;
 import static org.projectnessie.versioned.tests.AbstractCommits.OperationOrder.PUT_THEN_DELETE;
@@ -54,20 +55,21 @@ import org.projectnessie.model.Conflict.ConflictType;
 import org.projectnessie.model.Content;
 import org.projectnessie.model.ContentKey;
 import org.projectnessie.model.IcebergTable;
+import org.projectnessie.model.Operation;
+import org.projectnessie.model.Operation.Delete;
+import org.projectnessie.model.Operation.Put;
+import org.projectnessie.model.Operation.Unchanged;
 import org.projectnessie.versioned.BranchName;
+import org.projectnessie.versioned.CheckedOperation;
 import org.projectnessie.versioned.Commit;
 import org.projectnessie.versioned.CommitResult;
-import org.projectnessie.versioned.Delete;
 import org.projectnessie.versioned.GetNamedRefsParams;
 import org.projectnessie.versioned.Hash;
 import org.projectnessie.versioned.KeyEntry;
-import org.projectnessie.versioned.Operation;
-import org.projectnessie.versioned.Put;
 import org.projectnessie.versioned.ReferenceAlreadyExistsException;
 import org.projectnessie.versioned.ReferenceConflictException;
 import org.projectnessie.versioned.ReferenceInfo;
 import org.projectnessie.versioned.ReferenceNotFoundException;
-import org.projectnessie.versioned.Unchanged;
 import org.projectnessie.versioned.VersionStore;
 import org.projectnessie.versioned.VersionStore.CommitValidator;
 import org.projectnessie.versioned.paging.PaginationIterator;
@@ -675,7 +677,9 @@ public abstract class AbstractCommits extends AbstractNestedVersionStore {
             branch,
             Optional.empty(),
             CommitMeta.fromMessage("metadata"),
-            ImmutableList.of(put("keyA", foo1), put("keyB", foo2)));
+            List.of(
+                checkedOperation(put("keyA", foo1), NESSIE_API_FOR_WRITE),
+                checkedOperation(put("keyB", foo2), NESSIE_API_FOR_WRITE)));
 
     soft.assertThat(contentWithoutId(store().getValue(branch, ContentKey.of("keyA"), false)))
         .isEqualTo(foo1);
@@ -790,24 +794,29 @@ public abstract class AbstractCommits extends AbstractNestedVersionStore {
                 branch,
                 Optional.of(initialHash),
                 CommitMeta.fromMessage("Some commit"),
-                Collections.singletonList(Put.of(original, IcebergTable.of("loc", 1, 2, 3, 4))))
+                List.of(
+                    checkedOperation(
+                        Put.of(original, IcebergTable.of("loc", 1, 2, 3, 4)),
+                        NESSIE_API_FOR_WRITE)))
             .getCommitHash();
 
     Content table = requireNonNull(store().getValue(branch, original, false).content());
 
-    Delete deleteOp = Delete.of(original);
+    CheckedOperation deleteOp = checkedOperation(Delete.of(original), NESSIE_API_FOR_WRITE);
 
     ContentKey renamed = reuseContentKey ? original : ContentKey.of("renamed");
 
-    Put putOp =
-        Put.of(
-            renamed,
-            reuseContentId
-                ? IcebergTable.of("loc", 1, 2, 3, 4, table.getId())
-                : IcebergTable.of("loc", 1, 2, 3, 4));
+    CheckedOperation putOp =
+        checkedOperation(
+            Put.of(
+                renamed,
+                reuseContentId
+                    ? IcebergTable.of("loc", 1, 2, 3, 4, table.getId())
+                    : IcebergTable.of("loc", 1, 2, 3, 4)),
+            NESSIE_API_FOR_WRITE);
 
-    List<Operation> ops =
-        order == PUT_THEN_DELETE ? Arrays.asList(putOp, deleteOp) : Arrays.asList(deleteOp, putOp);
+    List<CheckedOperation> ops =
+        order == PUT_THEN_DELETE ? List.of(putOp, deleteOp) : List.of(deleteOp, putOp);
 
     Throwable error =
         catchThrowable(
@@ -855,7 +864,7 @@ public abstract class AbstractCommits extends AbstractNestedVersionStore {
             branch,
             Optional.empty(),
             CommitMeta.fromMessage("commit"),
-            singletonList(Put.of(key, tableOld)))
+            List.of(checkedOperation(Put.of(key, tableOld), NESSIE_API_FOR_WRITE)))
         .getCommitHash();
     tableOld = (IcebergTable) requireNonNull(store().getValue(branch, key, false).content());
 
@@ -872,7 +881,7 @@ public abstract class AbstractCommits extends AbstractNestedVersionStore {
             branch,
             Optional.empty(),
             CommitMeta.fromMessage("new"),
-            singletonList(Put.of(keyTemp, tableNew)));
+            List.of(checkedOperation(Put.of(keyTemp, tableNew), NESSIE_API_FOR_WRITE)));
     tableNew = (IcebergTable) requireNonNull(store().getValue(branch, keyTemp, false).content());
 
     soft.assertThat(
@@ -889,7 +898,9 @@ public abstract class AbstractCommits extends AbstractNestedVersionStore {
             branch,
             Optional.empty(),
             CommitMeta.fromMessage("backup"),
-            ImmutableList.of(Delete.of(key), Put.of(keyBackup, tableOld)));
+            List.of(
+                checkedOperation(Delete.of(key), NESSIE_API_FOR_WRITE),
+                checkedOperation(Put.of(keyBackup, tableOld), NESSIE_API_FOR_WRITE)));
 
     soft.assertThat(
             store().getValues(branch, keys, false).entrySet().stream()
@@ -905,7 +916,9 @@ public abstract class AbstractCommits extends AbstractNestedVersionStore {
             branch,
             Optional.empty(),
             CommitMeta.fromMessage("rename new"),
-            ImmutableList.of(Delete.of(keyTemp), Put.of(key, tableNew)));
+            List.of(
+                checkedOperation(Delete.of(keyTemp), NESSIE_API_FOR_WRITE),
+                checkedOperation(Put.of(key, tableNew), NESSIE_API_FOR_WRITE)));
 
     soft.assertThat(
             store().getValues(branch, keys, false).entrySet().stream()
@@ -921,7 +934,7 @@ public abstract class AbstractCommits extends AbstractNestedVersionStore {
             branch,
             Optional.empty(),
             CommitMeta.fromMessage("delete"),
-            singletonList(Delete.of(keyBackup)));
+            List.of(checkedOperation(Delete.of(keyBackup), NESSIE_API_FOR_WRITE)));
 
     soft.assertThat(
             store().getValues(branch, keys, false).entrySet().stream()
@@ -968,7 +981,7 @@ public abstract class AbstractCommits extends AbstractNestedVersionStore {
             branch,
             Optional.empty(),
             CommitMeta.fromMessage("initial commit meta"),
-            Collections.singletonList(Put.of(key, newOnRef("some value"))),
+            List.of(checkedOperation(Put.of(key, newOnRef("some value")), NESSIE_API_FOR_WRITE)),
             validator,
             (k, c) -> {});
   }
@@ -1002,7 +1015,9 @@ public abstract class AbstractCommits extends AbstractNestedVersionStore {
                         branch,
                         Optional.empty(),
                         CommitMeta.fromMessage("initial"),
-                        Arrays.asList(operation1, operation2)))
+                        List.of(
+                            checkedOperation(operation1, NESSIE_API_FOR_WRITE),
+                            checkedOperation(operation2, NESSIE_API_FOR_WRITE))))
         .isInstanceOf(IllegalArgumentException.class)
         .hasMessageContaining(key.toString());
   }

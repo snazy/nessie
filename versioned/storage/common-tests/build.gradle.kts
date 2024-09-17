@@ -27,6 +27,7 @@ dependencies {
   implementation(project(":nessie-versioned-storage-testextension"))
   implementation(project(":nessie-versioned-tests"))
   implementation(project(":nessie-versioned-spi"))
+  implementation(project(":nessie-versioned-types"))
   implementation(project(":nessie-server-store"))
   implementation(project(":nessie-model"))
 

@@ -16,10 +16,11 @@
 package org.projectnessie.versioned.tests;
 
 import static java.util.Collections.emptyList;
-import static java.util.Collections.singletonList;
 import static java.util.Objects.requireNonNull;
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.InstanceOfAssertFactories.type;
+import static org.projectnessie.services.authz.AccessCheckParams.NESSIE_API_FOR_WRITE;
+import static org.projectnessie.versioned.CheckedOperation.checkedOperation;
 import static org.projectnessie.versioned.testworker.OnRefOnly.newOnRef;
 
 import com.google.common.collect.ImmutableMap;
@@ -39,12 +40,12 @@ import org.projectnessie.model.Content;
 import org.projectnessie.model.ContentKey;
 import org.projectnessie.model.MergeBehavior;
 import org.projectnessie.model.MergeKeyBehavior;
+import org.projectnessie.model.Operation.Delete;
+import org.projectnessie.model.Operation.Put;
 import org.projectnessie.versioned.BranchName;
 import org.projectnessie.versioned.Commit;
-import org.projectnessie.versioned.Delete;
 import org.projectnessie.versioned.Hash;
 import org.projectnessie.versioned.MergeResult;
-import org.projectnessie.versioned.Put;
 import org.projectnessie.versioned.ReferenceConflictException;
 import org.projectnessie.versioned.ReferenceNotFoundException;
 import org.projectnessie.versioned.VersionStore;
@@ -179,17 +180,17 @@ public abstract class AbstractTransplant extends AbstractNestedVersionStore {
                       o -> {
                         soft.assertThat(o).isInstanceOf(Put.class);
                         soft.assertThat(o.getKey()).isEqualTo(ContentKey.of(T_1));
-                        soft.assertThat(contentWithoutId(((Put) o).getValue())).isEqualTo(V_1_1);
+                        soft.assertThat(contentWithoutId(((Put) o).getContent())).isEqualTo(V_1_1);
                       },
                       o -> {
                         soft.assertThat(o).isInstanceOf(Put.class);
                         soft.assertThat(o.getKey()).isEqualTo(ContentKey.of(T_2));
-                        soft.assertThat(contentWithoutId(((Put) o).getValue())).isEqualTo(V_2_1);
+                        soft.assertThat(contentWithoutId(((Put) o).getContent())).isEqualTo(V_2_1);
                       },
                       o -> {
                         soft.assertThat(o).isInstanceOf(Put.class);
                         soft.assertThat(o.getKey()).isEqualTo(ContentKey.of(T_3));
-                        soft.assertThat(contentWithoutId(((Put) o).getValue())).isEqualTo(V_3_1);
+                        soft.assertThat(contentWithoutId(((Put) o).getContent())).isEqualTo(V_3_1);
                       });
             },
             c -> {
@@ -202,7 +203,7 @@ public abstract class AbstractTransplant extends AbstractNestedVersionStore {
                       o -> {
                         soft.assertThat(o).isInstanceOf(Put.class);
                         soft.assertThat(o.getKey()).isEqualTo(ContentKey.of(T_1));
-                        soft.assertThat(contentWithoutId(((Put) o).getValue())).isEqualTo(V_1_2);
+                        soft.assertThat(contentWithoutId(((Put) o).getContent())).isEqualTo(V_1_2);
                       },
                       o ->
                           soft.assertThat(o)
@@ -217,7 +218,7 @@ public abstract class AbstractTransplant extends AbstractNestedVersionStore {
                       o -> {
                         soft.assertThat(o).isInstanceOf(Put.class);
                         soft.assertThat(o.getKey()).isEqualTo(ContentKey.of(T_4));
-                        soft.assertThat(contentWithoutId(((Put) o).getValue())).isEqualTo(V_4_1);
+                        soft.assertThat(contentWithoutId(((Put) o).getContent())).isEqualTo(V_4_1);
                       });
             },
             c -> {
@@ -230,7 +231,7 @@ public abstract class AbstractTransplant extends AbstractNestedVersionStore {
                       o -> {
                         soft.assertThat(o).isInstanceOf(Put.class);
                         soft.assertThat(o.getKey()).isEqualTo(ContentKey.of(T_2));
-                        soft.assertThat(contentWithoutId(((Put) o).getValue())).isEqualTo(V_2_2);
+                        soft.assertThat(contentWithoutId(((Put) o).getContent())).isEqualTo(V_2_2);
                       }
                       // Unchanged operation not retained
                       );
@@ -501,7 +502,7 @@ public abstract class AbstractTransplant extends AbstractNestedVersionStore {
                 target,
                 Optional.empty(),
                 CommitMeta.fromMessage("target 1"),
-                singletonList(Put.of(key1, V_1_1)))
+                List.of(checkedOperation(Put.of(key1, V_1_1), NESSIE_API_FOR_WRITE)))
             .getCommitHash();
 
     targetHead =
@@ -510,7 +511,7 @@ public abstract class AbstractTransplant extends AbstractNestedVersionStore {
                 target,
                 Optional.of(targetHead),
                 CommitMeta.fromMessage("target 2"),
-                singletonList(Put.of(key2, V_2_1)))
+                List.of(checkedOperation(Put.of(key2, V_2_1), NESSIE_API_FOR_WRITE)))
             .getCommitHash();
 
     // Add two commits to the source branch, with conflicting changes to key1 and key2
@@ -521,7 +522,7 @@ public abstract class AbstractTransplant extends AbstractNestedVersionStore {
                 source,
                 Optional.empty(),
                 CommitMeta.fromMessage("source 1"),
-                singletonList(Put.of(key1, V_1_2)))
+                List.of(checkedOperation(Put.of(key1, V_1_2), NESSIE_API_FOR_WRITE)))
             .getCommitHash();
 
     Hash source2 =
@@ -530,7 +531,7 @@ public abstract class AbstractTransplant extends AbstractNestedVersionStore {
                 source,
                 Optional.of(source1),
                 CommitMeta.fromMessage("source 2"),
-                singletonList(Put.of(key2, V_2_2)))
+                List.of(checkedOperation(Put.of(key2, V_2_2), NESSIE_API_FOR_WRITE)))
             .getCommitHash();
 
     // Transplant the source branch into the target branch, with a drop of key1 and key2

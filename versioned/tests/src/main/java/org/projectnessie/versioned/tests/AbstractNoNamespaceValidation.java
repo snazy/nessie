@@ -16,9 +16,11 @@
 package org.projectnessie.versioned.tests;
 
 import static java.util.Collections.emptyList;
-import static java.util.Collections.singletonList;
+import static org.projectnessie.services.authz.AccessCheckParams.NESSIE_API_FOR_WRITE;
+import static org.projectnessie.versioned.CheckedOperation.checkedOperation;
 import static org.projectnessie.versioned.testworker.OnRefOnly.newOnRef;
 
+import java.util.List;
 import java.util.Optional;
 import org.assertj.core.api.SoftAssertions;
 import org.assertj.core.api.junit.jupiter.InjectSoftAssertions;
@@ -29,11 +31,11 @@ import org.junit.jupiter.params.ParameterizedTest;
 import org.junit.jupiter.params.provider.CsvSource;
 import org.projectnessie.model.CommitMeta;
 import org.projectnessie.model.ContentKey;
+import org.projectnessie.model.Operation.Put;
 import org.projectnessie.versioned.BranchName;
 import org.projectnessie.versioned.Commit;
 import org.projectnessie.versioned.CommitResult;
 import org.projectnessie.versioned.Hash;
-import org.projectnessie.versioned.Put;
 import org.projectnessie.versioned.VersionStore;
 import org.projectnessie.versioned.VersionStore.MergeOp;
 import org.projectnessie.versioned.VersionStore.TransplantOp;
@@ -57,8 +59,10 @@ public abstract class AbstractNoNamespaceValidation {
                         branch,
                         Optional.empty(),
                         CommitMeta.fromMessage("commit"),
-                        singletonList(
-                            Put.of(ContentKey.of("name", "spaced", "table"), newOnRef("foo")))))
+                        List.of(
+                            checkedOperation(
+                                Put.of(ContentKey.of("name", "spaced", "table"), newOnRef("foo")),
+                                NESSIE_API_FOR_WRITE))))
         .doesNotThrowAnyException();
   }
 
@@ -75,7 +79,9 @@ public abstract class AbstractNoNamespaceValidation {
                 root,
                 Optional.empty(),
                 CommitMeta.fromMessage("common ancestor"),
-                singletonList(Put.of(ContentKey.of("dummy"), newOnRef("dummy"))));
+                List.of(
+                    checkedOperation(
+                        Put.of(ContentKey.of("dummy"), newOnRef("dummy")), NESSIE_API_FOR_WRITE)));
 
     store().create(branch, Optional.of(rootHead.getCommitHash()));
 
@@ -86,8 +92,10 @@ public abstract class AbstractNoNamespaceValidation {
                         branch,
                         Optional.empty(),
                         CommitMeta.fromMessage("commit"),
-                        singletonList(
-                            Put.of(ContentKey.of("name", "spaced", "table"), newOnRef("foo")))))
+                        List.of(
+                            checkedOperation(
+                                Put.of(ContentKey.of("name", "spaced", "table"), newOnRef("foo")),
+                                NESSIE_API_FOR_WRITE))))
         .doesNotThrowAnyException();
 
     Hash commit1 = store().hashOnReference(branch, Optional.empty(), emptyList());
@@ -99,7 +107,10 @@ public abstract class AbstractNoNamespaceValidation {
                         branch,
                         Optional.empty(),
                         CommitMeta.fromMessage("commit"),
-                        singletonList(Put.of(ContentKey.of("another", "table"), newOnRef("bar")))))
+                        List.of(
+                            checkedOperation(
+                                Put.of(ContentKey.of("another", "table"), newOnRef("bar")),
+                                NESSIE_API_FOR_WRITE))))
         .doesNotThrowAnyException();
 
     Hash commit2 = store().hashOnReference(branch, Optional.empty(), emptyList());

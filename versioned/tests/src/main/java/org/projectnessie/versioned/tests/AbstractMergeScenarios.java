@@ -16,6 +16,8 @@
 package org.projectnessie.versioned.tests;
 
 import static java.util.Objects.requireNonNull;
+import static org.projectnessie.services.authz.AccessCheckParams.NESSIE_API_FOR_WRITE;
+import static org.projectnessie.versioned.CheckedOperation.checkedOperation;
 
 import com.google.errorprone.annotations.CanIgnoreReturnValue;
 import java.util.ArrayList;
@@ -34,15 +36,15 @@ import org.junit.jupiter.api.extension.ExtendWith;
 import org.projectnessie.model.CommitMeta;
 import org.projectnessie.model.ContentKey;
 import org.projectnessie.model.IcebergTable;
+import org.projectnessie.model.Operation.Delete;
+import org.projectnessie.model.Operation.Put;
 import org.projectnessie.versioned.BranchName;
+import org.projectnessie.versioned.CheckedOperation;
 import org.projectnessie.versioned.Commit;
 import org.projectnessie.versioned.CommitResult;
-import org.projectnessie.versioned.Delete;
 import org.projectnessie.versioned.Hash;
 import org.projectnessie.versioned.ImmutableMergeOp;
 import org.projectnessie.versioned.MergeResult;
-import org.projectnessie.versioned.Operation;
-import org.projectnessie.versioned.Put;
 import org.projectnessie.versioned.ReferenceNotFoundException;
 import org.projectnessie.versioned.VersionStore;
 import org.projectnessie.versioned.VersionStoreException;
@@ -352,7 +354,7 @@ public abstract class AbstractMergeScenarios extends AbstractNestedVersionStore 
 
   private final class CommitBuilder {
     final CommitMeta.Builder meta;
-    final List<Operation> operations = new ArrayList<>();
+    final List<CheckedOperation> operations = new ArrayList<>();
 
     CommitBuilder() {
       meta = CommitMeta.builder();
@@ -361,9 +363,11 @@ public abstract class AbstractMergeScenarios extends AbstractNestedVersionStore 
     @CanIgnoreReturnValue
     CommitBuilder createTable(String name) {
       operations.add(
-          Put.of(
-              ContentKey.fromPathString(name),
-              IcebergTable.of(name, unique.incrementAndGet(), 1, 2, 3)));
+          checkedOperation(
+              Put.of(
+                  ContentKey.fromPathString(name),
+                  IcebergTable.of(name, unique.incrementAndGet(), 1, 2, 3)),
+              NESSIE_API_FOR_WRITE));
       return this;
     }
 
@@ -371,7 +375,10 @@ public abstract class AbstractMergeScenarios extends AbstractNestedVersionStore 
     CommitBuilder update(String name) {
       ContentKey key = ContentKey.fromPathString(name);
       String cid = requireNonNull(tableIds.get(key), "Table " + name + " not yet created");
-      operations.add(Put.of(key, IcebergTable.of(name, unique.incrementAndGet(), 1, 2, 3, cid)));
+      operations.add(
+          checkedOperation(
+              Put.of(key, IcebergTable.of(name, unique.incrementAndGet(), 1, 2, 3, cid)),
+              NESSIE_API_FOR_WRITE));
       return this;
     }
 
@@ -379,7 +386,7 @@ public abstract class AbstractMergeScenarios extends AbstractNestedVersionStore 
     CommitBuilder delete(String name) {
       ContentKey key = ContentKey.fromPathString(name);
       requireNonNull(tableIds.get(key), "Table " + name + " not yet created");
-      operations.add(Delete.of(key));
+      operations.add(checkedOperation(Delete.of(key), NESSIE_API_FOR_WRITE));
       return this;
     }
 

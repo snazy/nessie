@@ -24,7 +24,9 @@ dependencies {
   implementation(project(":nessie-versioned-storage-common"))
   implementation(project(":nessie-versioned-storage-batching"))
   implementation(project(":nessie-model"))
+  implementation(project(":nessie-authz-spi"))
   implementation(project(":nessie-versioned-spi"))
+  implementation(project(":nessie-versioned-types"))
   implementation(libs.agrona)
 
   compileOnly(libs.jakarta.validation.api)

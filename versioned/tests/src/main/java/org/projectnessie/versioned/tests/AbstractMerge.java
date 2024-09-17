@@ -15,14 +15,16 @@
  */
 package org.projectnessie.versioned.tests;
 
-import static java.util.Collections.singletonList;
 import static java.util.Objects.requireNonNull;
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.InstanceOfAssertFactories.list;
 import static org.assertj.core.api.InstanceOfAssertFactories.type;
+import static org.projectnessie.services.authz.AccessCheckParams.NESSIE_API_FOR_WRITE;
+import static org.projectnessie.versioned.CheckedOperation.checkedOperation;
 import static org.projectnessie.versioned.testworker.OnRefOnly.newOnRef;
 import static org.projectnessie.versioned.testworker.OnRefOnly.onRef;
 
+import java.util.List;
 import java.util.Optional;
 import org.assertj.core.api.SoftAssertions;
 import org.assertj.core.api.junit.jupiter.InjectSoftAssertions;
@@ -40,6 +42,7 @@ import org.projectnessie.model.Content;
 import org.projectnessie.model.ContentKey;
 import org.projectnessie.model.MergeBehavior;
 import org.projectnessie.model.MergeKeyBehavior;
+import org.projectnessie.model.Operation.Put;
 import org.projectnessie.versioned.BranchName;
 import org.projectnessie.versioned.Commit;
 import org.projectnessie.versioned.GetNamedRefsParams;
@@ -47,7 +50,6 @@ import org.projectnessie.versioned.Hash;
 import org.projectnessie.versioned.MergeConflictException;
 import org.projectnessie.versioned.MergeResult;
 import org.projectnessie.versioned.MergeResult.KeyDetails;
-import org.projectnessie.versioned.Put;
 import org.projectnessie.versioned.ReferenceConflictException;
 import org.projectnessie.versioned.ReferenceInfo;
 import org.projectnessie.versioned.ReferenceNotFoundException;
@@ -383,7 +385,7 @@ public abstract class AbstractMerge extends AbstractNestedVersionStore {
                 target,
                 Optional.empty(),
                 CommitMeta.fromMessage("target 1"),
-                singletonList(Put.of(key1, VALUE_1)))
+                List.of(checkedOperation(Put.of(key1, VALUE_1), NESSIE_API_FOR_WRITE)))
             .getCommitHash();
 
     targetHead =
@@ -392,7 +394,7 @@ public abstract class AbstractMerge extends AbstractNestedVersionStore {
                 target,
                 Optional.of(targetHead),
                 CommitMeta.fromMessage("target 2"),
-                singletonList(Put.of(key2, VALUE_1)))
+                List.of(checkedOperation(Put.of(key2, VALUE_1), NESSIE_API_FOR_WRITE)))
             .getCommitHash();
 
     // Add two commits to the source branch, with conflicting changes to key1 and key2
@@ -403,7 +405,7 @@ public abstract class AbstractMerge extends AbstractNestedVersionStore {
                 source,
                 Optional.empty(),
                 CommitMeta.fromMessage("source 1"),
-                singletonList(Put.of(key1, VALUE_2)))
+                List.of(checkedOperation(Put.of(key1, VALUE_2), NESSIE_API_FOR_WRITE)))
             .getCommitHash();
 
     sourceHead =
@@ -412,7 +414,7 @@ public abstract class AbstractMerge extends AbstractNestedVersionStore {
                 source,
                 Optional.of(sourceHead),
                 CommitMeta.fromMessage("source 2"),
-                singletonList(Put.of(key2, VALUE_2)))
+                List.of(checkedOperation(Put.of(key2, VALUE_2), NESSIE_API_FOR_WRITE)))
             .getCommitHash();
 
     // Merge the source branch into the target branch, with a drop of key1 and key2
@@ -451,7 +453,7 @@ public abstract class AbstractMerge extends AbstractNestedVersionStore {
                 branch,
                 Optional.empty(),
                 CommitMeta.fromMessage("commit 1"),
-                singletonList(Put.of(key1, VALUE_1)))
+                List.of(checkedOperation(Put.of(key1, VALUE_1), NESSIE_API_FOR_WRITE)))
             .getCommitHash();
 
     Hash commit2 =
@@ -460,7 +462,7 @@ public abstract class AbstractMerge extends AbstractNestedVersionStore {
                 branch,
                 Optional.empty(),
                 CommitMeta.fromMessage("commit 2"),
-                singletonList(Put.of(key2, VALUE_2)))
+                List.of(checkedOperation(Put.of(key2, VALUE_2), NESSIE_API_FOR_WRITE)))
             .getCommitHash();
 
     // New storage model allows "merging the same branch again". If nothing changed, it returns a

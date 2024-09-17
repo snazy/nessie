@@ -18,10 +18,11 @@ package org.projectnessie.services;
 import static java.util.concurrent.TimeUnit.MICROSECONDS;
 import static java.util.concurrent.TimeUnit.MILLISECONDS;
 import static org.projectnessie.model.CommitMeta.fromMessage;
+import static org.projectnessie.services.authz.AccessCheckParams.NESSIE_API_FOR_WRITE;
+import static org.projectnessie.versioned.CheckedOperation.checkedOperation;
 import static org.projectnessie.versioned.VersionStore.KeyRestrictions.NO_KEY_RESTRICTIONS;
 
 import java.util.ArrayList;
-import java.util.Collections;
 import java.util.HashSet;
 import java.util.List;
 import java.util.Map;
@@ -45,11 +46,11 @@ import org.openjdk.jmh.infra.Blackhole;
 import org.projectnessie.model.ContentKey;
 import org.projectnessie.model.IcebergTable;
 import org.projectnessie.model.Namespace;
+import org.projectnessie.model.Operation.Put;
 import org.projectnessie.versioned.BranchName;
+import org.projectnessie.versioned.CheckedOperation;
 import org.projectnessie.versioned.ContentResult;
 import org.projectnessie.versioned.KeyEntry;
-import org.projectnessie.versioned.Operation;
-import org.projectnessie.versioned.Put;
 import org.projectnessie.versioned.ReferenceCreatedResult;
 import org.projectnessie.versioned.paging.PaginationIterator;
 
@@ -88,12 +89,14 @@ public class ContentOpsBench {
           branchName,
           Optional.empty(),
           fromMessage("initial"),
-          Collections.singletonList(Put.of(ns.toContentKey(), ns)));
-      List<Operation> commitOps = new ArrayList<>();
+          List.of(checkedOperation(Put.of(ns.toContentKey(), ns), NESSIE_API_FOR_WRITE)));
+      List<CheckedOperation> commitOps = new ArrayList<>();
       for (int j = 0; j < contents; j++) {
         ContentKey key = ContentKey.of(ns, "table-" + j);
         keys.add(key);
-        commitOps.add(Put.of(key, IcebergTable.of("meta-" + j, j, j, j, j)));
+        commitOps.add(
+            checkedOperation(
+                Put.of(key, IcebergTable.of("meta-" + j, j, j, j, j)), NESSIE_API_FOR_WRITE));
         if (commitOps.size() == 500) {
           versionStore.commit(branchName, Optional.empty(), fromMessage("x"), commitOps);
           commitOps.clear();

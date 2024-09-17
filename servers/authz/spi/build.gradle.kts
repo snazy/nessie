@@ -21,7 +21,7 @@ publishingHelper { mavenName = "Nessie - AuthZ SPI" }
 dependencies {
   implementation(project(":nessie-model"))
   implementation(project(":nessie-services-config"))
-  implementation(project(":nessie-versioned-spi"))
+  implementation(project(":nessie-versioned-types"))
 
   compileOnly(libs.immutables.builder)
   compileOnly(libs.immutables.value.annotations)

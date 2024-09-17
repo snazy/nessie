@@ -33,6 +33,7 @@ dependencies {
 
   implementation(project(":nessie-catalog-model"))
   implementation(project(":nessie-model"))
+  implementation(project(":nessie-authz-spi"))
 
   implementation(libs.guava)
   implementation(libs.avro)

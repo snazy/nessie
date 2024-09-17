@@ -17,6 +17,8 @@ package org.projectnessie.versioned.transfer;
 
 import static com.google.common.collect.Lists.newArrayList;
 import static org.junit.jupiter.params.provider.Arguments.arguments;
+import static org.projectnessie.services.authz.AccessCheckParams.NESSIE_API_FOR_WRITE;
+import static org.projectnessie.versioned.CheckedOperation.checkedOperation;
 import static org.projectnessie.versioned.VersionStore.KeyRestrictions.NO_KEY_RESTRICTIONS;
 
 import com.google.errorprone.annotations.MustBeClosed;
@@ -43,6 +45,7 @@ import org.junit.jupiter.params.provider.MethodSource;
 import org.projectnessie.model.CommitMeta;
 import org.projectnessie.model.ContentKey;
 import org.projectnessie.model.IcebergTable;
+import org.projectnessie.model.Operation.Put;
 import org.projectnessie.nessie.relocated.protobuf.ByteString;
 import org.projectnessie.versioned.BranchName;
 import org.projectnessie.versioned.Commit;
@@ -50,7 +53,6 @@ import org.projectnessie.versioned.ContentResult;
 import org.projectnessie.versioned.GetNamedRefsParams;
 import org.projectnessie.versioned.Hash;
 import org.projectnessie.versioned.KeyEntry;
-import org.projectnessie.versioned.Put;
 import org.projectnessie.versioned.ReferenceInfo;
 import org.projectnessie.versioned.ReferenceNotFoundException;
 import org.projectnessie.versioned.TagName;
@@ -363,14 +365,21 @@ public abstract class BaseExportImport {
                   Optional.of(head),
                   CommitMeta.fromMessage("commit #" + commit + " " + branch),
                   Collections.singletonList(
-                      Put.of(
-                          ContentKey.of(branch.getName() + "-c-" + commit),
-                          IcebergTable.of(
-                              "meta+" + branch.getName() + "-c-" + commit + "-" + head.asString(),
-                              42,
-                              43,
-                              44,
-                              45))))
+                      checkedOperation(
+                          Put.of(
+                              ContentKey.of(branch.getName() + "-c-" + commit),
+                              IcebergTable.of(
+                                  "meta+"
+                                      + branch.getName()
+                                      + "-c-"
+                                      + commit
+                                      + "-"
+                                      + head.asString(),
+                                  42,
+                                  43,
+                                  44,
+                                  45)),
+                          NESSIE_API_FOR_WRITE)))
               .getCommitHash();
     }
     return head;

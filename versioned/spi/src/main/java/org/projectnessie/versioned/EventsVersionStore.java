@@ -54,7 +54,7 @@ public class EventsVersionStore implements VersionStore {
       @Nonnull BranchName branch,
       @Nonnull Optional<Hash> referenceHash,
       @Nonnull CommitMeta metadata,
-      @Nonnull List<Operation> operations,
+      @Nonnull List<CheckedOperation> operations,
       @Nonnull CommitValidator validator,
       @Nonnull BiConsumer<ContentKey, String> addedContents)
       throws ReferenceNotFoundException, ReferenceConflictException {

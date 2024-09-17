@@ -84,8 +84,8 @@ public class ObservingVersionStore implements VersionStore {
       @SpanAttribute(TAG_BRANCH) @Nonnull BranchName branch,
       @SpanAttribute(TAG_HASH) @Nonnull Optional<Hash> referenceHash,
       @Nonnull CommitMeta metadata,
-      @Nonnull List<Operation> operations,
-      @Nonnull VersionStore.CommitValidator validator,
+      @Nonnull List<CheckedOperation> operations,
+      @Nonnull CommitValidator validator,
       @Nonnull BiConsumer<ContentKey, String> addedContents)
       throws ReferenceNotFoundException, ReferenceConflictException {
     return delegate.commit(branch, referenceHash, metadata, operations, validator, addedContents);

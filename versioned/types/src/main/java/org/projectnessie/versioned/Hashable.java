@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 2020 Dremio
+ * Copyright (C) 2024 Dremio
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -15,21 +15,7 @@
  */
 package org.projectnessie.versioned;
 
-import jakarta.annotation.Nonnull;
-import org.immutables.value.Value;
+public interface Hashable {
 
-/** A named reference representing a branch. */
-@Value.Immutable
-public interface DetachedRef extends NamedRef {
-
-  String REF_NAME = "DETACHED";
-
-  DetachedRef INSTANCE = ImmutableDetachedRef.builder().build();
-
-  @Nonnull
-  @Override
-  @Value.Redacted
-  default String getName() {
-    return REF_NAME;
-  }
+  Hash getHash();
 }

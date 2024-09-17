@@ -27,6 +27,8 @@ publishingHelper { mavenName = "Nessie - Services - Microbenchmarks" }
 dependencies {
   implementation(project(":nessie-model"))
   implementation(project(":nessie-versioned-spi"))
+  implementation(project(":nessie-versioned-types"))
+  implementation(project(":nessie-authz-spi"))
   implementation(libs.slf4j.api)
 
   jmhRuntimeOnly(project(":nessie-server-store"))

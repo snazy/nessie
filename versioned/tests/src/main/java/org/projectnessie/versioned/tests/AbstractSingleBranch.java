@@ -19,10 +19,11 @@ import static java.util.Collections.emptyList;
 import static java.util.Objects.requireNonNull;
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.junit.jupiter.api.Assertions.assertNotEquals;
+import static org.projectnessie.services.authz.AccessCheckParams.NESSIE_API_FOR_WRITE;
+import static org.projectnessie.versioned.CheckedOperation.checkedOperation;
 import static org.projectnessie.versioned.testworker.OnRefOnly.newOnRef;
 import static org.projectnessie.versioned.testworker.OnRefOnly.onRef;
 
-import com.google.common.collect.ImmutableList;
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.Collections;
@@ -35,13 +36,13 @@ import org.projectnessie.model.CommitMeta;
 import org.projectnessie.model.Content;
 import org.projectnessie.model.ContentKey;
 import org.projectnessie.model.ImmutableCommitMeta;
+import org.projectnessie.model.Operation.Put;
 import org.projectnessie.versioned.BranchName;
+import org.projectnessie.versioned.CheckedOperation;
 import org.projectnessie.versioned.Commit;
 import org.projectnessie.versioned.CommitResult;
 import org.projectnessie.versioned.ContentResult;
 import org.projectnessie.versioned.Hash;
-import org.projectnessie.versioned.Operation;
-import org.projectnessie.versioned.Put;
 import org.projectnessie.versioned.ReferenceConflictException;
 import org.projectnessie.versioned.ReferenceNotFoundException;
 import org.projectnessie.versioned.VersionStore;
@@ -115,7 +116,7 @@ public abstract class AbstractSingleBranch extends AbstractNestedVersionStore {
                 .addParentCommitHashes(parent.asString());
 
         ContentKey key = ContentKey.of(param.tableNameGen.apply(user));
-        List<Operation> ops =
+        List<CheckedOperation> ops =
             singleBranchManyUsersOps(branch, commitNum, user, hashKnownByUser, key);
 
         CommitResult<Commit> commitHash;
@@ -148,10 +149,10 @@ public abstract class AbstractSingleBranch extends AbstractNestedVersionStore {
     assertThat(committedValues).containsExactlyElementsOf(expectedValues);
   }
 
-  private List<Operation> singleBranchManyUsersOps(
+  private List<CheckedOperation> singleBranchManyUsersOps(
       BranchName branch, int commitNum, int user, Hash hashKnownByUser, ContentKey key)
       throws ReferenceNotFoundException {
-    List<Operation> ops;
+    List<CheckedOperation> ops;
     ContentResult existing =
         store()
             .getValue(
@@ -164,7 +165,7 @@ public abstract class AbstractSingleBranch extends AbstractNestedVersionStore {
                 String.format("data_file_%03d_%03d", user, commitNum),
                 requireNonNull(existing.content()).getId())
             : newOnRef(String.format("data_file_%03d_%03d", user, commitNum));
-    ops = ImmutableList.of(Put.of(key, value));
+    ops = List.of(checkedOperation(Put.of(key, value), NESSIE_API_FOR_WRITE));
     return ops;
   }
 }

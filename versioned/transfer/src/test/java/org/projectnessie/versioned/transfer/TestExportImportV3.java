@@ -17,6 +17,8 @@ package org.projectnessie.versioned.transfer;
 
 import static java.util.Objects.requireNonNull;
 import static org.junit.jupiter.params.provider.Arguments.arguments;
+import static org.projectnessie.services.authz.AccessCheckParams.NESSIE_API_FOR_WRITE;
+import static org.projectnessie.versioned.CheckedOperation.checkedOperation;
 import static org.projectnessie.versioned.storage.common.config.StoreConfig.CONFIG_REPOSITORY_ID;
 import static org.projectnessie.versioned.storage.common.logic.Logics.repositoryLogic;
 
@@ -36,9 +38,9 @@ import org.junit.jupiter.params.provider.MethodSource;
 import org.projectnessie.model.CommitMeta;
 import org.projectnessie.model.ContentKey;
 import org.projectnessie.model.IcebergTable;
+import org.projectnessie.model.Operation.Put;
 import org.projectnessie.versioned.BranchName;
 import org.projectnessie.versioned.Hash;
-import org.projectnessie.versioned.Put;
 import org.projectnessie.versioned.ReferenceCreatedResult;
 import org.projectnessie.versioned.VersionStore;
 import org.projectnessie.versioned.storage.common.logic.RepositoryDescription;
@@ -219,7 +221,9 @@ public class TestExportImportV3 extends BaseExportImport {
             Optional.of(createdRef.getHash()),
             CommitMeta.fromMessage("commit"),
             Collections.singletonList(
-                Put.of(ContentKey.of("my-table"), IcebergTable.of("meta", 42, 43, 44, 45))))
+                checkedOperation(
+                    Put.of(ContentKey.of("my-table"), IcebergTable.of("meta", 42, 43, 44, 45)),
+                    NESSIE_API_FOR_WRITE)))
         .getCommitHash();
 
     URL relatedObjectsJar = Paths.get(System.getProperty("related-objects-jar")).toUri().toURL();

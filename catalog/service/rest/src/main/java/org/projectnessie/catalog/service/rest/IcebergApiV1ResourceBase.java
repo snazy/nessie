@@ -28,7 +28,11 @@ import static org.projectnessie.catalog.service.rest.TableRef.tableRef;
 import static org.projectnessie.catalog.service.rest.TimestampParser.timestampToNessie;
 import static org.projectnessie.model.Namespace.Empty.EMPTY_NAMESPACE;
 import static org.projectnessie.model.Reference.ReferenceType.BRANCH;
+import static org.projectnessie.services.authz.AccessCheckParams.CATALOG_CONTENT_CHECK_EXISTS;
+import static org.projectnessie.services.authz.AccessCheckParams.CATALOG_CONTENT_CHECK_FOR_RENAME_FROM;
+import static org.projectnessie.services.authz.AccessCheckParams.CATALOG_CONTENT_CHECK_FOR_RENAME_TO;
 import static org.projectnessie.services.impl.RefUtil.toReference;
+import static org.projectnessie.versioned.CheckedOperation.checkedOperation;
 
 import com.google.common.base.Splitter;
 import io.smallrye.mutiny.Uni;
@@ -64,10 +68,9 @@ import org.projectnessie.model.ContentResponse;
 import org.projectnessie.model.EntriesResponse;
 import org.projectnessie.model.GetMultipleContentsResponse;
 import org.projectnessie.model.ImmutableEntriesResponse;
-import org.projectnessie.model.ImmutableOperations;
 import org.projectnessie.model.Namespace;
-import org.projectnessie.model.Operation;
-import org.projectnessie.model.Operations;
+import org.projectnessie.model.Operation.Delete;
+import org.projectnessie.model.Operation.Put;
 import org.projectnessie.model.Reference;
 import org.projectnessie.model.TableReference;
 import org.projectnessie.services.authz.AccessCheckParams;
@@ -167,7 +170,7 @@ abstract class IcebergApiV1ResourceBase extends AbstractCatalogResource {
             ref.hashWithRelativeSpec(),
             List.of(toTableRef.contentKey(), fromTableRef.contentKey()),
             false,
-            AccessCheckParams.CATALOG_CONTENT_CHECK_EXISTS);
+            CATALOG_CONTENT_CHECK_EXISTS);
     Map<ContentKey, Content> contentsMap = contents.toContentsMap();
     Content existingFrom = contentsMap.get(fromTableRef.contentKey());
     if (existingFrom == null || !expectedContentType.equals(existingFrom.getType())) {
@@ -192,20 +195,20 @@ abstract class IcebergApiV1ResourceBase extends AbstractCatalogResource {
     checkArgument(
         effectiveRef instanceof Branch,
         format("Must only rename a %s on a branch, but target is %s", entityType, effectiveRef));
-y
-    Operations ops =
-        ImmutableOperations.builder()
-            .addOperations(
-                Operation.Delete.of(fromTableRef.contentKey()),
-                Operation.Put.of(toTableRef.contentKey(), existingFrom))
-            .commitMeta(
-                updateCommitMeta(
-                    format(
-                        "rename %s %s to %s",
-                        entityType, fromTableRef.contentKey(), toTableRef.contentKey())))
-            .build();
 
-    treeService.commitMultipleOperations(effectiveRef.getName(), effectiveRef.getHash(), ops);
+    treeService.commitMultipleOperations(
+        effectiveRef.getName(),
+        effectiveRef.getHash(),
+        updateCommitMeta(
+            format(
+                "rename %s %s to %s",
+                entityType, fromTableRef.contentKey(), toTableRef.contentKey())),
+        List.of(
+            checkedOperation(
+                Delete.of(fromTableRef.contentKey()), CATALOG_CONTENT_CHECK_FOR_RENAME_FROM),
+            checkedOperation(
+                Put.of(toTableRef.contentKey(), existingFrom),
+                CATALOG_CONTENT_CHECK_FOR_RENAME_TO)));
   }
 
   protected NamespaceRef decodeNamespaceRef(String prefix, String encodedNs) {

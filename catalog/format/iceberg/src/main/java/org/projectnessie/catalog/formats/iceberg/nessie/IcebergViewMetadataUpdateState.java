@@ -27,6 +27,8 @@ import org.projectnessie.catalog.formats.iceberg.rest.IcebergMetadataUpdate;
 import org.projectnessie.catalog.formats.iceberg.rest.IcebergUpdateRequirement;
 import org.projectnessie.catalog.model.snapshot.NessieViewSnapshot;
 import org.projectnessie.model.ContentKey;
+import org.projectnessie.services.authz.AccessCheckParams;
+import org.projectnessie.services.authz.Check;
 
 /**
  * Maintains state when applying {@linkplain IcebergMetadataUpdate Iceberg metadata updates} to a
@@ -50,6 +52,7 @@ public class IcebergViewMetadataUpdateState {
   private final List<IcebergSnapshot> addedSnapshots = new ArrayList<>();
   private final Set<Integer> addedSchemaIds = new HashSet<>();
   private final Set<Long> addedVersionIds = new HashSet<>();
+  private final Set<Check.Component> checkComponents = new HashSet<>();
 
   public IcebergViewMetadataUpdateState(
       NessieViewSnapshot snapshot, ContentKey key, boolean viewExists) {
@@ -65,6 +68,17 @@ public class IcebergViewMetadataUpdateState {
 
   public NessieViewSnapshot snapshot() {
     return snapshot;
+  }
+
+  public void checkComponent(Check.Component component) {
+    checkComponents.add(component);
+  }
+
+  public AccessCheckParams accessCheckParams() {
+    return AccessCheckParams.builder()
+        .from(AccessCheckParams.CATALOG_CONTENT_CHECK_FOR_UPDATE)
+        .addAllComponents(checkComponents)
+        .build();
   }
 
   public int lastAddedSchemaId() {

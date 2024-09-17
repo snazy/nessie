@@ -39,6 +39,8 @@ import static org.projectnessie.catalog.formats.iceberg.rest.IcebergMetadataUpda
 import static org.projectnessie.catalog.service.rest.TableRef.tableRef;
 import static org.projectnessie.model.Content.Type.ICEBERG_TABLE;
 import static org.projectnessie.model.Reference.ReferenceType.BRANCH;
+import static org.projectnessie.services.authz.AccessCheckParams.CATALOG_CONTENT_CHECK_FOR_CREATE;
+import static org.projectnessie.versioned.CheckedOperation.checkedOperation;
 
 import com.google.common.collect.Lists;
 import io.smallrye.common.annotation.Blocking;
@@ -102,11 +104,10 @@ import org.projectnessie.model.ContentKey;
 import org.projectnessie.model.ContentResponse;
 import org.projectnessie.model.FetchOption;
 import org.projectnessie.model.IcebergTable;
-import org.projectnessie.model.ImmutableOperations;
 import org.projectnessie.model.Operation.Delete;
 import org.projectnessie.model.Operation.Put;
-import org.projectnessie.model.Operations;
 import org.projectnessie.services.authz.AccessCheckParams;
+import org.projectnessie.services.authz.Check;
 import org.projectnessie.storage.uri.StorageUri;
 
 /** Handles Iceberg REST API v1 endpoints that are associated with tables. */
@@ -302,7 +303,7 @@ public class IcebergApiV1TableResource extends IcebergApiV1ResourceBase {
             setDefaultSortOrder(-1),
             setProperties(properties));
 
-    AccessCheckParams accessCheckParams = AccessCheckParams.CATALOG_CONTENT_CHECK_FOR_CREATE;
+    AccessCheckParams accessCheckParams = CATALOG_CONTENT_CHECK_FOR_CREATE;
 
     createEntityVerifyNotExists(tableRef, ICEBERG_TABLE, accessCheckParams);
 
@@ -373,7 +374,12 @@ public class IcebergApiV1TableResource extends IcebergApiV1ResourceBase {
 
     TableRef tableRef = decodeTableRef(prefix, namespace, registerTableRequest.name());
 
-    AccessCheckParams accessCheckParams = AccessCheckParams.CATALOG_CONTENT_CHECK_FOR_CREATE;
+    AccessCheckParams accessCheckParams =
+        AccessCheckParams.builder()
+            .from(CATALOG_CONTENT_CHECK_FOR_CREATE)
+            .addComponents(Check.Component.part("ICEBERG_REGISTER_TABLE"))
+            .build();
+
     try {
       ContentResponse response = fetchIcebergTable(tableRef, accessCheckParams);
       throw new CatalogEntityAlreadyExistsException(
@@ -400,17 +406,15 @@ public class IcebergApiV1TableResource extends IcebergApiV1ResourceBase {
       // It's technically a new table for Nessie, so need to clear the content-ID.
       Content newContent = contentResponse.getContent().withId(null);
 
-      Operations ops =
-          ImmutableOperations.builder()
-              .addOperations(Put.of(ctr.contentKey(), newContent))
-              .commitMeta(
-                  updateCommitMeta(
-                      format(
-                          "Register Iceberg table '%s' from '%s'",
-                          ctr.contentKey(), registerTableRequest.metadataLocation())))
-              .build();
       CommitResponse committed =
-          treeService.commitMultipleOperations(ref.getName(), ref.getHash(), ops);
+          treeService.commitMultipleOperations(
+              ref.getName(),
+              ref.getHash(),
+              updateCommitMeta(
+                  format(
+                      "Register Iceberg table '%s' from '%s'",
+                      ctr.contentKey(), registerTableRequest.metadataLocation())),
+              List.of(checkedOperation(Put.of(ctr.contentKey(), newContent), accessCheckParams)));
 
       return this.loadTable(
           TableRef.tableRef(
@@ -448,17 +452,17 @@ public class IcebergApiV1TableResource extends IcebergApiV1ResourceBase {
             safeUnbox.applyAsInt(tableMetadata.currentSchemaId()),
             safeUnbox.applyAsInt(tableMetadata.defaultSpecId()),
             safeUnbox.applyAsInt(tableMetadata.defaultSortOrderId()));
-    Operations ops =
-        ImmutableOperations.builder()
-            .addOperations(Put.of(tableRef.contentKey(), newContent))
-            .commitMeta(
-                updateCommitMeta(
-                    format(
-                        "Register Iceberg table '%s' from '%s'",
-                        tableRef.contentKey(), registerTableRequest.metadataLocation())))
-            .build();
+
     CommitResponse committed =
-        treeService.commitMultipleOperations(ref.getName(), ref.getHash(), ops);
+        treeService.commitMultipleOperations(
+            ref.getName(),
+            ref.getHash(),
+            updateCommitMeta(
+                format(
+                    "Register Iceberg table '%s' from '%s'",
+                    tableRef.contentKey(), registerTableRequest.metadataLocation())),
+            List.of(
+                checkedOperation(Put.of(tableRef.contentKey(), newContent), accessCheckParams)));
 
     return this.loadTable(
         tableRef(
@@ -486,17 +490,15 @@ public class IcebergApiV1TableResource extends IcebergApiV1ResourceBase {
       throws IOException {
     TableRef tableRef = decodeTableRef(prefix, namespace, table);
 
-    ContentResponse resp =
-        fetchIcebergTable(tableRef, AccessCheckParams.CATALOG_CONTENT_CHECK_FOR_DROP);
+    AccessCheckParams accessCheckParams = AccessCheckParams.CATALOG_CONTENT_CHECK_FOR_DROP;
+    ContentResponse resp = fetchIcebergTable(tableRef, accessCheckParams);
     Branch ref = checkBranch(resp.getEffectiveReference());
 
-    Operations ops =
-        ImmutableOperations.builder()
-            .addOperations(Delete.of(tableRef.contentKey()))
-            .commitMeta(updateCommitMeta(format("Drop ICEBERG_TABLE %s", tableRef.contentKey())))
-            .build();
-
-    treeService.commitMultipleOperations(ref.getName(), ref.getHash(), ops);
+    treeService.commitMultipleOperations(
+        ref.getName(),
+        ref.getHash(),
+        updateCommitMeta(format("Drop ICEBERG_TABLE %s", tableRef.contentKey())),
+        List.of(checkedOperation(Delete.of(tableRef.contentKey()), accessCheckParams)));
   }
 
   @Operation(operationId = "iceberg.v1.listTables")

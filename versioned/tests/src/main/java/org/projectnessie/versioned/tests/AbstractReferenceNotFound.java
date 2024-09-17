@@ -18,6 +18,8 @@ package org.projectnessie.versioned.tests;
 import static java.util.Collections.emptyList;
 import static java.util.Collections.singletonList;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
+import static org.projectnessie.services.authz.AccessCheckParams.NESSIE_API_FOR_WRITE;
+import static org.projectnessie.versioned.CheckedOperation.checkedOperation;
 import static org.projectnessie.versioned.VersionStore.KeyRestrictions.NO_KEY_RESTRICTIONS;
 
 import java.util.Arrays;
@@ -27,8 +29,8 @@ import org.junit.jupiter.params.ParameterizedTest;
 import org.junit.jupiter.params.provider.MethodSource;
 import org.projectnessie.model.CommitMeta;
 import org.projectnessie.model.ContentKey;
+import org.projectnessie.model.Operation.Delete;
 import org.projectnessie.versioned.BranchName;
-import org.projectnessie.versioned.Delete;
 import org.projectnessie.versioned.Hash;
 import org.projectnessie.versioned.ReferenceNotFoundException;
 import org.projectnessie.versioned.TagName;
@@ -201,7 +203,9 @@ public abstract class AbstractReferenceNotFound extends AbstractNestedVersionSto
                         BranchName.of("this-one-should-not-exist"),
                         Optional.empty(),
                         CommitMeta.fromMessage("meta"),
-                        singletonList(Delete.of(ContentKey.of("meep"))))),
+                        List.of(
+                            checkedOperation(
+                                Delete.of(ContentKey.of("meep")), NESSIE_API_FOR_WRITE)))),
         new ReferenceNotFoundFunction("commit/hash")
             .msg(
                 "Could not find commit '12341234123412341234123412341234123412341234' in reference 'main'.")
@@ -211,7 +215,9 @@ public abstract class AbstractReferenceNotFound extends AbstractNestedVersionSto
                         BranchName.of("main"),
                         Optional.of(Hash.of("12341234123412341234123412341234123412341234")),
                         CommitMeta.fromMessage("meta"),
-                        singletonList(Delete.of(ContentKey.of("meep"))))),
+                        List.of(
+                            checkedOperation(
+                                Delete.of(ContentKey.of("meep")), NESSIE_API_FOR_WRITE)))),
         // transplant()
         new ReferenceNotFoundFunction("transplant/branch/ok")
             .msg("Named reference 'this-one-should-not-exist' not found")

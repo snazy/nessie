@@ -20,7 +20,9 @@ import static org.projectnessie.model.CommitMeta.fromMessage;
 import static org.projectnessie.model.FetchOption.MINIMAL;
 import static org.projectnessie.model.Reference.ReferenceType.BRANCH;
 import static org.projectnessie.model.Reference.ReferenceType.TAG;
+import static org.projectnessie.services.authz.AccessCheckParams.NESSIE_API_FOR_WRITE;
 import static org.projectnessie.services.impl.RefUtil.toReference;
+import static org.projectnessie.versioned.CheckedOperation.checkedOperation;
 import static org.projectnessie.versioned.storage.common.logic.Logics.repositoryLogic;
 
 import com.google.common.collect.ImmutableMap;
@@ -56,12 +58,10 @@ import org.projectnessie.model.EntriesResponse.Entry;
 import org.projectnessie.model.FetchOption;
 import org.projectnessie.model.GetMultipleContentsResponse.ContentWithKey;
 import org.projectnessie.model.IcebergTable;
-import org.projectnessie.model.ImmutableOperations;
 import org.projectnessie.model.LogResponse.LogEntry;
 import org.projectnessie.model.Namespace;
 import org.projectnessie.model.Operation;
 import org.projectnessie.model.Operation.Put;
-import org.projectnessie.model.Operations;
 import org.projectnessie.model.Reference;
 import org.projectnessie.model.Tag;
 import org.projectnessie.services.authz.AbstractBatchAccessChecker;
@@ -450,9 +450,14 @@ public abstract class BaseTestServiceImpl {
   protected CommitResponse commit(
       String branch, String expectedHash, CommitMeta meta, Operation... operations)
       throws NessieConflictException, NessieNotFoundException {
-    Operations ops =
-        ImmutableOperations.builder().addOperations(operations).commitMeta(meta).build();
-    return treeApi().commitMultipleOperations(branch, expectedHash, ops);
+    return treeApi()
+        .commitMultipleOperations(
+            branch,
+            expectedHash,
+            meta,
+            Arrays.stream(operations)
+                .map(op -> checkedOperation(op, NESSIE_API_FOR_WRITE))
+                .collect(Collectors.toList()));
   }
 
   protected Map<ContentKey, Content> contents(Reference reference, ContentKey... keys)

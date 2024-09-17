@@ -18,10 +18,11 @@ package org.projectnessie.versioned.tests;
 import static java.util.Collections.emptyList;
 import static java.util.Objects.requireNonNull;
 import static org.assertj.core.api.Assertions.assertThat;
+import static org.projectnessie.services.authz.AccessCheckParams.NESSIE_API_FOR_WRITE;
+import static org.projectnessie.versioned.CheckedOperation.checkedOperation;
 import static org.projectnessie.versioned.testworker.OnRefOnly.newOnRef;
 import static org.projectnessie.versioned.testworker.OnRefOnly.onRef;
 
-import com.google.common.collect.ImmutableList;
 import com.google.common.collect.Lists;
 import java.util.ArrayList;
 import java.util.Arrays;
@@ -39,12 +40,12 @@ import org.junit.jupiter.api.extension.ExtendWith;
 import org.projectnessie.model.CommitMeta;
 import org.projectnessie.model.ContentKey;
 import org.projectnessie.model.ImmutableCommitMeta;
+import org.projectnessie.model.Operation.Delete;
+import org.projectnessie.model.Operation.Put;
 import org.projectnessie.versioned.BranchName;
 import org.projectnessie.versioned.Commit;
 import org.projectnessie.versioned.ContentResult;
-import org.projectnessie.versioned.Delete;
 import org.projectnessie.versioned.Hash;
-import org.projectnessie.versioned.Put;
 import org.projectnessie.versioned.VersionStore;
 
 @ExtendWith(SoftAssertionsExtension.class)
@@ -80,7 +81,11 @@ public abstract class AbstractCommitLog extends AbstractNestedVersionStore {
 
       commitHashes[i] =
           store()
-              .commit(branch, Optional.of(parent), msg.build(), ImmutableList.of(op))
+              .commit(
+                  branch,
+                  Optional.of(parent),
+                  msg.build(),
+                  List.of(checkedOperation(op, NESSIE_API_FOR_WRITE)))
               .getCommitHash();
 
       messages.add(

@@ -21,6 +21,8 @@ publishingHelper { mavenName = "Nessie - Versioned Store Integration Tests" }
 dependencies {
   implementation(project(":nessie-model"))
   implementation(project(":nessie-versioned-spi"))
+  implementation(project(":nessie-versioned-types"))
+  implementation(project(":nessie-authz-spi"))
   implementation(libs.guava)
   implementation(libs.slf4j.api)
   compileOnly(libs.immutables.value.annotations)

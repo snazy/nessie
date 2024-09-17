@@ -16,13 +16,16 @@
 package org.projectnessie.services.rest;
 
 import static com.google.common.base.Preconditions.checkArgument;
+import static org.projectnessie.services.authz.AccessCheckParams.NESSIE_API_FOR_WRITE;
 import static org.projectnessie.services.impl.RefUtil.toReference;
 import static org.projectnessie.services.spi.TreeService.MAX_COMMIT_LOG_ENTRIES;
+import static org.projectnessie.versioned.CheckedOperation.checkedOperation;
 
 import com.fasterxml.jackson.annotation.JsonView;
 import jakarta.enterprise.context.RequestScoped;
 import jakarta.inject.Inject;
 import jakarta.ws.rs.Path;
+import java.util.stream.Collectors;
 import org.projectnessie.api.v1.http.HttpTreeApi;
 import org.projectnessie.api.v1.params.BaseMergeTransplant;
 import org.projectnessie.api.v1.params.CommitLogParams;
@@ -272,7 +275,13 @@ public class RestTreeResource implements HttpTreeApi {
       String branchName, String expectedHash, Operations operations)
       throws NessieNotFoundException, NessieConflictException {
     return resource()
-        .commitMultipleOperations(branchName, expectedHash, operations)
+        .commitMultipleOperations(
+            branchName,
+            expectedHash,
+            operations.getCommitMeta(),
+            operations.getOperations().stream()
+                .map(op -> checkedOperation(op, NESSIE_API_FOR_WRITE))
+                .collect(Collectors.toList()))
         .getTargetBranch();
   }
 }

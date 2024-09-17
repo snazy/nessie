@@ -17,7 +17,6 @@ package org.projectnessie.versioned.tests;
 
 import static java.util.Arrays.asList;
 import static java.util.Collections.emptyList;
-import static java.util.Collections.singletonList;
 import static java.util.Objects.requireNonNull;
 import static org.assertj.core.api.Assertions.tuple;
 import static org.assertj.core.api.InstanceOfAssertFactories.list;
@@ -27,6 +26,8 @@ import static org.projectnessie.model.CommitMeta.fromMessage;
 import static org.projectnessie.model.Conflict.ConflictType.NAMESPACE_ABSENT;
 import static org.projectnessie.model.Conflict.ConflictType.NAMESPACE_NOT_EMPTY;
 import static org.projectnessie.model.Conflict.ConflictType.NOT_A_NAMESPACE;
+import static org.projectnessie.services.authz.AccessCheckParams.NESSIE_API_FOR_WRITE;
+import static org.projectnessie.versioned.CheckedOperation.checkedOperation;
 import static org.projectnessie.versioned.testworker.OnRefOnly.newOnRef;
 
 import java.util.List;
@@ -48,11 +49,11 @@ import org.projectnessie.model.Conflict;
 import org.projectnessie.model.Content;
 import org.projectnessie.model.ContentKey;
 import org.projectnessie.model.Namespace;
+import org.projectnessie.model.Operation.Delete;
+import org.projectnessie.model.Operation.Put;
 import org.projectnessie.versioned.BranchName;
 import org.projectnessie.versioned.Commit;
 import org.projectnessie.versioned.CommitResult;
-import org.projectnessie.versioned.Delete;
-import org.projectnessie.versioned.Put;
 import org.projectnessie.versioned.ReferenceConflictException;
 import org.projectnessie.versioned.VersionStore;
 import org.projectnessie.versioned.VersionStore.TransplantOp;
@@ -86,7 +87,9 @@ public abstract class AbstractNamespaceValidation extends AbstractNestedVersionS
                         branch,
                         Optional.empty(),
                         fromMessage("non-existing-ns"),
-                        singletonList(Put.of(key, newOnRef("value")))))
+                        List.of(
+                            checkedOperation(
+                                Put.of(key, newOnRef("value")), NESSIE_API_FOR_WRITE))))
         .isInstanceOf(ReferenceConflictException.class)
         .hasMessage("Namespace '%s' must exist.", key.getNamespace())
         .asInstanceOf(type(ReferenceConflictException.class))
@@ -104,7 +107,10 @@ public abstract class AbstractNamespaceValidation extends AbstractNestedVersionS
             branch,
             Optional.empty(),
             fromMessage("initial commit"),
-            singletonList(Put.of(ContentKey.of("unrelated-table"), newOnRef("value"))));
+            List.of(
+                checkedOperation(
+                    Put.of(ContentKey.of("unrelated-table"), newOnRef("value")),
+                    NESSIE_API_FOR_WRITE)));
 
     soft.assertThatThrownBy(
             () ->
@@ -113,7 +119,9 @@ public abstract class AbstractNamespaceValidation extends AbstractNestedVersionS
                         branch,
                         Optional.empty(),
                         fromMessage("non-existing-ns"),
-                        singletonList(Put.of(key, newOnRef("value")))))
+                        List.of(
+                            checkedOperation(
+                                Put.of(key, newOnRef("value")), NESSIE_API_FOR_WRITE))))
         .isInstanceOf(ReferenceConflictException.class)
         .hasMessage("Namespace '%s' must exist.", key.getNamespace())
         .asInstanceOf(type(ReferenceConflictException.class))
@@ -141,7 +149,7 @@ public abstract class AbstractNamespaceValidation extends AbstractNestedVersionS
             branch,
             Optional.empty(),
             fromMessage("create ns a"),
-            singletonList(Put.of(a, Namespace.of(a))));
+            List.of(checkedOperation(Put.of(a, Namespace.of(a)), NESSIE_API_FOR_WRITE)));
 
     soft.assertThatThrownBy(
             () ->
@@ -150,7 +158,9 @@ public abstract class AbstractNamespaceValidation extends AbstractNestedVersionS
                         branch,
                         Optional.empty(),
                         fromMessage("non-existing-ns"),
-                        singletonList(Put.of(table, newOnRef("value")))))
+                        List.of(
+                            checkedOperation(
+                                Put.of(table, newOnRef("value")), NESSIE_API_FOR_WRITE))))
         .isInstanceOf(ReferenceConflictException.class)
         .hasMessage(
             "There are multiple conflicts that prevent committing the provided operations: "
@@ -169,7 +179,7 @@ public abstract class AbstractNamespaceValidation extends AbstractNestedVersionS
             branch,
             Optional.empty(),
             fromMessage("create content b"),
-            singletonList(Put.of(b, newOnRef("value"))));
+            List.of(checkedOperation(Put.of(b, newOnRef("value")), NESSIE_API_FOR_WRITE)));
 
     soft.assertThatThrownBy(
             () ->
@@ -178,7 +188,9 @@ public abstract class AbstractNamespaceValidation extends AbstractNestedVersionS
                         branch,
                         Optional.empty(),
                         fromMessage("non-existing-ns"),
-                        singletonList(Put.of(table, newOnRef("value")))))
+                        List.of(
+                            checkedOperation(
+                                Put.of(table, newOnRef("value")), NESSIE_API_FOR_WRITE))))
         .isInstanceOf(ReferenceConflictException.class)
         .hasMessage(
             "There are multiple conflicts that prevent committing the provided operations: "
@@ -197,10 +209,16 @@ public abstract class AbstractNamespaceValidation extends AbstractNestedVersionS
 
     store()
         .commit(
-            branch, Optional.empty(), fromMessage("delete content b"), singletonList(Delete.of(b)));
+            branch,
+            Optional.empty(),
+            fromMessage("delete content b"),
+            List.of(checkedOperation(Delete.of(b), NESSIE_API_FOR_WRITE)));
     store()
         .commit(
-            branch, Optional.empty(), fromMessage("delete content a"), singletonList(Delete.of(a)));
+            branch,
+            Optional.empty(),
+            fromMessage("delete content a"),
+            List.of(checkedOperation(Delete.of(a), NESSIE_API_FOR_WRITE)));
 
     soft.assertThatThrownBy(
             () ->
@@ -209,7 +227,9 @@ public abstract class AbstractNamespaceValidation extends AbstractNestedVersionS
                         branch,
                         Optional.empty(),
                         fromMessage("non-existing-ns"),
-                        singletonList(Put.of(table, newOnRef("value")))))
+                        List.of(
+                            checkedOperation(
+                                Put.of(table, newOnRef("value")), NESSIE_API_FOR_WRITE))))
         .isInstanceOf(ReferenceConflictException.class)
         .hasMessage(
             "There are multiple conflicts that prevent committing the provided operations: "
@@ -239,8 +259,11 @@ public abstract class AbstractNamespaceValidation extends AbstractNestedVersionS
               branch,
               Optional.empty(),
               fromMessage("initial commit"),
-              singletonList(
-                  Put.of(key.getParent().getParent(), Namespace.of(key.getParent().getParent()))));
+              List.of(
+                  checkedOperation(
+                      Put.of(
+                          key.getParent().getParent(), Namespace.of(key.getParent().getParent())),
+                      NESSIE_API_FOR_WRITE)));
     }
 
     // Add a non-namespace content using the parent key of the namespace to be checked below.
@@ -249,7 +272,9 @@ public abstract class AbstractNamespaceValidation extends AbstractNestedVersionS
             branch,
             Optional.empty(),
             fromMessage("not a namespace"),
-            singletonList(Put.of(key.getParent(), newOnRef("value"))));
+            List.of(
+                checkedOperation(
+                    Put.of(key.getParent(), newOnRef("value")), NESSIE_API_FOR_WRITE)));
 
     soft.assertThatThrownBy(
             () ->
@@ -258,7 +283,9 @@ public abstract class AbstractNamespaceValidation extends AbstractNestedVersionS
                         branch,
                         Optional.empty(),
                         fromMessage("non-existing-ns"),
-                        singletonList(Put.of(key, newOnRef("value")))))
+                        List.of(
+                            checkedOperation(
+                                Put.of(key, newOnRef("value")), NESSIE_API_FOR_WRITE))))
         .isInstanceOf(ReferenceConflictException.class)
         .hasMessage(
             "Expecting the key '%s' to be a namespace, but is not a namespace "
@@ -292,8 +319,9 @@ public abstract class AbstractNamespaceValidation extends AbstractNestedVersionS
             Optional.empty(),
             fromMessage("initial"),
             asList(
-                Put.of(ns.toContentKey(), ns),
-                Put.of(ContentKey.of(ns, "table"), newOnRef("foo"))));
+                checkedOperation(Put.of(ns.toContentKey(), ns), NESSIE_API_FOR_WRITE),
+                checkedOperation(
+                    Put.of(ContentKey.of(ns, "table"), newOnRef("foo")), NESSIE_API_FOR_WRITE)));
 
     if (childNamespace) {
       Namespace child = Namespace.of("ns", "child");
@@ -302,7 +330,7 @@ public abstract class AbstractNamespaceValidation extends AbstractNestedVersionS
               branch,
               Optional.empty(),
               fromMessage("child ns"),
-              singletonList(Put.of(child.toContentKey(), child)));
+              List.of(checkedOperation(Put.of(child.toContentKey(), child), NESSIE_API_FOR_WRITE)));
     }
 
     soft.assertThatThrownBy(
@@ -311,7 +339,7 @@ public abstract class AbstractNamespaceValidation extends AbstractNestedVersionS
                     branch,
                     Optional.empty(),
                     fromMessage("try delete ns"),
-                    singletonList(Delete.of(ns.toContentKey()))))
+                    List.of(checkedOperation(Delete.of(ns.toContentKey()), NESSIE_API_FOR_WRITE))))
         .isInstanceOf(ReferenceConflictException.class)
         .hasMessage("Namespace 'ns' is not empty.")
         .asInstanceOf(type(ReferenceConflictException.class))
@@ -379,8 +407,11 @@ public abstract class AbstractNamespaceValidation extends AbstractNestedVersionS
                 Optional.empty(),
                 fromMessage("create namespace"),
                 mode.createNamespaceOnTarget
-                    ? singletonList(Put.of(ns2.toContentKey(), ns2))
-                    : asList(Put.of(ns.toContentKey(), ns), Put.of(ns2.toContentKey(), ns2)));
+                    ? List.of(
+                        checkedOperation(Put.of(ns2.toContentKey(), ns2), NESSIE_API_FOR_WRITE))
+                    : List.of(
+                        checkedOperation(Put.of(ns.toContentKey(), ns), NESSIE_API_FOR_WRITE),
+                        checkedOperation(Put.of(ns2.toContentKey(), ns2), NESSIE_API_FOR_WRITE)));
 
     BranchName branch = BranchName.of("branch");
     store().create(branch, Optional.of(rootHead.getCommitHash()));
@@ -391,7 +422,7 @@ public abstract class AbstractNamespaceValidation extends AbstractNestedVersionS
               branch,
               Optional.empty(),
               fromMessage("create namespace"),
-              singletonList(Put.of(ns.toContentKey(), ns)));
+              List.of(checkedOperation(Put.of(ns.toContentKey(), ns), NESSIE_API_FOR_WRITE)));
     }
 
     ContentKey key = ContentKey.of(ns, "foo");
@@ -401,7 +432,7 @@ public abstract class AbstractNamespaceValidation extends AbstractNestedVersionS
                 branch,
                 Optional.empty(),
                 fromMessage("create table ns.foo"),
-                singletonList(Put.of(key, newOnRef("foo"))));
+                List.of(checkedOperation(Put.of(key, newOnRef("foo")), NESSIE_API_FOR_WRITE)));
 
     CommitResult<Commit> commit2 =
         store()
@@ -409,14 +440,19 @@ public abstract class AbstractNamespaceValidation extends AbstractNestedVersionS
                 branch,
                 Optional.empty(),
                 fromMessage("create table ns2.bar"),
-                singletonList(Put.of(ContentKey.of(ns2, "bar"), newOnRef("bar"))));
+                List.of(
+                    checkedOperation(
+                        Put.of(ContentKey.of(ns2, "bar"), newOnRef("bar")), NESSIE_API_FOR_WRITE)));
 
     store()
         .commit(
             root,
             Optional.empty(),
             fromMessage("unrelated"),
-            singletonList(Put.of(ContentKey.of("unrelated-table"), newOnRef("bar"))));
+            List.of(
+                checkedOperation(
+                    Put.of(ContentKey.of("unrelated-table"), newOnRef("bar")),
+                    NESSIE_API_FOR_WRITE)));
 
     ThrowingCallable mergeTransplant =
         mode.merge
@@ -445,7 +481,7 @@ public abstract class AbstractNamespaceValidation extends AbstractNestedVersionS
               root,
               Optional.empty(),
               fromMessage("delete namespace"),
-              singletonList(Delete.of(ns.toContentKey())));
+              List.of(checkedOperation(Delete.of(ns.toContentKey()), NESSIE_API_FOR_WRITE)));
     }
 
     if (mode.error) {
@@ -469,7 +505,7 @@ public abstract class AbstractNamespaceValidation extends AbstractNestedVersionS
             root,
             Optional.empty(),
             fromMessage("create table ns.foo"),
-            singletonList(Put.of(key, Namespace.of(key))));
+            List.of(checkedOperation(Put.of(key, Namespace.of(key)), NESSIE_API_FOR_WRITE)));
 
     soft.assertThatThrownBy(
             () ->
@@ -478,7 +514,8 @@ public abstract class AbstractNamespaceValidation extends AbstractNestedVersionS
                         root,
                         Optional.empty(),
                         fromMessage("create table ns.foo"),
-                        singletonList(Put.of(key, newOnRef("foo")))))
+                        List.of(
+                            checkedOperation(Put.of(key, newOnRef("foo")), NESSIE_API_FOR_WRITE))))
         .isInstanceOf(IllegalArgumentException.class);
   }
 
@@ -511,6 +548,7 @@ public abstract class AbstractNamespaceValidation extends AbstractNestedVersionS
             Stream.concat(
                     tables.stream().map(t -> Put.of(t, newOnRef(t.toString()))),
                     namespaces.stream().map(ns -> Put.of(ns.toContentKey(), ns)))
+                .map(op -> checkedOperation(op, NESSIE_API_FOR_WRITE))
                 .collect(Collectors.toList()));
 
     soft.assertThatCode(
@@ -523,6 +561,7 @@ public abstract class AbstractNamespaceValidation extends AbstractNestedVersionS
                         Stream.concat(
                                 namespaces.stream().map(ns -> Delete.of(ns.toContentKey())),
                                 tables.stream().map(Delete::of))
+                            .map(op -> checkedOperation(op, NESSIE_API_FOR_WRITE))
                             .collect(Collectors.toList())))
         .doesNotThrowAnyException();
   }
@@ -540,7 +579,7 @@ public abstract class AbstractNamespaceValidation extends AbstractNestedVersionS
             branch,
             Optional.empty(),
             fromMessage("create a table"),
-            singletonList(Put.of(key1, newOnRef("value"))));
+            List.of(checkedOperation(Put.of(key1, newOnRef("value")), NESSIE_API_FOR_WRITE)));
 
     Content table = requireNonNull(store().getValue(branch, key1, false).content());
 
@@ -551,7 +590,9 @@ public abstract class AbstractNamespaceValidation extends AbstractNestedVersionS
                         branch,
                         Optional.empty(),
                         fromMessage("rename table"),
-                        asList(Delete.of(key1), Put.of(key2, table))))
+                        List.of(
+                            checkedOperation(Delete.of(key1), NESSIE_API_FOR_WRITE),
+                            checkedOperation(Put.of(key2, table), NESSIE_API_FOR_WRITE))))
         .isInstanceOf(ReferenceConflictException.class)
         .hasMessage("Namespace 'non_existing' must exist.");
   }

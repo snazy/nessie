@@ -25,6 +25,7 @@ dependencies {
   implementation(project(":nessie-services"))
   implementation(project(":nessie-services-config"))
   implementation(project(":nessie-versioned-spi"))
+  implementation(project(":nessie-versioned-types"))
   implementation(libs.slf4j.api)
   implementation(libs.guava)
 

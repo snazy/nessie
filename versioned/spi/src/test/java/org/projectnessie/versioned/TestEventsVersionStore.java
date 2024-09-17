@@ -24,17 +24,19 @@ import static org.mockito.Mockito.verifyNoInteractions;
 import static org.mockito.Mockito.verifyNoMoreInteractions;
 import static org.mockito.Mockito.when;
 import static org.projectnessie.model.IdentifiedContentKey.identifiedContentKeyFromContent;
+import static org.projectnessie.services.authz.AccessCheckParams.NESSIE_API_FOR_WRITE;
+import static org.projectnessie.versioned.CheckedOperation.checkedOperation;
 import static org.projectnessie.versioned.ContentResult.contentResult;
 import static org.projectnessie.versioned.VersionStore.KeyRestrictions.NO_KEY_RESTRICTIONS;
 
 import com.google.common.collect.ImmutableMap;
 import java.util.Arrays;
-import java.util.Collections;
 import java.util.List;
 import java.util.Map;
 import java.util.Optional;
 import java.util.function.BiConsumer;
 import java.util.function.Consumer;
+import java.util.stream.Collectors;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
 import org.junit.jupiter.params.ParameterizedTest;
@@ -44,6 +46,7 @@ import org.mockito.junit.jupiter.MockitoExtension;
 import org.projectnessie.model.CommitMeta;
 import org.projectnessie.model.ContentKey;
 import org.projectnessie.model.IcebergTable;
+import org.projectnessie.model.Operation.Put;
 import org.projectnessie.versioned.VersionStore.CommitValidator;
 import org.projectnessie.versioned.VersionStore.MergeOp;
 import org.projectnessie.versioned.VersionStore.TransplantOp;
@@ -70,7 +73,8 @@ class TestEventsVersionStore {
   ContentKey key2 = ContentKey.of("foo.bar.table2");
   IcebergTable table1 = IcebergTable.of("somewhere", 42, 42, 42, 42, "table1");
   IcebergTable table2 = IcebergTable.of("somewhere", 42, 42, 42, 42, "table2");
-  List<Operation> operations = Collections.singletonList(Put.of(key1, table1));
+  List<CheckedOperation> operations =
+      List.of(checkedOperation(Put.of(key1, table1), NESSIE_API_FOR_WRITE));
   CommitValidator validator = x -> {};
   BiConsumer<ContentKey, String> addedContents = (k, v) -> {};
 
@@ -83,7 +87,10 @@ class TestEventsVersionStore {
                 ImmutableCommit.builder()
                     .hash(hash1)
                     .commitMeta(commitMeta)
-                    .operations(operations)
+                    .operations(
+                        operations.stream()
+                            .map(CheckedOperation::operation)
+                            .collect(Collectors.toList()))
                     .build())
             .build();
     when(delegate.commit(

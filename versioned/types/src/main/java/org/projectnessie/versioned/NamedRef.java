@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 2020 Dremio
+ * Copyright (C) 2024 Dremio
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -15,25 +15,16 @@
  */
 package org.projectnessie.versioned;
 
-import jakarta.annotation.Nullable;
-import java.util.List;
-import org.immutables.value.Value;
-import org.projectnessie.model.CommitMeta;
+import jakarta.annotation.Nonnull;
 
-@Value.Immutable
-public interface Commit extends Hashable {
-  static ImmutableCommit.Builder builder() {
-    return ImmutableCommit.builder();
-  }
+/** A ref that has a name. Includes both branches and tags. */
+public interface NamedRef extends Ref {
 
-  @Override
-  Hash getHash();
-
-  CommitMeta getCommitMeta();
-
-  @Nullable
-  Hash getParentHash();
-
-  @Nullable
-  List<Operation> getOperations();
+  /**
+   * Get The reference's name.
+   *
+   * @return the reference name
+   */
+  @Nonnull
+  String getName();
 }

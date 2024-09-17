@@ -105,7 +105,7 @@ abstract class AbstractTestBasicOperations {
             api.commitMultipleOperations()
                 .branch(master)
                 .operation(Delete.of(key))
-                .commitMeta(CommitMeta.fromMessage(""))
+                .commitMeta(CommitMeta.fromMessage("msg"))
                 .commit());
     assertThat(api.getContent().refName("testx").key(key).get()).isEmpty();
     tryEndpointPass(
@@ -117,7 +117,7 @@ abstract class AbstractTestBasicOperations {
           api.commitMultipleOperations()
               .branch(b)
               .operation(Put.of(key, IcebergTable.of("bar", 42, 42, 42, 42)))
-              .commitMeta(CommitMeta.fromMessage(""))
+              .commitMeta(CommitMeta.fromMessage("msg2"))
               .commit();
         });
   }

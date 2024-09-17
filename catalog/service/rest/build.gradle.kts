@@ -34,6 +34,7 @@ dependencies {
   implementation(project(":nessie-services-config"))
   implementation(project(":nessie-services"))
   implementation(project(":nessie-versioned-spi"))
+  implementation(project(":nessie-versioned-types"))
   compileOnly(libs.smallrye.config.core)
 
   compileOnly(project(":nessie-immutables"))

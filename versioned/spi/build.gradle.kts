@@ -20,7 +20,8 @@ publishingHelper { mavenName = "Nessie - Versioned Store SPI" }
 
 dependencies {
   implementation(project(":nessie-model"))
-  api(project(path = ":nessie-protobuf-relocated", configuration = "shadow"))
+  implementation(project(":nessie-authz-spi"))
+  implementation(project(":nessie-versioned-types"))
   implementation("com.fasterxml.jackson.core:jackson-databind")
   compileOnly(libs.immutables.builder)
   compileOnly(libs.immutables.value.annotations)

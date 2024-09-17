@@ -16,8 +16,11 @@
 package org.projectnessie.versioned.storage.versionstore;
 
 import static java.util.Collections.singletonList;
+import static org.projectnessie.services.authz.AccessCheckParams.NESSIE_API_FOR_WRITE;
+import static org.projectnessie.versioned.CheckedOperation.checkedOperation;
 
 import java.time.Duration;
+import java.util.List;
 import java.util.Optional;
 import java.util.concurrent.atomic.AtomicLong;
 import java.util.function.LongSupplier;
@@ -30,11 +33,11 @@ import org.junit.jupiter.api.extension.ExtendWith;
 import org.projectnessie.model.CommitMeta;
 import org.projectnessie.model.ContentKey;
 import org.projectnessie.model.IcebergTable;
+import org.projectnessie.model.Operation.Put;
 import org.projectnessie.versioned.BranchName;
 import org.projectnessie.versioned.Commit;
 import org.projectnessie.versioned.CommitResult;
 import org.projectnessie.versioned.GetNamedRefsParams;
-import org.projectnessie.versioned.Put;
 import org.projectnessie.versioned.ReferenceInfo;
 import org.projectnessie.versioned.VersionStore;
 import org.projectnessie.versioned.storage.cache.CacheConfig;
@@ -92,7 +95,10 @@ public class TestVersionStoreReferenceCaching {
             main,
             Optional.of(head1.getHash()),
             CommitMeta.fromMessage("commit via 1"),
-            singletonList(Put.of(ContentKey.of("table1"), IcebergTable.of("/foo", 1, 2, 3, 43))));
+            List.of(
+                checkedOperation(
+                    Put.of(ContentKey.of("table1"), IcebergTable.of("/foo", 1, 2, 3, 43)),
+                    NESSIE_API_FOR_WRITE)));
 
     soft.assertThat(committed1.getCommit().getParentHash()).isEqualTo(head1.getHash());
 
@@ -110,7 +116,10 @@ public class TestVersionStoreReferenceCaching {
             main,
             Optional.of(head2afterCommit1.getHash()),
             CommitMeta.fromMessage("commit via 2"),
-            singletonList(Put.of(ContentKey.of("table2"), IcebergTable.of("/foo", 1, 2, 3, 43))));
+            singletonList(
+                checkedOperation(
+                    Put.of(ContentKey.of("table2"), IcebergTable.of("/foo", 1, 2, 3, 43)),
+                    NESSIE_API_FOR_WRITE)));
 
     soft.assertThat(committed2.getCommit().getParentHash())
         .isEqualTo(committed1.getCommit().getHash());

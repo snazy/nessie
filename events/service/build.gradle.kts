@@ -21,6 +21,7 @@ publishingHelper { mavenName = "Nessie - Events - Service" }
 dependencies {
   implementation(project(":nessie-model"))
   implementation(project(":nessie-versioned-spi"))
+  implementation(project(":nessie-versioned-types"))
   implementation(project(":nessie-events-api"))
   implementation(project(":nessie-events-spi"))
 

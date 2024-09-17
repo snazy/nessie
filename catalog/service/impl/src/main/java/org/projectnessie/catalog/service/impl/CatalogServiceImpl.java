@@ -408,14 +408,12 @@ public class CatalogServiceImpl implements CatalogService {
       }
     }
 
-    multiTableUpdate.operations().commitMeta(commitMetaBuilder.apply(message.toString()));
-
     return commitBuilderStage
         // Perform the Nessie commit. At this point, all metadata files have been written.
         .thenApply(
             updates -> {
               try {
-                return updates.commit();
+                return updates.commit(commitMetaBuilder.apply(message.toString()));
               } catch (RuntimeException e) {
                 throw e;
               } catch (Exception e) {
@@ -559,13 +557,13 @@ public class CatalogServiceImpl implements CatalogService {
                   return new IcebergTableMetadataUpdateState(
                           nessieSnapshot, op.getKey(), content != null)
                       .checkRequirements(icebergOp.requirements())
-                      .applyUpdates(pruneUpdates(icebergOp, content != null))
-                      .snapshot();
+                      .applyUpdates(pruneUpdates(icebergOp, content != null));
                   // TODO handle the case when nothing changed -> do not update
                   //  e.g. when adding a schema/spec/order that already exists
                 })
             .thenApply(
-                nessieSnapshot -> {
+                updateState -> {
+                  NessieTableSnapshot nessieSnapshot = updateState.snapshot();
                   String metadataJsonLocation =
                       icebergMetadataJsonLocation(nessieSnapshot.icebergLocation());
                   IcebergTableMetadata icebergMetadata =
@@ -577,7 +575,11 @@ public class CatalogServiceImpl implements CatalogService {
                   nessieSnapshot = nessieSnapshot.withId(objIdToNessieId(snapshotId));
 
                   SingleTableUpdate singleTableUpdate =
-                      new SingleTableUpdate(nessieSnapshot, updated, icebergOp.getKey());
+                      new SingleTableUpdate(
+                          nessieSnapshot,
+                          updated,
+                          icebergOp.getKey(),
+                          updateState.accessCheckParams());
                   multiTableUpdate.addUpdate(op.getKey(), singleTableUpdate);
                   return singleTableUpdate;
                 });
@@ -627,13 +629,13 @@ public class CatalogServiceImpl implements CatalogService {
                   return new IcebergViewMetadataUpdateState(
                           nessieSnapshot, op.getKey(), content != null)
                       .checkRequirements(icebergOp.requirements())
-                      .applyUpdates(pruneUpdates(icebergOp, content != null))
-                      .snapshot();
+                      .applyUpdates(pruneUpdates(icebergOp, content != null));
                   // TODO handle the case when nothing changed -> do not update
                   //  e.g. when adding a schema/spec/order that already exists
                 })
             .thenApply(
-                nessieSnapshot -> {
+                updateState -> {
+                  NessieViewSnapshot nessieSnapshot = updateState.snapshot();
                   String metadataJsonLocation =
                       icebergMetadataJsonLocation(nessieSnapshot.icebergLocation());
                   IcebergViewMetadata icebergMetadata =
@@ -644,7 +646,11 @@ public class CatalogServiceImpl implements CatalogService {
                   nessieSnapshot = nessieSnapshot.withId(objIdToNessieId(snapshotId));
 
                   SingleTableUpdate singleTableUpdate =
-                      new SingleTableUpdate(nessieSnapshot, updated, icebergOp.getKey());
+                      new SingleTableUpdate(
+                          nessieSnapshot,
+                          updated,
+                          icebergOp.getKey(),
+                          updateState.accessCheckParams());
                   multiTableUpdate.addUpdate(op.getKey(), singleTableUpdate);
                   return singleTableUpdate;
                 });

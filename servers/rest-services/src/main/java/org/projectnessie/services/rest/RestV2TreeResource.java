@@ -17,9 +17,11 @@ package org.projectnessie.services.rest;
 
 import static com.google.common.base.Preconditions.checkArgument;
 import static org.projectnessie.api.v2.params.ReferenceResolver.resolveReferencePathElement;
+import static org.projectnessie.services.authz.AccessCheckParams.NESSIE_API_FOR_WRITE;
 import static org.projectnessie.services.impl.RefUtil.toReference;
 import static org.projectnessie.services.rest.common.RestCommon.updateCommitMeta;
 import static org.projectnessie.services.spi.TreeService.MAX_COMMIT_LOG_ENTRIES;
+import static org.projectnessie.versioned.CheckedOperation.checkedOperation;
 
 import com.fasterxml.jackson.annotation.JsonView;
 import jakarta.enterprise.context.RequestScoped;
@@ -28,6 +30,7 @@ import jakarta.ws.rs.Path;
 import jakarta.ws.rs.core.HttpHeaders;
 import java.util.List;
 import java.util.Locale;
+import java.util.stream.Collectors;
 import org.projectnessie.api.v2.http.HttpTreeApi;
 import org.projectnessie.api.v2.params.CommitLogParams;
 import org.projectnessie.api.v2.params.DiffParams;
@@ -54,7 +57,6 @@ import org.projectnessie.model.ImmutableDiffResponse;
 import org.projectnessie.model.ImmutableEntriesResponse;
 import org.projectnessie.model.ImmutableGetMultipleContentsRequest;
 import org.projectnessie.model.ImmutableLogResponse;
-import org.projectnessie.model.ImmutableOperations;
 import org.projectnessie.model.ImmutableReferencesResponse;
 import org.projectnessie.model.LogResponse;
 import org.projectnessie.model.LogResponse.LogEntry;
@@ -443,13 +445,15 @@ public class RestV2TreeResource implements HttpTreeApi {
   @Override
   public CommitResponse commitMultipleOperations(String branch, Operations operations)
       throws NessieNotFoundException, NessieConflictException {
-    ImmutableOperations.Builder ops =
-        ImmutableOperations.builder()
-            .from(operations)
-            .commitMeta(commitMeta(CommitMeta.builder().from(operations.getCommitMeta())).build());
-
     ParsedReference ref = parseRefPathString(branch);
-    return tree().commitMultipleOperations(ref.name(), ref.hashWithRelativeSpec(), ops.build());
+    return tree()
+        .commitMultipleOperations(
+            ref.name(),
+            ref.hashWithRelativeSpec(),
+            commitMeta(CommitMeta.builder().from(operations.getCommitMeta())).build(),
+            operations.getOperations().stream()
+                .map(op -> checkedOperation(op, NESSIE_API_FOR_WRITE))
+                .collect(Collectors.toList()));
   }
 
   CommitMeta.Builder commitMeta(CommitMeta.Builder commitMeta) {

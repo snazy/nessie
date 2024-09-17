@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 2024 Dremio
+ * Copyright (C) 2022 Dremio
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -16,34 +16,36 @@
 
 plugins { id("nessie-conventions-server") }
 
-publishingHelper { mavenName = "Nessie - AuthZ CEL" }
+publishingHelper { mavenName = "Nessie - Versioned Store Types" }
 
 dependencies {
-  implementation(project(":nessie-authz-spi"))
   implementation(project(":nessie-model"))
-  implementation(project(":nessie-services-config"))
-  implementation(project(":nessie-versioned-types"))
 
-  implementation(platform(libs.cel.bom))
-  implementation("org.projectnessie.cel:cel-standalone")
+  api(project(path = ":nessie-protobuf-relocated", configuration = "shadow"))
 
   compileOnly(libs.immutables.builder)
   compileOnly(libs.immutables.value.annotations)
   annotationProcessor(libs.immutables.value.processor)
 
-  implementation(libs.guava)
-
-  compileOnly(libs.jakarta.validation.api)
-  compileOnly(libs.jakarta.annotation.api)
-  compileOnly(libs.jakarta.enterprise.cdi.api)
+  compileOnly(libs.microprofile.openapi)
 
   compileOnly(platform(libs.jackson.bom))
   compileOnly("com.fasterxml.jackson.core:jackson-annotations")
 
-  compileOnly(libs.microprofile.openapi)
+  implementation(libs.guava)
 
-  testFixturesImplementation(libs.guava)
+  compileOnly(libs.jakarta.validation.api)
+  compileOnly(libs.jakarta.annotation.api)
 
-  testFixturesApi(platform(libs.junit.bom))
-  testFixturesApi(libs.bundles.junit.testing)
+  testImplementation(platform(libs.junit.bom))
+  testImplementation(libs.bundles.junit.testing)
+
+  testCompileOnly(platform(libs.jackson.bom))
+  testCompileOnly("com.fasterxml.jackson.core:jackson-annotations")
+
+  testCompileOnly(libs.immutables.value.annotations)
+  testAnnotationProcessor(libs.immutables.value.processor)
+  testCompileOnly(libs.jakarta.ws.rs.api)
+  testCompileOnly(libs.jakarta.validation.api)
+  testCompileOnly(libs.jakarta.annotation.api)
 }

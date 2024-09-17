@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 2020 Dremio
+ * Copyright (C) 2024 Dremio
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -20,16 +20,16 @@ import org.immutables.value.Value;
 
 /** A named reference representing a branch. */
 @Value.Immutable
-public interface BranchName extends NamedRef {
+public interface DetachedRef extends NamedRef {
 
-  /**
-   * Create a new branch reference.
-   *
-   * @param name the branch name
-   * @return an instance of {@code BranchName} for the provided name
-   */
+  String REF_NAME = "DETACHED";
+
+  DetachedRef INSTANCE = ImmutableDetachedRef.builder().build();
+
   @Nonnull
-  static BranchName of(@Nonnull String name) {
-    return ImmutableBranchName.builder().name(name).build();
+  @Override
+  @Value.Redacted
+  default String getName() {
+    return REF_NAME;
   }
 }

@@ -19,13 +19,14 @@ import static java.util.Spliterators.spliteratorUnknownSize;
 import static java.util.stream.StreamSupport.stream;
 import static org.projectnessie.error.ContentKeyErrorDetails.contentKeyErrorDetails;
 import static org.projectnessie.model.Validation.validateHash;
+import static org.projectnessie.services.authz.AccessCheckParams.NESSIE_API_FOR_WRITE;
 import static org.projectnessie.services.impl.RefUtil.toReference;
+import static org.projectnessie.versioned.CheckedOperation.checkedOperation;
 import static org.projectnessie.versioned.VersionStore.KeyRestrictions.NO_KEY_RESTRICTIONS;
 
 import com.google.common.base.Preconditions;
 import com.google.errorprone.annotations.MustBeClosed;
 import jakarta.annotation.Nullable;
-import java.util.Collections;
 import java.util.HashMap;
 import java.util.HashSet;
 import java.util.List;
@@ -47,6 +48,7 @@ import org.projectnessie.model.GetNamespacesResponse;
 import org.projectnessie.model.ImmutableGetNamespacesResponse;
 import org.projectnessie.model.ImmutableNamespace;
 import org.projectnessie.model.Namespace;
+import org.projectnessie.model.Operation;
 import org.projectnessie.model.Operation.Delete;
 import org.projectnessie.model.Operation.Put;
 import org.projectnessie.services.authz.AccessContext;
@@ -59,7 +61,6 @@ import org.projectnessie.versioned.BranchName;
 import org.projectnessie.versioned.ContentResult;
 import org.projectnessie.versioned.Hash;
 import org.projectnessie.versioned.KeyEntry;
-import org.projectnessie.versioned.Operation;
 import org.projectnessie.versioned.ReferenceConflictException;
 import org.projectnessie.versioned.ReferenceNotFoundException;
 import org.projectnessie.versioned.VersionStore;
@@ -104,7 +105,7 @@ public class NamespaceApiImpl extends BaseApiImpl implements NamespaceService {
           commit(
               BranchName.of(refWithHash.getValue().getName()),
               "create namespace '" + namespace.toCanonicalString() + "'",
-              TreeApiImpl.toOp(put));
+              put);
 
       Content content = getExplicitlyCreatedNamespace(namespace, hash).orElse(null);
 
@@ -145,7 +146,7 @@ public class NamespaceApiImpl extends BaseApiImpl implements NamespaceService {
       commit(
           BranchName.of(refWithHash.getValue().getName()),
           "delete namespace '" + namespace.toCanonicalString() + "'",
-          TreeApiImpl.toOp(delete));
+          delete);
     } catch (ReferenceNotFoundException | ReferenceConflictException e) {
       throw new NessieReferenceNotFoundException(e.getMessage(), e);
     }
@@ -275,7 +276,7 @@ public class NamespaceApiImpl extends BaseApiImpl implements NamespaceService {
       commit(
           BranchName.of(refWithHash.getValue().getName()),
           "update properties for namespace '" + updatedNamespace.toCanonicalString() + "'",
-          TreeApiImpl.toOp(put));
+          put);
 
     } catch (ReferenceNotFoundException | ReferenceConflictException e) {
       throw new NessieReferenceNotFoundException(e.getMessage(), e);
@@ -364,7 +365,7 @@ public class NamespaceApiImpl extends BaseApiImpl implements NamespaceService {
             Optional.empty(),
             commitMetaUpdate(null, numCommits -> null)
                 .rewriteSingle(CommitMeta.fromMessage(commitMsg)),
-            Collections.singletonList(contentOperation),
+            List.of(checkedOperation(contentOperation, NESSIE_API_FOR_WRITE)),
             validation -> {
               BatchAccessChecker check = startAccessCheck().canCommitChangeAgainstReference(branch);
               validation

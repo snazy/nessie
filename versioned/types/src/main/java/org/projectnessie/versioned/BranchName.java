@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 2023 Dremio
+ * Copyright (C) 2024 Dremio
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -15,7 +15,21 @@
  */
 package org.projectnessie.versioned;
 
-public interface Hashable {
+import jakarta.annotation.Nonnull;
+import org.immutables.value.Value;
 
-  Hash getHash();
+/** A named reference representing a branch. */
+@Value.Immutable
+public interface BranchName extends NamedRef {
+
+  /**
+   * Create a new branch reference.
+   *
+   * @param name the branch name
+   * @return an instance of {@code BranchName} for the provided name
+   */
+  @Nonnull
+  static BranchName of(@Nonnull String name) {
+    return ImmutableBranchName.builder().name(name).build();
+  }
 }
