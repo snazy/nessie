@@ -19,7 +19,6 @@ import static java.lang.String.format;
 import static org.projectnessie.error.ContentKeyErrorDetails.contentKeyErrorDetails;
 import static org.projectnessie.model.Content.Type.NAMESPACE;
 import static org.projectnessie.services.impl.RefUtil.toReference;
-import static org.projectnessie.services.rest.common.RestCommon.updateCommitMeta;
 
 import io.smallrye.common.annotation.Blocking;
 import jakarta.enterprise.context.RequestScoped;
@@ -70,6 +69,7 @@ import org.projectnessie.model.ImmutableOperations;
 import org.projectnessie.model.Namespace;
 import org.projectnessie.model.Operations;
 import org.projectnessie.model.Reference;
+import org.projectnessie.services.authz.AccessCheckParams;
 import org.projectnessie.services.spi.PagedResponseHandler;
 import org.projectnessie.storage.uri.StorageUri;
 
@@ -112,7 +112,11 @@ public class IcebergApiV1NamespaceResource extends IcebergApiV1ResourceBase {
     try {
       contentsResponse =
           contentService.getMultipleContents(
-              ref.name(), ref.hashWithRelativeSpec(), List.of(key), false, false);
+              ref.name(),
+              ref.hashWithRelativeSpec(),
+              List.of(key),
+              false,
+              AccessCheckParams.CATALOG_CONTENT_CHECK_FOR_CREATE);
     } catch (NessieNotFoundException e) {
       throw new NessieReferenceNotFoundException(e.getMessage(), e);
     }
@@ -161,7 +165,11 @@ public class IcebergApiV1NamespaceResource extends IcebergApiV1ResourceBase {
     ContentKey key = namespaceRef.namespace().toContentKey();
     ContentResponse contentResponse =
         contentService.getContent(
-            key, namespaceRef.referenceName(), namespaceRef.hashWithRelativeSpec(), false, false);
+            key,
+            namespaceRef.referenceName(),
+            namespaceRef.hashWithRelativeSpec(),
+            false,
+            AccessCheckParams.CATALOG_CONTENT_CHECK_FOR_DROP);
     if (!(contentResponse.getContent() instanceof Namespace)) {
       throw new NessieNamespaceNotFoundException(
           contentKeyErrorDetails(key),
@@ -260,7 +268,7 @@ public class IcebergApiV1NamespaceResource extends IcebergApiV1ResourceBase {
                 namespaceRef.referenceName(),
                 namespaceRef.hashWithRelativeSpec(),
                 false,
-                false)
+                AccessCheckParams.CATALOG_CONTENT_CHECK_EXISTS)
             .getContent();
     if (!(c instanceof Namespace)) {
       throw new NessieNamespaceNotFoundException(
@@ -292,7 +300,7 @@ public class IcebergApiV1NamespaceResource extends IcebergApiV1ResourceBase {
             namespaceRef.hashWithRelativeSpec(),
             keysInOrder,
             false,
-            false);
+            AccessCheckParams.CATALOG_CONTENT_CHECK_FOR_READ);
     Map<ContentKey, Content> namespacesMap = namespaces.toContentsMap();
 
     Content content = namespacesMap.get(nessieNamespace.toContentKey());
@@ -361,7 +369,7 @@ public class IcebergApiV1NamespaceResource extends IcebergApiV1ResourceBase {
             namespaceRef.hashWithRelativeSpec(),
             List.of(key),
             false,
-            true);
+            AccessCheckParams.CATALOG_CONTENT_CHECK_FOR_UPDATE);
     Reference ref = namespaces.getEffectiveReference();
     Map<ContentKey, Content> namespacesMap = namespaces.toContentsMap();
 

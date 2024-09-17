@@ -26,6 +26,7 @@ import org.projectnessie.model.ContentKey;
 import org.projectnessie.model.GetMultipleContentsRequest;
 import org.projectnessie.model.GetMultipleContentsResponse;
 import org.projectnessie.model.ser.Views;
+import org.projectnessie.services.authz.AccessCheckParams;
 import org.projectnessie.services.spi.ContentService;
 
 /** REST endpoint for the content-API. */
@@ -57,7 +58,9 @@ public class RestContentResource implements HttpContentApi {
   @JsonView(Views.V1.class)
   public Content getContent(ContentKey key, String ref, String hashOnRef)
       throws NessieNotFoundException {
-    return resource().getContent(key, ref, hashOnRef, false, false).getContent();
+    return resource()
+        .getContent(key, ref, hashOnRef, false, AccessCheckParams.NESSIE_API_READ_ONLY)
+        .getContent();
   }
 
   @Override
@@ -65,6 +68,12 @@ public class RestContentResource implements HttpContentApi {
   public GetMultipleContentsResponse getMultipleContents(
       String ref, String hashOnRef, GetMultipleContentsRequest request)
       throws NessieNotFoundException {
-    return resource().getMultipleContents(ref, hashOnRef, request.getRequestedKeys(), false, false);
+    return resource()
+        .getMultipleContents(
+            ref,
+            hashOnRef,
+            request.getRequestedKeys(),
+            false,
+            AccessCheckParams.NESSIE_API_READ_ONLY);
   }
 }

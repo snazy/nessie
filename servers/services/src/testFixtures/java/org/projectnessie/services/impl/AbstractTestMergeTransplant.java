@@ -59,6 +59,7 @@ import org.projectnessie.model.Namespace;
 import org.projectnessie.model.Operation.Delete;
 import org.projectnessie.model.Operation.Put;
 import org.projectnessie.model.Reference;
+import org.projectnessie.services.authz.AccessCheckParams;
 
 public abstract class AbstractTestMergeTransplant extends BaseTestServiceImpl {
 
@@ -159,7 +160,12 @@ public abstract class AbstractTestMergeTransplant extends BaseTestServiceImpl {
     table1 =
         (IcebergTable)
             contentApi()
-                .getContent(key1, committed1.getName(), committed1.getHash(), false, false)
+                .getContent(
+                    key1,
+                    committed1.getName(),
+                    committed1.getHash(),
+                    false,
+                    AccessCheckParams.nessieApi(false))
                 .getContent();
 
     Branch committed2 =
@@ -496,7 +502,12 @@ public abstract class AbstractTestMergeTransplant extends BaseTestServiceImpl {
     table1 =
         (IcebergTable)
             contentApi()
-                .getContent(key1, committed1.getName(), committed1.getHash(), false, false)
+                .getContent(
+                    key1,
+                    committed1.getName(),
+                    committed1.getHash(),
+                    false,
+                    AccessCheckParams.nessieApi(false))
                 .getContent();
 
     Branch committed2 =
@@ -664,7 +675,11 @@ public abstract class AbstractTestMergeTransplant extends BaseTestServiceImpl {
     ContentResponse tableOnRootAfterMerge =
         contentApi()
             .getContent(
-                setup.key, rootAfterMerge.getName(), rootAfterMerge.getHash(), false, false);
+                setup.key,
+                rootAfterMerge.getName(),
+                rootAfterMerge.getHash(),
+                false,
+                AccessCheckParams.nessieApi(false));
 
     soft.assertThat(setup.tableOnWork.getContent().getId())
         .isEqualTo(tableOnRootAfterMerge.getContent().getId());
@@ -729,7 +744,9 @@ public abstract class AbstractTestMergeTransplant extends BaseTestServiceImpl {
     soft.assertThat(root).isNotEqualTo(lastRoot);
 
     ContentResponse tableOnRoot =
-        contentApi().getContent(key, root.getName(), root.getHash(), false, false);
+        contentApi()
+            .getContent(
+                key, root.getName(), root.getHash(), false, AccessCheckParams.nessieApi(false));
     soft.assertThat(tableOnRoot.getEffectiveReference()).isEqualTo(root);
 
     Branch work = createBranch("recreateBranch", root);
@@ -749,7 +766,9 @@ public abstract class AbstractTestMergeTransplant extends BaseTestServiceImpl {
     soft.assertThat(work).isNotEqualTo(lastWork);
 
     ContentResponse tableOnWork =
-        contentApi().getContent(key, work.getName(), work.getHash(), false, false);
+        contentApi()
+            .getContent(
+                key, work.getName(), work.getHash(), false, AccessCheckParams.nessieApi(false));
     soft.assertThat(tableOnWork.getEffectiveReference()).isEqualTo(work);
 
     soft.assertThat(tableOnWork.getContent().getId())

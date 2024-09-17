@@ -65,6 +65,7 @@ import org.projectnessie.model.Operations;
 import org.projectnessie.model.Reference;
 import org.projectnessie.model.Tag;
 import org.projectnessie.services.authz.AbstractBatchAccessChecker;
+import org.projectnessie.services.authz.AccessCheckParams;
 import org.projectnessie.services.authz.AccessContext;
 import org.projectnessie.services.authz.Authorizer;
 import org.projectnessie.services.authz.BatchAccessChecker;
@@ -473,7 +474,8 @@ public abstract class BaseTestServiceImpl {
       String refName, String hashOnRef, boolean forWrite, ContentKey... keys)
       throws NessieNotFoundException {
     return contentApi()
-        .getMultipleContents(refName, hashOnRef, Arrays.asList(keys), false, forWrite)
+        .getMultipleContents(
+            refName, hashOnRef, Arrays.asList(keys), false, AccessCheckParams.nessieApi(forWrite))
         .getContents()
         .stream()
         .collect(Collectors.toMap(ContentWithKey::getKey, ContentWithKey::getContent));
@@ -487,7 +489,8 @@ public abstract class BaseTestServiceImpl {
   protected ContentResponse content(
       String refName, String hashOnRef, boolean forWrite, ContentKey key)
       throws NessieNotFoundException {
-    return contentApi().getContent(key, refName, hashOnRef, false, forWrite);
+    return contentApi()
+        .getContent(key, refName, hashOnRef, false, AccessCheckParams.nessieApi(forWrite));
   }
 
   protected String createCommits(
@@ -502,7 +505,8 @@ public abstract class BaseTestServiceImpl {
         try {
           Content existing =
               contentApi()
-                  .getContent(key, branch.getName(), currentHash, false, false)
+                  .getContent(
+                      key, branch.getName(), currentHash, false, AccessCheckParams.nessieApi(false))
                   .getContent();
           op = Put.of(key, IcebergTable.of("some-file-" + i, 42, 42, 42, 42, existing.getId()));
         } catch (NessieContentNotFoundException notFound) {

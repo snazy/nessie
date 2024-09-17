@@ -52,6 +52,7 @@ import org.projectnessie.error.NessieNotFoundException;
 import org.projectnessie.model.Content;
 import org.projectnessie.model.ContentKey;
 import org.projectnessie.model.IcebergContent;
+import org.projectnessie.services.authz.AccessCheckParams;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -150,7 +151,9 @@ abstract class IcebergS3SignParams {
                   SnapshotReqParams.forSnapshotHttpReq(ref(), "iceberg", null),
                   key(),
                   null,
-                  write());
+                  write()
+                      ? AccessCheckParams.CATALOG_CONTENT_CHECK_FOR_FILE_WRITE
+                      : AccessCheckParams.CATALOG_CONTENT_CHECK_FOR_FILE_READ);
       // consider an import failure as a non-existing content:
       // signing will be authorized for the future location only.
       return Uni.createFrom().completionStage(stage).onFailure().recoverWithNull();

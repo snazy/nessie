@@ -72,6 +72,7 @@ import org.projectnessie.model.Tag;
 import org.projectnessie.model.UDF;
 import org.projectnessie.services.authz.AbstractBatchAccessChecker;
 import org.projectnessie.services.authz.AccessCheckException;
+import org.projectnessie.services.authz.AccessCheckParams;
 import org.projectnessie.services.authz.BatchAccessChecker;
 import org.projectnessie.services.authz.Check;
 import org.projectnessie.services.authz.Check.CheckType;
@@ -558,7 +559,14 @@ public abstract class AbstractTestAccessChecks extends BaseTestServiceImpl {
           .isInstanceOf(AccessCheckException.class)
           .hasMessageContaining(READ_MSG);
       soft.assertThatThrownBy(
-              () -> contentApi().getContent(key, ref.getName(), ref.getHash(), false, false))
+              () ->
+                  contentApi()
+                      .getContent(
+                          key,
+                          ref.getName(),
+                          ref.getHash(),
+                          false,
+                          AccessCheckParams.nessieApi(false)))
           .describedAs("ref='%s', getContent", ref)
           .isInstanceOf(AccessCheckException.class)
           .hasMessageContaining(ENTITIES_MSG);

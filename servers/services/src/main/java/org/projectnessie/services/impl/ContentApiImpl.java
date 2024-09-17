@@ -32,6 +32,7 @@ import org.projectnessie.model.GetMultipleContentsResponse.ContentWithKey;
 import org.projectnessie.model.IdentifiedContentKey;
 import org.projectnessie.model.Reference;
 import org.projectnessie.model.Tag;
+import org.projectnessie.services.authz.AccessCheckParams;
 import org.projectnessie.services.authz.AccessContext;
 import org.projectnessie.services.authz.Authorizer;
 import org.projectnessie.services.authz.BatchAccessChecker;
@@ -61,25 +62,25 @@ public class ContentApiImpl extends BaseApiImpl implements ContentService {
       String namedRef,
       String hashOnRef,
       boolean withDocumentation,
-      boolean forWrite)
+      AccessCheckParams accessCheckParams)
       throws NessieNotFoundException {
     try {
       ResolvedHash ref =
           getHashResolver()
               .resolveHashOnRef(namedRef, hashOnRef, new HashValidator("Expected hash"));
-      ContentResult obj = getStore().getValue(ref.getHash(), key, forWrite);
+      ContentResult obj = getStore().getValue(ref.getHash(), key, accessCheckParams.forWrite());
       BatchAccessChecker accessCheck = startAccessCheck();
 
       NamedRef r = ref.getValue();
       accessCheck.canViewReference(r);
-      if (forWrite) {
+      if (accessCheckParams.forWrite()) {
         accessCheck.canCommitChangeAgainstReference(r);
       }
 
       if (obj != null && obj.content() != null) {
-        accessCheck.canReadEntityValue(r, obj.identifiedKey(), null);
-        if (forWrite) {
-          accessCheck.canUpdateEntity(r, obj.identifiedKey(), null);
+        accessCheck.canReadEntityValue(r, obj.identifiedKey(), accessCheckParams.components());
+        if (accessCheckParams.forWrite()) {
+          accessCheck.canUpdateEntity(r, obj.identifiedKey(), accessCheckParams.components());
         }
 
         accessCheck.checkAndThrow();
@@ -87,10 +88,13 @@ public class ContentApiImpl extends BaseApiImpl implements ContentService {
         return ContentResponse.of(obj.content(), makeReference(ref), null);
       }
 
-      if (forWrite) {
+      if (accessCheckParams.forWrite()) {
         accessCheck
-            .canReadEntityValue(r, requireNonNull(obj, "obj is null").identifiedKey(), null)
-            .canCreateEntity(r, obj.identifiedKey(), null);
+            .canReadEntityValue(
+                r,
+                requireNonNull(obj, "obj is null").identifiedKey(),
+                accessCheckParams.components())
+            .canCreateEntity(r, obj.identifiedKey(), accessCheckParams.components());
       }
       accessCheck.checkAndThrow();
 
@@ -106,7 +110,7 @@ public class ContentApiImpl extends BaseApiImpl implements ContentService {
       String hashOnRef,
       List<ContentKey> keys,
       boolean withDocumentation,
-      boolean forWrite)
+      AccessCheckParams accessCheckParams)
       throws NessieNotFoundException {
     try {
       ResolvedHash ref =
@@ -115,26 +119,27 @@ public class ContentApiImpl extends BaseApiImpl implements ContentService {
 
       NamedRef r = ref.getValue();
       BatchAccessChecker check = startAccessCheck().canViewReference(r);
-      if (forWrite) {
+      if (accessCheckParams.forWrite()) {
         check.canCommitChangeAgainstReference(r);
       }
 
-      Map<ContentKey, ContentResult> values = getStore().getValues(ref.getHash(), keys, forWrite);
+      Map<ContentKey, ContentResult> values =
+          getStore().getValues(ref.getHash(), keys, accessCheckParams.forWrite());
       List<ContentWithKey> output =
           values.entrySet().stream()
               .filter(
                   e -> {
                     ContentResult contentResult = e.getValue();
                     IdentifiedContentKey identifiedKey = contentResult.identifiedKey();
-                    check.canReadEntityValue(r, identifiedKey, null);
+                    check.canReadEntityValue(r, identifiedKey, accessCheckParams.components());
                     if (contentResult.content() != null) {
-                      if (forWrite) {
-                        check.canUpdateEntity(r, identifiedKey, null);
+                      if (accessCheckParams.forWrite()) {
+                        check.canUpdateEntity(r, identifiedKey, accessCheckParams.components());
                       }
                       return true;
                     } else {
-                      if (forWrite) {
-                        check.canCreateEntity(r, identifiedKey, null);
+                      if (accessCheckParams.forWrite()) {
+                        check.canCreateEntity(r, identifiedKey, accessCheckParams.components());
                       }
                       return false;
                     }

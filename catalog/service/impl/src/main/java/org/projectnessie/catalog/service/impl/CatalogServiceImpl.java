@@ -102,6 +102,7 @@ import org.projectnessie.model.ContentResponse;
 import org.projectnessie.model.GetMultipleContentsResponse;
 import org.projectnessie.model.Reference;
 import org.projectnessie.nessie.tasks.api.TasksService;
+import org.projectnessie.services.authz.AccessCheckParams;
 import org.projectnessie.services.spi.ContentService;
 import org.projectnessie.services.spi.TreeService;
 import org.projectnessie.storage.uri.StorageUri;
@@ -142,7 +143,8 @@ public class CatalogServiceImpl implements CatalogService {
   public Stream<Supplier<CompletionStage<SnapshotResponse>>> retrieveSnapshots(
       SnapshotReqParams reqParams,
       List<ContentKey> keys,
-      Consumer<Reference> effectiveReferenceConsumer)
+      Consumer<Reference> effectiveReferenceConsumer,
+      AccessCheckParams accessCheckParams)
       throws NessieNotFoundException {
     ParsedReference reference = reqParams.ref();
 
@@ -154,7 +156,7 @@ public class CatalogServiceImpl implements CatalogService {
 
     GetMultipleContentsResponse contentResponse =
         contentService.getMultipleContents(
-            reference.name(), reference.hashWithRelativeSpec(), keys, false, false);
+            reference.name(), reference.hashWithRelativeSpec(), keys, false, accessCheckParams);
 
     IcebergStuff icebergStuff = icebergStuff();
 
@@ -197,7 +199,7 @@ public class CatalogServiceImpl implements CatalogService {
       SnapshotReqParams reqParams,
       ContentKey key,
       @Nullable Content.Type expectedType,
-      boolean forWrite)
+      AccessCheckParams accessCheckParams)
       throws NessieNotFoundException {
 
     ParsedReference reference = reqParams.ref();
@@ -210,7 +212,7 @@ public class CatalogServiceImpl implements CatalogService {
 
     ContentResponse contentResponse =
         contentService.getContent(
-            key, reference.name(), reference.hashWithRelativeSpec(), false, forWrite);
+            key, reference.name(), reference.hashWithRelativeSpec(), false, accessCheckParams);
     Content content = contentResponse.getContent();
     if (expectedType != null && !content.getType().equals(expectedType)) {
       throw new NessieContentNotFoundException(key, reference.name());
@@ -347,7 +349,7 @@ public class CatalogServiceImpl implements CatalogService {
             reference.hashWithRelativeSpec(),
             commit.getOperations().stream().map(CatalogOperation::getKey).collect(toList()),
             false,
-            true);
+            AccessCheckParams.CATALOG_CONTENT_READ_FOR_COMMIT);
 
     checkArgument(
         requireNonNull(contentsResponse.getEffectiveReference()) instanceof Branch,

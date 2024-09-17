@@ -70,6 +70,7 @@ import org.projectnessie.model.Operation;
 import org.projectnessie.model.Operations;
 import org.projectnessie.model.Reference;
 import org.projectnessie.model.TableReference;
+import org.projectnessie.services.authz.AccessCheckParams;
 import org.projectnessie.services.config.ServerConfig;
 import org.projectnessie.services.spi.ContentService;
 import org.projectnessie.services.spi.PagedCountingResponseHandler;
@@ -166,7 +167,7 @@ abstract class IcebergApiV1ResourceBase extends AbstractCatalogResource {
             ref.hashWithRelativeSpec(),
             List.of(toTableRef.contentKey(), fromTableRef.contentKey()),
             false,
-            false);
+            AccessCheckParams.CATALOG_CONTENT_CHECK_EXISTS);
     Map<ContentKey, Content> contentsMap = contents.toContentsMap();
     Content existingFrom = contentsMap.get(fromTableRef.contentKey());
     if (existingFrom == null || !expectedContentType.equals(existingFrom.getType())) {
@@ -191,7 +192,7 @@ abstract class IcebergApiV1ResourceBase extends AbstractCatalogResource {
     checkArgument(
         effectiveRef instanceof Branch,
         format("Must only rename a %s on a branch, but target is %s", entityType, effectiveRef));
-
+y
     Operations ops =
         ImmutableOperations.builder()
             .addOperations(
@@ -317,13 +318,18 @@ abstract class IcebergApiV1ResourceBase extends AbstractCatalogResource {
     return properties;
   }
 
-  void createEntityVerifyNotExists(TableRef tableRef, Content.Type type)
+  void createEntityVerifyNotExists(
+      TableRef tableRef, Content.Type type, AccessCheckParams accessCheckParams)
       throws NessieNotFoundException, CatalogEntityAlreadyExistsException {
     ParsedReference ref = requireNonNull(tableRef.reference());
 
     GetMultipleContentsResponse contentResponse =
         contentService.getMultipleContents(
-            ref.name(), ref.hashWithRelativeSpec(), List.of(tableRef.contentKey()), false, true);
+            ref.name(),
+            ref.hashWithRelativeSpec(),
+            List.of(tableRef.contentKey()),
+            false,
+            accessCheckParams);
     if (!contentResponse.getContents().isEmpty()) {
       Content existing = contentResponse.getContents().get(0).getContent();
       throw new CatalogEntityAlreadyExistsException(
@@ -333,12 +339,19 @@ abstract class IcebergApiV1ResourceBase extends AbstractCatalogResource {
   }
 
   ContentResponse fetchIcebergEntity(
-      TableRef tableRef, Content.Type expectedType, String expectedTypeName, boolean forWrite)
+      TableRef tableRef,
+      Content.Type expectedType,
+      String expectedTypeName,
+      AccessCheckParams accessCheckParams)
       throws NessieNotFoundException {
     ParsedReference ref = requireNonNull(tableRef.reference());
     ContentResponse content =
         contentService.getContent(
-            tableRef.contentKey(), ref.name(), ref.hashWithRelativeSpec(), false, forWrite);
+            tableRef.contentKey(),
+            ref.name(),
+            ref.hashWithRelativeSpec(),
+            false,
+            accessCheckParams);
     checkArgument(
         content.getContent().getType().equals(expectedType),
         "Expecting an Iceberg %s, but got type %s",

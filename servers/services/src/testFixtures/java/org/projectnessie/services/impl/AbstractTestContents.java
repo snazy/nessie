@@ -48,6 +48,7 @@ import org.projectnessie.model.Operation.Delete;
 import org.projectnessie.model.Operation.Put;
 import org.projectnessie.model.Operation.Unchanged;
 import org.projectnessie.model.UDF;
+import org.projectnessie.services.authz.AccessCheckParams;
 
 public abstract class AbstractTestContents extends BaseTestServiceImpl {
 
@@ -293,7 +294,11 @@ public abstract class AbstractTestContents extends BaseTestServiceImpl {
       soft.assertThat(
               contentApi()
                   .getContent(
-                      fixedContentKey, committed.getName(), committed.getHash(), false, false))
+                      fixedContentKey,
+                      committed.getName(),
+                      committed.getHash(),
+                      false,
+                      AccessCheckParams.nessieApi(false)))
           .extracting(ContentResponse::getContent)
           .extracting(this::clearIdOnContent)
           .isEqualTo(put.getContent());
@@ -320,7 +325,11 @@ public abstract class AbstractTestContents extends BaseTestServiceImpl {
               () ->
                   contentApi()
                       .getContent(
-                          fixedContentKey, committed.getName(), committed.getHash(), false, false))
+                          fixedContentKey,
+                          committed.getName(),
+                          committed.getHash(),
+                          false,
+                          AccessCheckParams.nessieApi(false)))
           .isInstanceOf(NessieNotFoundException.class);
 
       // Compare operation on HEAD commit with the committed operation
@@ -343,7 +352,11 @@ public abstract class AbstractTestContents extends BaseTestServiceImpl {
       soft.assertThat(
               contentApi()
                   .getContent(
-                      fixedContentKey, committed.getName(), committed.getHash(), false, false))
+                      fixedContentKey,
+                      committed.getName(),
+                      committed.getHash(),
+                      false,
+                      AccessCheckParams.nessieApi(false)))
           .extracting(ContentResponse::getContent)
           .extracting(this::clearIdOnContent)
           .isEqualTo(contentAndOperationType.prepare.getContent());

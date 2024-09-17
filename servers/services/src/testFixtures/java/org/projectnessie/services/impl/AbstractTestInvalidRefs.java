@@ -23,6 +23,7 @@ import org.projectnessie.error.BaseNessieClientServerException;
 import org.projectnessie.error.NessieNotFoundException;
 import org.projectnessie.model.Branch;
 import org.projectnessie.model.ContentKey;
+import org.projectnessie.services.authz.AccessCheckParams;
 
 public abstract class AbstractTestInvalidRefs extends BaseTestServiceImpl {
 
@@ -51,7 +52,11 @@ public abstract class AbstractTestInvalidRefs extends BaseTestServiceImpl {
             () ->
                 contentApi()
                     .getContent(
-                        ContentKey.of("table0"), branch.getName(), invalidHash, false, false))
+                        ContentKey.of("table0"),
+                        branch.getName(),
+                        invalidHash,
+                        false,
+                        AccessCheckParams.nessieApi(false)))
         .isInstanceOf(NessieNotFoundException.class)
         .hasMessageContaining(String.format("Commit '%s' not found", invalidHash));
   }

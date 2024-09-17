@@ -62,6 +62,7 @@ import org.projectnessie.objectstoragemock.Bucket;
 import org.projectnessie.objectstoragemock.MockObject;
 import org.projectnessie.services.authz.AbstractBatchAccessChecker;
 import org.projectnessie.services.authz.AccessCheckException;
+import org.projectnessie.services.authz.AccessCheckParams;
 import org.projectnessie.services.authz.Check;
 import org.projectnessie.services.authz.Check.CheckType;
 import org.projectnessie.storage.uri.StorageUri;
@@ -204,7 +205,10 @@ public class TestCatalogServiceImpl extends AbstractCatalogService {
     SnapshotResponse snap =
         catalogService
             .retrieveSnapshot(
-                forSnapshotHttpReq(committed, "ICEBERG", "2"), key, ICEBERG_TABLE, false)
+                forSnapshotHttpReq(committed, "ICEBERG", "2"),
+                key,
+                ICEBERG_TABLE,
+                AccessCheckParams.CATALOG_CONTENT_CHECK_FOR_READ)
             .toCompletableFuture()
             .get(5, MINUTES);
 
@@ -247,8 +251,8 @@ public class TestCatalogServiceImpl extends AbstractCatalogService {
 
   /**
    * Verify behavior of {@link CatalogService#retrieveSnapshot(SnapshotReqParams, ContentKey,
-   * Content.Type, boolean)} against related Nessie {@link CheckType check types} for read and write
-   * intents.
+   * Content.Type, org.projectnessie.services.authz.AccessCheckParams)} against related Nessie
+   * {@link CheckType check types} for read and write intents.
    */
   @Test
   public void retrieveSnapshotAccessChecks() throws Exception {
@@ -290,7 +294,7 @@ public class TestCatalogServiceImpl extends AbstractCatalogService {
                               forSnapshotHttpReq(committed, "ICEBERG", "2"),
                               key,
                               ICEBERG_TABLE,
-                              false)
+                              AccessCheckParams.CATALOG_CONTENT_CHECK_FOR_READ)
                           .toCompletableFuture()
                           .get(5, MINUTES))
               .describedAs("forRead with %s", checkType);
@@ -308,7 +312,7 @@ public class TestCatalogServiceImpl extends AbstractCatalogService {
                               forSnapshotHttpReq(committed, "ICEBERG", "2"),
                               key,
                               ICEBERG_TABLE,
-                              true)
+                              AccessCheckParams.CATALOG_CONTENT_CHECK_FOR_CREATE)
                           .toCompletableFuture()
                           .get(5, MINUTES))
               .describedAs("forWrite with %s", checkType);

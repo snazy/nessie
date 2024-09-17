@@ -19,6 +19,7 @@ plugins { id("nessie-conventions-server") }
 publishingHelper { mavenName = "Nessie - Catalog - Service Common" }
 
 dependencies {
+  implementation(project(":nessie-authz-spi"))
   implementation(project(":nessie-model"))
   implementation(project(":nessie-catalog-files-api"))
   implementation(project(":nessie-catalog-model"))

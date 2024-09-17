@@ -31,6 +31,7 @@ import org.projectnessie.model.CommitMeta;
 import org.projectnessie.model.Content;
 import org.projectnessie.model.ContentKey;
 import org.projectnessie.model.Reference;
+import org.projectnessie.services.authz.AccessCheckParams;
 
 public interface CatalogService {
 
@@ -41,7 +42,8 @@ public interface CatalogService {
    *     more.
    * @param key content key of the table or view
    * @param expectedType The expected content-type.
-   * @param forWrite indicates whether access checks shall be performed for a write/update request
+   * @param accessCheckParams indicates whether access checks shall be performed for a write/update
+   *     request
    * @return The response is either a response object or callback to produce the result. The latter
    *     is useful to return results that are quite big, for example Iceberg manifest lists or
    *     manifest files.
@@ -50,13 +52,14 @@ public interface CatalogService {
       SnapshotReqParams reqParams,
       ContentKey key,
       @Nullable Content.Type expectedType,
-      boolean forWrite)
+      AccessCheckParams accessCheckParams)
       throws NessieNotFoundException;
 
   Stream<Supplier<CompletionStage<SnapshotResponse>>> retrieveSnapshots(
       SnapshotReqParams reqParams,
       List<ContentKey> keys,
-      Consumer<Reference> effectiveReferenceConsumer)
+      Consumer<Reference> effectiveReferenceConsumer,
+      AccessCheckParams accessCheckParams)
       throws NessieNotFoundException;
 
   CompletionStage<Stream<SnapshotResponse>> commit(

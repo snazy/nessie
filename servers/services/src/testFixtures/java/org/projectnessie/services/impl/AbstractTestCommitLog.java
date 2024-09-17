@@ -52,6 +52,7 @@ import org.projectnessie.model.Operation.Delete;
 import org.projectnessie.model.Operation.Put;
 import org.projectnessie.model.Operation.Unchanged;
 import org.projectnessie.model.Reference;
+import org.projectnessie.services.authz.AccessCheckParams;
 import org.projectnessie.versioned.DetachedRef;
 
 public abstract class AbstractTestCommitLog extends BaseTestServiceImpl {
@@ -392,7 +393,10 @@ public abstract class AbstractTestCommitLog extends BaseTestServiceImpl {
       Put op;
       try {
         Content existing =
-            contentApi().getContent(key, branch.getName(), currentHash, false, false).getContent();
+            contentApi()
+                .getContent(
+                    key, branch.getName(), currentHash, false, AccessCheckParams.nessieApi(false))
+                .getContent();
         op = Put.of(key, IcebergTable.of("some-file-" + i, 42, 42, 42, 42, existing.getId()));
       } catch (NessieNotFoundException notFound) {
         op = Put.of(key, IcebergTable.of("some-file-" + i, 42, 42, 42, 42));

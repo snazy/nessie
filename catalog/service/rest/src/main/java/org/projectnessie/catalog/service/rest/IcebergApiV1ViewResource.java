@@ -70,6 +70,7 @@ import org.projectnessie.model.IcebergView;
 import org.projectnessie.model.ImmutableOperations;
 import org.projectnessie.model.Operation.Delete;
 import org.projectnessie.model.Operations;
+import org.projectnessie.services.authz.AccessCheckParams;
 
 /** Handles Iceberg REST API v1 endpoints that are associated with views. */
 @RequestScoped
@@ -110,7 +111,8 @@ public class IcebergApiV1ViewResource extends IcebergApiV1ResourceBase {
             addViewVersion(createViewRequest.viewVersion()),
             setCurrentViewVersion(-1L));
 
-    createEntityVerifyNotExists(tableRef, ICEBERG_VIEW);
+    createEntityVerifyNotExists(
+        tableRef, ICEBERG_VIEW, AccessCheckParams.CATALOG_CONTENT_CHECK_FOR_CREATE);
 
     IcebergCommitViewRequest updateTableReq =
         IcebergCommitViewRequest.builder()
@@ -152,7 +154,8 @@ public class IcebergApiV1ViewResource extends IcebergApiV1ResourceBase {
       throws IOException {
     TableRef tableRef = decodeTableRef(prefix, namespace, view);
 
-    ContentResponse resp = fetchIcebergView(tableRef, false);
+    ContentResponse resp =
+        fetchIcebergView(tableRef, AccessCheckParams.CATALOG_CONTENT_CHECK_FOR_DROP);
     Branch ref = checkBranch(resp.getEffectiveReference());
 
     Operations ops =
@@ -164,9 +167,9 @@ public class IcebergApiV1ViewResource extends IcebergApiV1ResourceBase {
     treeService.commitMultipleOperations(ref.getName(), ref.getHash(), ops);
   }
 
-  private ContentResponse fetchIcebergView(TableRef tableRef, boolean forWrite)
+  private ContentResponse fetchIcebergView(TableRef tableRef, AccessCheckParams accessCheckParams)
       throws NessieNotFoundException {
-    return fetchIcebergEntity(tableRef, ICEBERG_VIEW, "view", forWrite);
+    return fetchIcebergEntity(tableRef, ICEBERG_VIEW, "view", accessCheckParams);
   }
 
   @Operation(operationId = "iceberg.v1.listViews")
@@ -202,16 +205,18 @@ public class IcebergApiV1ViewResource extends IcebergApiV1ResourceBase {
       throws IOException {
 
     TableRef tableRef = decodeTableRef(prefix, namespace, view);
-    return loadView(tableRef);
+    return loadView(tableRef, AccessCheckParams.CATALOG_CONTENT_CHECK_FOR_READ);
   }
 
-  private Uni<IcebergLoadViewResponse> loadView(TableRef tableRef) throws NessieNotFoundException {
+  private Uni<IcebergLoadViewResponse> loadView(
+      TableRef tableRef, AccessCheckParams accessCheckParams) throws NessieNotFoundException {
     ContentKey key = tableRef.contentKey();
 
     return snapshotResponse(
             key,
             SnapshotReqParams.forSnapshotHttpReq(tableRef.reference(), "iceberg", null),
-            ICEBERG_VIEW)
+            ICEBERG_VIEW,
+            accessCheckParams)
         .map(snap -> loadViewResultFromSnapshotResponse(snap, IcebergLoadViewResponse.builder()));
   }
 
@@ -238,7 +243,7 @@ public class IcebergApiV1ViewResource extends IcebergApiV1ResourceBase {
       throws IOException {
     TableRef tableRef = decodeTableRef(prefix, namespace, view);
 
-    fetchIcebergView(tableRef, false);
+    fetchIcebergView(tableRef, AccessCheckParams.CATALOG_CONTENT_CHECK_EXISTS);
   }
 
   @Operation(operationId = "iceberg.v1.updateView")

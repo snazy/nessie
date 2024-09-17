@@ -65,6 +65,7 @@ import org.projectnessie.model.ReferenceHistoryResponse;
 import org.projectnessie.model.ReferencesResponse;
 import org.projectnessie.model.SingleReferenceResponse;
 import org.projectnessie.model.ser.Views;
+import org.projectnessie.services.authz.AccessCheckParams;
 import org.projectnessie.services.spi.ConfigService;
 import org.projectnessie.services.spi.ContentService;
 import org.projectnessie.services.spi.DiffService;
@@ -348,7 +349,11 @@ public class RestV2TreeResource implements HttpTreeApi {
     ParsedReference reference = parseRefPathString(ref);
     return content()
         .getContent(
-            key, reference.name(), reference.hashWithRelativeSpec(), withDocumentation, forWrite);
+            key,
+            reference.name(),
+            reference.hashWithRelativeSpec(),
+            withDocumentation,
+            AccessCheckParams.nessieApi(forWrite));
   }
 
   @JsonView(Views.V2.class)
@@ -373,7 +378,7 @@ public class RestV2TreeResource implements HttpTreeApi {
             reference.hashWithRelativeSpec(),
             request.getRequestedKeys(),
             withDocumentation,
-            forWrite);
+            AccessCheckParams.nessieApi(forWrite));
   }
 
   @JsonView(Views.V2.class)

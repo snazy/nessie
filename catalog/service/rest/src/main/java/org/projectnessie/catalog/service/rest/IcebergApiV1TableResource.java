@@ -106,6 +106,7 @@ import org.projectnessie.model.ImmutableOperations;
 import org.projectnessie.model.Operation.Delete;
 import org.projectnessie.model.Operation.Put;
 import org.projectnessie.model.Operations;
+import org.projectnessie.services.authz.AccessCheckParams;
 import org.projectnessie.storage.uri.StorageUri;
 
 /** Handles Iceberg REST API v1 endpoints that are associated with tables. */
@@ -137,11 +138,16 @@ public class IcebergApiV1TableResource extends IcebergApiV1ResourceBase {
 
     TableRef tableRef = decodeTableRef(prefix, namespace, table);
 
-    return this.loadTable(tableRef, prefix, dataAccess, false);
+    return this.loadTable(
+        tableRef, prefix, dataAccess, false, AccessCheckParams.CATALOG_CONTENT_CHECK_FOR_READ);
   }
 
   private Uni<IcebergLoadTableResponse> loadTable(
-      TableRef tableRef, String prefix, String dataAccess, boolean writeAccessValidated)
+      TableRef tableRef,
+      String prefix,
+      String dataAccess,
+      boolean writeAccessValidated,
+      AccessCheckParams accessCheckParams)
       throws NessieNotFoundException {
     ContentKey key = tableRef.contentKey();
 
@@ -150,7 +156,8 @@ public class IcebergApiV1TableResource extends IcebergApiV1ResourceBase {
     return snapshotResponse(
             key,
             SnapshotReqParams.forSnapshotHttpReq(tableRef.reference(), "iceberg", null),
-            ICEBERG_TABLE)
+            ICEBERG_TABLE,
+            accessCheckParams)
         .map(
             snap ->
                 loadTableResultFromSnapshotResponse(
@@ -160,7 +167,8 @@ public class IcebergApiV1TableResource extends IcebergApiV1ResourceBase {
                     prefix,
                     key,
                     dataAccess,
-                    writeAccessValidated));
+                    writeAccessValidated,
+                    accessCheckParams));
   }
 
   private <R extends IcebergLoadTableResult, B extends IcebergLoadTableResult.Builder<R, B>>
@@ -171,7 +179,8 @@ public class IcebergApiV1TableResource extends IcebergApiV1ResourceBase {
           String prefix,
           ContentKey contentKey,
           String dataAccess,
-          boolean writeAccessValidated) {
+          boolean writeAccessValidated,
+          AccessCheckParams accessCheckParams) {
     IcebergTableMetadata tableMetadata =
         (IcebergTableMetadata)
             snap.entityObject()
@@ -194,7 +203,7 @@ public class IcebergApiV1TableResource extends IcebergApiV1ResourceBase {
             snap.effectiveReference().getName(),
             snap.effectiveReference().getHash(),
             false,
-            true);
+            accessCheckParams);
         writeAccessValidated = true;
       } catch (Exception ignore) {
       }
@@ -250,9 +259,9 @@ public class IcebergApiV1TableResource extends IcebergApiV1ResourceBase {
         .build();
   }
 
-  private ContentResponse fetchIcebergTable(TableRef tableRef, boolean forWrite)
+  private ContentResponse fetchIcebergTable(TableRef tableRef, AccessCheckParams accessCheckParams)
       throws NessieNotFoundException {
-    return fetchIcebergEntity(tableRef, ICEBERG_TABLE, "table", forWrite);
+    return fetchIcebergEntity(tableRef, ICEBERG_TABLE, "table", accessCheckParams);
   }
 
   @Operation(operationId = "iceberg.v1.createTable")
@@ -293,7 +302,9 @@ public class IcebergApiV1TableResource extends IcebergApiV1ResourceBase {
             setDefaultSortOrder(-1),
             setProperties(properties));
 
-    createEntityVerifyNotExists(tableRef, ICEBERG_TABLE);
+    AccessCheckParams accessCheckParams = AccessCheckParams.CATALOG_CONTENT_CHECK_FOR_CREATE;
+
+    createEntityVerifyNotExists(tableRef, ICEBERG_TABLE, accessCheckParams);
 
     WarehouseConfig warehouse = catalogConfig.getWarehouse(tableRef.warehouse());
 
@@ -345,7 +356,8 @@ public class IcebergApiV1TableResource extends IcebergApiV1ResourceBase {
                     prefix,
                     tableRef.contentKey(),
                     dataAccess,
-                    true));
+                    true,
+                    accessCheckParams));
   }
 
   @Operation(operationId = "iceberg.v1.registerTable")
@@ -361,8 +373,9 @@ public class IcebergApiV1TableResource extends IcebergApiV1ResourceBase {
 
     TableRef tableRef = decodeTableRef(prefix, namespace, registerTableRequest.name());
 
+    AccessCheckParams accessCheckParams = AccessCheckParams.CATALOG_CONTENT_CHECK_FOR_CREATE;
     try {
-      ContentResponse response = fetchIcebergTable(tableRef, false);
+      ContentResponse response = fetchIcebergTable(tableRef, accessCheckParams);
       throw new CatalogEntityAlreadyExistsException(
           false, ICEBERG_TABLE, tableRef.contentKey(), response.getContent().getType());
     } catch (NessieContentNotFoundException e) {
@@ -383,7 +396,7 @@ public class IcebergApiV1TableResource extends IcebergApiV1ResourceBase {
 
       TableRef ctr = catalogTableRef.get();
 
-      ContentResponse contentResponse = fetchIcebergTable(ctr, true);
+      ContentResponse contentResponse = fetchIcebergTable(ctr, accessCheckParams);
       // It's technically a new table for Nessie, so need to clear the content-ID.
       Content newContent = contentResponse.getContent().withId(null);
 
@@ -409,7 +422,8 @@ public class IcebergApiV1TableResource extends IcebergApiV1ResourceBase {
               tableRef.warehouse()),
           prefix,
           dataAccess,
-          true);
+          true,
+          accessCheckParams);
     } else if (nessieCatalogUri) {
       throw new IllegalArgumentException(
           "Cannot register an Iceberg table using the URI "
@@ -456,7 +470,8 @@ public class IcebergApiV1TableResource extends IcebergApiV1ResourceBase {
             tableRef.warehouse()),
         prefix,
         dataAccess,
-        true);
+        true,
+        accessCheckParams);
   }
 
   @Operation(operationId = "iceberg.v1.dropTable")
@@ -471,7 +486,8 @@ public class IcebergApiV1TableResource extends IcebergApiV1ResourceBase {
       throws IOException {
     TableRef tableRef = decodeTableRef(prefix, namespace, table);
 
-    ContentResponse resp = fetchIcebergTable(tableRef, false);
+    ContentResponse resp =
+        fetchIcebergTable(tableRef, AccessCheckParams.CATALOG_CONTENT_CHECK_FOR_DROP);
     Branch ref = checkBranch(resp.getEffectiveReference());
 
     Operations ops =
@@ -526,7 +542,7 @@ public class IcebergApiV1TableResource extends IcebergApiV1ResourceBase {
       throws IOException {
     TableRef tableRef = decodeTableRef(prefix, namespace, table);
 
-    fetchIcebergTable(tableRef, false);
+    fetchIcebergTable(tableRef, AccessCheckParams.CATALOG_CONTENT_CHECK_EXISTS);
   }
 
   @Operation(operationId = "iceberg.v1.tableMetrics")

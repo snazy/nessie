@@ -56,6 +56,7 @@ import org.projectnessie.model.ContentKey;
 import org.projectnessie.model.IcebergTable;
 import org.projectnessie.model.IcebergView;
 import org.projectnessie.model.Reference.ReferenceType;
+import org.projectnessie.services.authz.AccessCheckParams;
 
 @ExtendWith(MockitoExtension.class)
 class TestIcebergS3SignParams {
@@ -121,7 +122,8 @@ class TestIcebergS3SignParams {
   @ParameterizedTest
   @ValueSource(strings = {"GET", "HEAD", "OPTIONS", "TRACE"})
   void verifyAndSignSuccessRead(String method) throws Exception {
-    when(catalogService.retrieveSnapshot(any(), eq(key), isNull(), eq(false)))
+    when(catalogService.retrieveSnapshot(
+            any(), eq(key), isNull(), eq(AccessCheckParams.CATALOG_CONTENT_CHECK_FOR_FILE_READ)))
         .thenReturn(successStage);
     when(signer.sign(any())).thenReturn(signingResponse);
     IcebergS3SignParams icebergSigner =
@@ -135,7 +137,8 @@ class TestIcebergS3SignParams {
   @ParameterizedTest
   @ValueSource(strings = {"PUT", "POST", "DELETE", "PATCH"})
   void verifyAndSignSuccessWrite(String method) throws Exception {
-    when(catalogService.retrieveSnapshot(any(), eq(key), isNull(), eq(true)))
+    when(catalogService.retrieveSnapshot(
+            any(), eq(key), isNull(), eq(AccessCheckParams.CATALOG_CONTENT_CHECK_FOR_FILE_WRITE)))
         .thenReturn(successStage);
     when(signer.sign(any())).thenReturn(signingResponse);
     IcebergS3SignParams icebergSigner =
@@ -168,7 +171,8 @@ class TestIcebergS3SignParams {
             key,
             view,
             nessieViewSnapshot);
-    when(catalogService.retrieveSnapshot(any(), eq(key), isNull(), eq(true)))
+    when(catalogService.retrieveSnapshot(
+            any(), eq(key), isNull(), eq(AccessCheckParams.CATALOG_CONTENT_CHECK_FOR_FILE_WRITE)))
         .thenReturn(CompletableFuture.completedStage(snapshotResponse));
     when(signer.sign(any())).thenReturn(signingResponse);
     IcebergS3SignParams icebergSigner = newBuilder().build();
@@ -178,7 +182,8 @@ class TestIcebergS3SignParams {
 
   @Test
   void verifyAndSignSuccessContentNotFound() throws Exception {
-    when(catalogService.retrieveSnapshot(any(), eq(key), isNull(), eq(true)))
+    when(catalogService.retrieveSnapshot(
+            any(), eq(key), isNull(), eq(AccessCheckParams.CATALOG_CONTENT_CHECK_FOR_FILE_WRITE)))
         .thenThrow(new NessieContentNotFoundException(key, "main"));
     when(signer.sign(any())).thenReturn(signingResponse);
     IcebergS3SignParams icebergSigner = newBuilder().build();
@@ -188,7 +193,8 @@ class TestIcebergS3SignParams {
 
   @Test
   void verifyAndSignFailureReferenceNotFound() throws Exception {
-    when(catalogService.retrieveSnapshot(any(), eq(key), isNull(), eq(true)))
+    when(catalogService.retrieveSnapshot(
+            any(), eq(key), isNull(), eq(AccessCheckParams.CATALOG_CONTENT_CHECK_FOR_FILE_WRITE)))
         .thenThrow(new NessieReferenceNotFoundException("ref not found"));
     IcebergS3SignParams icebergSigner = newBuilder().build();
     Uni<IcebergS3SignResponse> response = icebergSigner.verifyAndSign();
@@ -199,7 +205,8 @@ class TestIcebergS3SignParams {
   void verifyAndSignSuccessImportFailed() throws Exception {
     CompletionStage<SnapshotResponse> importFailedStage =
         CompletableFuture.failedStage(new RuntimeException("import failed"));
-    when(catalogService.retrieveSnapshot(any(), eq(key), isNull(), eq(true)))
+    when(catalogService.retrieveSnapshot(
+            any(), eq(key), isNull(), eq(AccessCheckParams.CATALOG_CONTENT_CHECK_FOR_FILE_WRITE)))
         .thenReturn(importFailedStage);
     when(signer.sign(any())).thenReturn(signingResponse);
     IcebergS3SignParams icebergSigner = newBuilder().build();
@@ -210,7 +217,8 @@ class TestIcebergS3SignParams {
   @ParameterizedTest
   @ValueSource(strings = {"GET", "HEAD", "OPTIONS", "TRACE"})
   void verifyAndSignSuccessReadMetadataLocation(String method) throws Exception {
-    when(catalogService.retrieveSnapshot(any(), eq(key), isNull(), eq(false)))
+    when(catalogService.retrieveSnapshot(
+            any(), eq(key), isNull(), eq(AccessCheckParams.CATALOG_CONTENT_CHECK_FOR_FILE_READ)))
         .thenReturn(successStage);
     when(signer.sign(any())).thenReturn(signingResponse);
     IcebergS3SignParams icebergSigner =
@@ -224,7 +232,8 @@ class TestIcebergS3SignParams {
   @ParameterizedTest
   @ValueSource(strings = {"PUT", "POST", "DELETE", "PATCH"})
   void verifyAndSignFailureWriteMetadataLocation(String method) throws Exception {
-    when(catalogService.retrieveSnapshot(any(), eq(key), isNull(), eq(true)))
+    when(catalogService.retrieveSnapshot(
+            any(), eq(key), isNull(), eq(AccessCheckParams.CATALOG_CONTENT_CHECK_FOR_FILE_WRITE)))
         .thenReturn(successStage);
     IcebergS3SignParams icebergSigner =
         newBuilder()
@@ -242,7 +251,8 @@ class TestIcebergS3SignParams {
   @ParameterizedTest
   @ValueSource(strings = {"GET", "HEAD", "OPTIONS", "TRACE"})
   void verifyAndSignSuccessReadAncientLocation(String method) throws Exception {
-    when(catalogService.retrieveSnapshot(any(), eq(key), isNull(), eq(false)))
+    when(catalogService.retrieveSnapshot(
+            any(), eq(key), isNull(), eq(AccessCheckParams.CATALOG_CONTENT_CHECK_FOR_FILE_READ)))
         .thenReturn(successStage);
     when(signer.sign(any())).thenReturn(signingResponse);
     IcebergS3SignParams icebergSigner =
@@ -261,7 +271,8 @@ class TestIcebergS3SignParams {
   @ParameterizedTest
   @ValueSource(strings = {"PUT", "POST", "DELETE", "PATCH"})
   void verifyAndSignFailureWriteAncientLocation(String method) throws Exception {
-    when(catalogService.retrieveSnapshot(any(), eq(key), isNull(), eq(true)))
+    when(catalogService.retrieveSnapshot(
+            any(), eq(key), isNull(), eq(AccessCheckParams.CATALOG_CONTENT_CHECK_FOR_FILE_WRITE)))
         .thenReturn(successStage);
     IcebergS3SignParams icebergSigner =
         newBuilder()
@@ -279,7 +290,8 @@ class TestIcebergS3SignParams {
 
   @Test
   void verifyAndSignFailureWrongBaseLocation() throws Exception {
-    when(catalogService.retrieveSnapshot(any(), eq(key), isNull(), eq(true)))
+    when(catalogService.retrieveSnapshot(
+            any(), eq(key), isNull(), eq(AccessCheckParams.CATALOG_CONTENT_CHECK_FOR_FILE_WRITE)))
         .thenReturn(successStage);
     IcebergS3SignParams icebergSigner =
         newBuilder()

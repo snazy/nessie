@@ -48,6 +48,7 @@ import org.projectnessie.error.BaseNessieClientServerException;
 import org.projectnessie.error.NessieNotFoundException;
 import org.projectnessie.model.ContentKey;
 import org.projectnessie.model.Reference;
+import org.projectnessie.services.authz.AccessCheckParams;
 
 @RequestScoped
 @Consumes(MediaType.APPLICATION_JSON)
@@ -73,7 +74,11 @@ public class NessieCatalogResource extends AbstractCatalogResource {
 
     // This operation can block --> @Blocking
     Stream<Supplier<CompletionStage<SnapshotResponse>>> snapshots =
-        catalogService.retrieveSnapshots(reqParams, keys, effectiveReference::set);
+        catalogService.retrieveSnapshots(
+            reqParams,
+            keys,
+            effectiveReference::set,
+            AccessCheckParams.CATALOG_CONTENT_CHECK_FOR_READ);
 
     Multi<Object> multi =
         Multi.createFrom()
@@ -105,7 +110,10 @@ public class NessieCatalogResource extends AbstractCatalogResource {
       @QueryParam("specVersion") String specVersion)
       throws NessieNotFoundException {
     return snapshotBased(
-        key, forSnapshotHttpReq(parseRefPathString(ref), format, specVersion), ICEBERG_TABLE);
+        key,
+        forSnapshotHttpReq(parseRefPathString(ref), format, specVersion),
+        ICEBERG_TABLE,
+        AccessCheckParams.CATALOG_CONTENT_CHECK_FOR_READ);
   }
 
   @POST
