@@ -254,7 +254,11 @@ public class IcebergConfigurer {
 
     objectIO.configureIcebergTable(
         locations,
-        config::put,
+        (k, v) -> {
+          if (!nessieSnapshot.properties().containsKey(k)) {
+            config.put(k, v);
+          }
+        },
         () ->
             configureS3RequestSigningForTable(
                 locations, accessDelegationPredicate, prefix, contentKey, config::put),
