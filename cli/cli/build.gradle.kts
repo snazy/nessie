@@ -15,7 +15,10 @@
  */
 
 import com.github.jengelman.gradle.plugins.shadow.tasks.ShadowJar
+import kotlin.jvm.java
 import org.apache.tools.ant.taskdefs.condition.Os
+import shadow.DeduplicatingResourceTransformer
+import shadow.MergePropertiesResourceTransformer
 
 plugins {
   id("nessie-conventions-java11")
@@ -111,6 +114,29 @@ tasks.withType<ProcessResources>().configureEach {
 
 tasks.named<ShadowJar>("shadowJar").configure {
   manifest { attributes["Main-Class"] = "org.projectnessie.nessie.cli.cli.NessieCliMain" }
+
+  // These 2 transformers effectively prevent having unexpected duplicates in the shadow jar.
+  // But retain duplicate entries from _known_ different dependency _versions_ (shaded and unshaded
+  // ones).
+  transform(MergePropertiesResourceTransformer::class.java) {
+    dontFail.set(false)
+    // Check all pom.properties (catches duplicate dependencies)
+    include("META-INF/maven/*/*/pom.properties")
+    // Ignore Guava - from
+    // - iceberg-bundled-guava (shaded)
+    // - guava
+    exclude("META-INF/maven/com.google.guava/guava/pom.properties")
+
+    // Netty has this in every jar
+    include("META-INF/io.netty.versions.properties")
+    // Ignore property duplicates for Netty, grpc brings a shaded Netty as well
+    ignoreDuplicates.include("META-INF/io.netty.versions.properties")
+  }
+  transform(DeduplicatingResourceTransformer::class.java) {
+    dontFail.set(false)
+    // Ignore Guava - see above
+    exclude("META-INF/maven/com.google.guava/guava/pom.*")
+  }
 }
 
 // Testcontainers is not supported on Windows :(

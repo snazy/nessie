@@ -15,6 +15,9 @@
  */
 
 import com.github.jengelman.gradle.plugins.shadow.tasks.ShadowJar
+import kotlin.jvm.java
+import shadow.DeduplicatingResourceTransformer
+import shadow.MergePropertiesResourceTransformer
 
 plugins {
   id("com.gradleup.shadow")
@@ -174,4 +177,64 @@ val copyUberJar by
 shadowJar.configure {
   manifest { attributes["Main-Class"] = mainClassName }
   finalizedBy(copyUberJar)
+
+  // These 2 transformers effectively prevent having unexpected duplicates in the shadow jar.
+  // But retain duplicate entries from _known_ different dependency _versions_ (shaded and unshaded
+  // ones).
+  transform(MergePropertiesResourceTransformer::class.java) {
+    dontFail.set(false)
+    // Check all pom.properties (catches duplicate dependencies)
+    include("META-INF/maven/*/*/pom.properties")
+    // Exclude Guava - comes from:
+    // - iceberg-bundled-guava (shaded)
+    // - guava
+    // - org.apache.hadoop.thirdparty:hadoop-shaded-guava
+    exclude("META-INF/maven/com.google.guava/guava/pom.properties")
+    // Exclude failureaccess - comes from:
+    // - guava
+    // - iceberg-bundled-guava (shaded)
+    // - org.apache.hadoop.thirdparty:hadoop-shaded-guava
+    // - org.apache.curator:curator-client (shaded)
+    exclude("META-INF/maven/com.google.guava/failureaccess/pom.properties")
+    // Exclude listenablefuture - comes from:
+    // - guava
+    // - iceberg-bundled-guava (shaded)
+    // - org.apache.hadoop.thirdparty:hadoop-shaded-guava
+    // - org.apache.curator:curator-client (shaded)
+    exclude("META-INF/maven/com.google.guava/listenablefuture/pom.properties")
+    // Exclude j2objc-annotations - comes from:
+    // - j2objc-annotations
+    // - org.apache.hadoop.thirdparty:hadoop-shaded-guava
+    exclude("META-INF/maven/com.google.j2objc/j2objc-annotations/pom.properties")
+    // Exclude gson - comes from:
+    // - gson
+    // - com.nimbusds:nimbus-jose-jwt (shaded)
+    exclude("META-INF/maven/com.google.code.gson/gson/pom.properties")
+    // Comes from:
+    // - error-prone-annotations
+    // - org.apache.hadoop.thirdparty:hadoop-shaded-guava
+    exclude("META-INF/maven/com.google.errorprone/error_prone_annotations/pom.properties")
+
+    // Netty has this in every jar
+    include("META-INF/io.netty.versions.properties")
+    // Ignore property duplicates for Netty, grpc brings a shaded Netty as well
+    // ignoreDuplicates.include("META-INF/io.netty.versions.properties")
+  }
+  transform(DeduplicatingResourceTransformer::class.java) {
+    dontFail.set(false)
+    // Exclusions (see above)
+    exclude(
+      "META-INF/maven/com.google.guava/guava/pom.*",
+      "META-INF/maven/com.google.code.gson/gson/pom.*",
+      "META-INF/maven/com.google.j2objc/j2objc-annotations/pom.*",
+      "META-INF/maven/com.google.guava/failureaccess/pom.*",
+      "META-INF/maven/com.google.guava/listenablefuture/pom.*",
+      "META-INF/maven/com.google.errorprone/error_prone_annotations/pom.*",
+    )
+
+    // we don't care about OSGI at all...
+    exclude("META-INF/versions/9/OSGI-INF/MANIFEST.MF")
+    // Proguard configurations used during the Guava build (don't care about those)
+    exclude("META-INF/proguard/*.pro")
+  }
 }
