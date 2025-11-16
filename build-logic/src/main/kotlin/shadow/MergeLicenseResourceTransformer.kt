@@ -29,7 +29,15 @@ import org.gradle.api.file.FileTreeElement
 import org.gradle.api.file.RegularFileProperty
 import org.gradle.api.model.ObjectFactory
 import org.gradle.api.provider.Property
+import org.gradle.api.specs.Spec
 import org.gradle.api.tasks.Input
+import org.gradle.api.tasks.InputFile
+import org.gradle.api.tasks.PathSensitive
+import org.gradle.api.tasks.PathSensitivity
+import org.gradle.api.tasks.util.PatternFilterable
+import org.gradle.api.tasks.util.PatternSet
+import org.slf4j.Logger
+import org.slf4j.LoggerFactory
 
 /**
  * Generates a license file using the configured license text source.
@@ -45,10 +53,20 @@ import org.gradle.api.tasks.Input
  */
 @Suppress("unused")
 @CacheableTransformer
-open class MergeLicenseResourceTransformer @Inject constructor(objectFactory: ObjectFactory) :
-  WithPatternFilterable(
-    defaultIncludes =
-      setOf(
+open class MergeLicenseResourceTransformer(
+  objectFactory: ObjectFactory,
+  private val patternSet: PatternSet,
+) : PatternFilterable by patternSet, ResourceTransformer {
+
+  @Inject constructor(objectFactory: ObjectFactory) : this(objectFactory, PatternSet())
+
+  @Input override fun getIncludes(): MutableSet<String> = patternSet.includes
+
+  @Input override fun getExcludes(): MutableSet<String> = patternSet.excludes
+
+  private val patternSpec: Spec<FileTreeElement> by lazy {
+    if (patternSet.isEmpty) {
+      patternSet.include(
         "META-INF/LICENSE",
         "META-INF/LICENSE.txt",
         "META-INF/LICENSE.md",
@@ -56,8 +74,14 @@ open class MergeLicenseResourceTransformer @Inject constructor(objectFactory: Ob
         "LICENSE.txt",
         "LICENSE.md",
       )
-  ),
-  ResourceTransformer by ResourceTransformer.Companion {
+    }
+    logger.info(
+      "Using patterns spec with includes:{} excludes:{}",
+      patternSet.includes,
+      patternSet.excludes,
+    )
+    patternSet.asSpec
+  }
 
   override fun canTransformResource(element: FileTreeElement): Boolean {
     return patternSpec.isSatisfiedBy(element)
@@ -79,7 +103,9 @@ open class MergeLicenseResourceTransformer @Inject constructor(objectFactory: Ob
     objectFactory.property(String::class.java).value("Apache-2.0")
 
   /** Path to the project's license text, this property *must* be configured. */
-  @get:Input val artifactLicense: RegularFileProperty = objectFactory.fileProperty()
+  @get:InputFile
+  @get:PathSensitive(PathSensitivity.RELATIVE)
+  val artifactLicense: RegularFileProperty = objectFactory.fileProperty()
 
   /**
    * Separator between the project's license text and license texts from the included dependencies.
@@ -148,6 +174,7 @@ open class MergeLicenseResourceTransformer @Inject constructor(objectFactory: Ob
   }
 
   private companion object {
-    private val LICENSE_PATHS = setOf<String>("LICENSE", "LICENSE.txt", "LICENSE.md")
+    private val logger: Logger =
+      LoggerFactory.getLogger(MergeLicenseResourceTransformer::class.java)
   }
 }

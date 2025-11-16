@@ -49,7 +49,9 @@ tasks.withType<ShadowJar>().configureEach {
   isZip64 = true
   duplicatesStrategy = DuplicatesStrategy.INCLUDE
   failOnDuplicateEntries = false
-  transform(MergeLicenseResourceTransformer::class.java)
+  transform(MergeLicenseResourceTransformer::class.java) {
+    artifactLicense.value { project.rootProject.file("gradle/license/Apache-2.0-License") }
+  }
   transform(TemporaryApacheNoticeResourceTransformer::class.java)
   transform(AppendingTransformer::class.java) { resource = "META-INF/DEPENDENCIES" }
 }

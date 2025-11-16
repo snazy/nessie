@@ -21,9 +21,8 @@ import org.gradle.api.file.ConfigurableFileCollection
 import org.gradle.api.tasks.CacheableTask
 import org.gradle.api.tasks.Classpath
 import org.gradle.api.tasks.InputFiles
-import org.gradle.api.tasks.Nested
 import org.gradle.api.tasks.TaskAction
-import org.gradle.api.tasks.util.PatternFilterable
+import org.gradle.api.tasks.util.PatternSet
 
 /**
  * Helper task to temporarily add to your build script to find resources in the classpath that were
@@ -36,7 +35,7 @@ import org.gradle.api.tasks.util.PatternFilterable
  *   // add configurations to search for resources in dependency jars
  *   classpath.from(configurations.runtimeClasspath)
  *   // the patterns to search for (it is a Gradle PatternFilterable)
- *   resources.include(
+ *   include(
  *     "META-INF/...",
  *   )
  * }
@@ -52,11 +51,8 @@ import org.gradle.api.tasks.util.PatternFilterable
  */
 @Suppress("unused")
 @CacheableTask
-abstract class FindResourceInClasspath : DefaultTask() {
-  private val patterns = WithPatternFilterable()
-
-  @get:Nested val resources: PatternFilterable = patterns
-
+abstract class FindResourceInClasspath(private val patternSet: PatternSet = PatternSet()) :
+  DefaultTask() {
   @get:InputFiles @get:Classpath abstract val classpath: ConfigurableFileCollection
 
   @TaskAction
@@ -64,7 +60,7 @@ abstract class FindResourceInClasspath : DefaultTask() {
     classpath.forEach { file ->
       logger.lifecycle("scanning {}", file)
 
-      project.zipTree(file).matching(patterns.patternSet).forEach { entry ->
+      project.zipTree(file).matching(patternSet).forEach { entry ->
         logger.lifecycle("  -> {}", entry)
       }
     }
