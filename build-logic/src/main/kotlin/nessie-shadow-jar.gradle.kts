@@ -16,24 +16,14 @@
 
 import com.github.jengelman.gradle.plugins.shadow.tasks.ShadowJar
 import com.github.jengelman.gradle.plugins.shadow.transformers.AppendingTransformer
+import com.github.jengelman.gradle.plugins.shadow.transformers.MergeLicenseResourceTransformer
 import kotlin.jvm.java
-import shadow.MergeLicenseResourceTransformer
-import shadow.TemporaryApacheNoticeResourceTransformer
 
 plugins { id("com.gradleup.shadow") }
 
 val shadowJar = tasks.named<ShadowJar>("shadowJar")
 
 shadowJar.configure {
-  val c = ShadowJar::class.java
-  val classResource = c.name.replace('.', '/') + ".class"
-  val containingJarUri = c.classLoader.getResource(classResource)!!.toURI().schemeSpecificPart
-  if (!containingJarUri.contains("shadow-gradle-plugin-9.2.2.jar")) {
-    throw GradleException(
-      "Check if https://github.com/GradleUp/shadow/pull/1843 has been merged and if so, replace TemporaryApacheLicenseResourceTransformer with ApacheLicenseResourceTransformer"
-    )
-  }
-
   outputs.cacheIf { false } // do not cache uber/shaded jars
   archiveClassifier = ""
   mergeServiceFiles()
@@ -52,6 +42,5 @@ tasks.withType<ShadowJar>().configureEach {
   transform(MergeLicenseResourceTransformer::class.java) {
     artifactLicense.value { project.rootProject.file("gradle/license/Apache-2.0-License") }
   }
-  transform(TemporaryApacheNoticeResourceTransformer::class.java)
   transform(AppendingTransformer::class.java) { resource = "META-INF/DEPENDENCIES" }
 }

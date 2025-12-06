@@ -15,6 +15,8 @@
  */
 
 import com.github.jengelman.gradle.plugins.shadow.tasks.ShadowJar
+import com.github.jengelman.gradle.plugins.shadow.transformers.DeduplicatingResourceTransformer
+import kotlin.jvm.java
 
 plugins {
   id("com.gradleup.shadow")
@@ -68,4 +70,9 @@ dependencies {
 
 jmh { jmhVersion = libs.versions.jmh.get() }
 
-tasks.named<ShadowJar>("jmhJar").configure { mergeServiceFiles() }
+tasks.named<ShadowJar>("jmhJar").configure {
+  mergeServiceFiles()
+
+  // This transformer effectively prevents having unexpected duplicates in the shadow jar.
+  transform(DeduplicatingResourceTransformer::class.java)
+}

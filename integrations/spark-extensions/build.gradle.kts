@@ -15,8 +15,8 @@
  */
 
 import com.github.jengelman.gradle.plugins.shadow.tasks.ShadowJar
-import shadow.DeduplicatingResourceTransformer
-import shadow.MergePropertiesResourceTransformer
+import com.github.jengelman.gradle.plugins.shadow.transformers.DeduplicatingResourceTransformer
+import com.github.jengelman.gradle.plugins.shadow.transformers.PropertiesFileTransformer
 import kotlin.jvm.java
 
 plugins {
@@ -91,14 +91,11 @@ tasks.named<ShadowJar>("shadowJar").configure {
 
   // These 2 transformers effectively prevent having unexpected duplicates in the shadow jar.
   // But retain duplicate entries from _known_ different dependency _versions_ (shaded and unshaded ones).
-  transform(MergePropertiesResourceTransformer::class.java) {
-    dontFail.set(false)
+  transform(PropertiesFileTransformer::class.java) {
     // Check all pom.properties (catches duplicate dependencies)
     include("META-INF/maven/*/*/pom.properties")
   }
-  transform(DeduplicatingResourceTransformer::class.java) {
-    dontFail.set(false)
-  }
+  transform(DeduplicatingResourceTransformer::class.java)
 }
 
 tasks.named<Test>("intTest").configure {

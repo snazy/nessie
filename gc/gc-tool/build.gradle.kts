@@ -15,9 +15,9 @@
  */
 
 import com.github.jengelman.gradle.plugins.shadow.tasks.ShadowJar
+import com.github.jengelman.gradle.plugins.shadow.transformers.DeduplicatingResourceTransformer
+import com.github.jengelman.gradle.plugins.shadow.transformers.PropertiesFileTransformer
 import kotlin.jvm.java
-import shadow.DeduplicatingResourceTransformer
-import shadow.MergePropertiesResourceTransformer
 
 plugins {
   id("com.gradleup.shadow")
@@ -181,8 +181,7 @@ shadowJar.configure {
   // These 2 transformers effectively prevent having unexpected duplicates in the shadow jar.
   // But retain duplicate entries from _known_ different dependency _versions_ (shaded and unshaded
   // ones).
-  transform(MergePropertiesResourceTransformer::class.java) {
-    dontFail.set(false)
+  transform(PropertiesFileTransformer::class.java) {
     // Check all pom.properties (catches duplicate dependencies)
     include("META-INF/maven/*/*/pom.properties")
     // Exclude Guava - comes from:
@@ -221,7 +220,6 @@ shadowJar.configure {
     // ignoreDuplicates.include("META-INF/io.netty.versions.properties")
   }
   transform(DeduplicatingResourceTransformer::class.java) {
-    dontFail.set(false)
     // Exclusions (see above)
     exclude(
       "META-INF/maven/com.google.guava/guava/pom.*",

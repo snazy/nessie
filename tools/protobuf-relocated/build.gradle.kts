@@ -15,8 +15,7 @@
  */
 
 import com.github.jengelman.gradle.plugins.shadow.tasks.ShadowJar
-import kotlin.jvm.java
-import shadow.DeduplicatingResourceTransformer
+import com.github.jengelman.gradle.plugins.shadow.transformers.DeduplicatingResourceTransformer
 
 plugins {
   id("nessie-conventions-java11")
@@ -39,7 +38,7 @@ shadowJar.configure {
   dependencies { include(dependency(libs.protobuf.java.get())) }
 
   // This transformer effectively prevents having unexpected duplicates in the shadow jar.
-  transform(DeduplicatingResourceTransformer::class.java) { dontFail.set(false) }
+  transform(DeduplicatingResourceTransformer::class.java)
 }
 
 tasks.named("compileJava").configure { finalizedBy(shadowJar) }
