@@ -50,17 +50,26 @@ public class ITAwsSecretsProvider {
 
   @InjectSoftAssertions SoftAssertions soft;
 
-  @Container
-  static LocalStackContainer localstack =
-      new LocalStackContainer(
-              ContainerSpecHelper.builder()
-                  .name("localstack")
-                  .containerClass(ITAwsSecretsProvider.class)
-                  .build()
-                  .dockerImageName(null)
-                  .asCompatibleSubstituteFor("localstack/localstack"))
-          .withLogConsumer(c -> LOGGER.info("[LOCALSTACK] {}", c.getUtf8StringWithoutLineEnding()))
-          .withServices("secretsmanager");
+  @Container static LocalStackContainer localstack = createLocalStackContainer();
+
+  private static LocalStackContainer createLocalStackContainer() {
+    var localstackContainer =
+        new LocalStackContainer(
+                ContainerSpecHelper.builder()
+                    .name("localstack")
+                    .containerClass(ITAwsSecretsProvider.class)
+                    .build()
+                    .dockerImageName(null)
+                    .asCompatibleSubstituteFor("localstack/localstack"))
+            .withLogConsumer(
+                c -> LOGGER.info("[LOCALSTACK] {}", c.getUtf8StringWithoutLineEnding()))
+            .withServices("secretsmanager");
+    var localstackAuthToken = System.getenv("LOCALSTACK_AUTH_TOKEN");
+    if (localstackAuthToken != null) {
+      localstackContainer.withEnv("LOCALSTACK_AUTH_TOKEN", localstackAuthToken);
+    }
+    return localstackContainer;
+  }
 
   @Test
   public void awsSecretsManager() {

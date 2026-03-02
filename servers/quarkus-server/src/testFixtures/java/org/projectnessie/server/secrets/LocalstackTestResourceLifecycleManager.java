@@ -80,6 +80,10 @@ public class LocalstackTestResourceLifecycleManager implements QuarkusTestResour
             .withLogConsumer(
                 c -> LOGGER.info("[LOCALSTACK] {}", c.getUtf8StringWithoutLineEnding()))
             .withServices("secretsmanager");
+    var localstackAuthToken = System.getenv("LOCALSTACK_AUTH_TOKEN");
+    if (localstackAuthToken != null) {
+      localstack.withEnv("LOCALSTACK_AUTH_TOKEN", localstackAuthToken);
+    }
 
     localstack.start();
 
