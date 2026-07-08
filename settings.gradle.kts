@@ -58,6 +58,7 @@ pluginManagement {
     }
     mavenCentral() // prefer Maven Central, in case Gradle's repo has issues
     gradlePluginPortal()
+    mavenLocal()
   }
 }
 
@@ -69,6 +70,7 @@ dependencyResolutionManagement {
     }
     mavenCentral()
     gradlePluginPortal()
+    mavenLocal()
     if (providers.systemProperty("withApacheSnapshots").map(String::toBoolean).getOrElse(false)) {
       // This is a hack to let Renovate _not_ query the Apache snapshot repository for all
       // dependencies.
