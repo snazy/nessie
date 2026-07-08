@@ -93,7 +93,7 @@ tasks.withType<Test>().configureEach {
   )
   environment("TESTCONTAINERS_REUSE_ENABLE", "true")
 
-  if (plugins.hasPlugin("io.quarkus")) {
+  if (plugins.hasPlugin("io.quarkus") || plugins.hasPlugin("io.quarkus.application")) {
     systemProperty("java.util.logging.manager", "org.jboss.logmanager.LogManager")
 
     jvmArgs("--add-opens=java.base/java.util=ALL-UNNAMED")
@@ -138,7 +138,8 @@ testing {
 
       dependencies { implementation.add(project()) }
 
-      val hasQuarkus = plugins.hasPlugin("io.quarkus")
+      val hasQuarkus =
+        plugins.hasPlugin("io.quarkus") || plugins.hasPlugin("io.quarkus.application")
 
       targets.all {
         testTask.configure {
