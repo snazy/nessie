@@ -37,6 +37,7 @@ import io.vertx.core.http.HttpClientOptions;
 import io.vertx.core.http.HttpClientRequest;
 import io.vertx.core.http.HttpClientResponse;
 import io.vertx.core.http.HttpMethod;
+import io.vertx.core.http.PoolOptions;
 import jakarta.inject.Inject;
 import java.io.IOException;
 import java.io.OutputStream;
@@ -88,7 +89,8 @@ public class TestNessieCore {
     httpClient =
         Vertx.vertx()
             .createHttpClient(
-                new HttpClientOptions().setMaxPoolSize(1000).setHttp2MaxPoolSize(1000));
+                new HttpClientOptions(),
+                new PoolOptions().setHttp1MaxSize(1000).setHttp2MaxSize(1000));
   }
 
   @AfterAll
