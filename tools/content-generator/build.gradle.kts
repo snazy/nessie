@@ -61,7 +61,7 @@ dependencies {
 
   testImplementation(project(":nessie-versioned-storage-inmemory-tests"))
 
-  nessieQuarkusServer(project(":nessie-quarkus", "quarkusRunner"))
+  nessieQuarkusServer(project(":nessie-quarkus", "quarkusFastJarPackageElements"))
 }
 
 nessieQuarkusApp {

@@ -79,7 +79,7 @@ dependencies {
   testFixturesApi(nessieProject("nessie-object-storage-mock"))
   testFixturesApi(libs.nessie.runner.common)
 
-  nessieQuarkusServer(nessieProject("nessie-quarkus", "quarkusRunner"))
+  nessieQuarkusServer(nessieProject("nessie-quarkus", "quarkusFastJarPackageElements"))
 }
 
 val ideaSyncActive = providers.systemProperty("idea.sync.active").map(String::toBoolean).orElse(false)

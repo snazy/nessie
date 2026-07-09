@@ -104,7 +104,7 @@ dependencies {
   intTestImplementation(project(":nessie-catalog-secrets-api"))
   intTestImplementation(testFixtures(project(":nessie-catalog-secrets-api")))
 
-  nessieQuarkusServer(project(":nessie-quarkus", "quarkusRunner"))
+  nessieQuarkusServer(project(":nessie-quarkus", "quarkusFastJarPackageElements"))
 }
 
 tasks.withType<ProcessResources>().configureEach {

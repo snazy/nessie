@@ -14,7 +14,15 @@
  * limitations under the License.
  */
 
-plugins { id("nessie-conventions-java21") }
+plugins {
+  id("nessie-conventions-java21")
+  id("io.quarkus.extension.deployment")
+    .version(
+      libs.plugins.quarkus.extension.map {
+        System.getProperty("quarkus.custom.version", it.version.requiredVersion)
+      }
+    )
+}
 
 publishingHelper { mavenName = "Nessie - Quarkus Extension (Deployment)" }
 

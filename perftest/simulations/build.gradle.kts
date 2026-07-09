@@ -42,7 +42,7 @@ dependencies {
   gatling(platform(libs.jackson.bom))
   gatling("com.fasterxml.jackson.core:jackson-annotations")
 
-  nessieQuarkusServer(project(":nessie-quarkus", "quarkusRunner"))
+  nessieQuarkusServer(project(":nessie-quarkus", "quarkusFastJarPackageElements"))
 }
 
 nessieQuarkusApp {

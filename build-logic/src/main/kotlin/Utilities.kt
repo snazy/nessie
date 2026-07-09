@@ -273,7 +273,7 @@ fun Project.nessieClientForIceberg(): Dependency {
  * Apache Iceberg are handled in a separate build. See `README.md` in the `iceberg/` directory.
  */
 fun DependencyHandlerScope.nessieQuarkusServerRunner(): ModuleDependency {
-  return nessieProject("nessie-quarkus", "quarkusRunner")
+  return nessieProject("nessie-quarkus", "quarkusFastJarPackageElements")
 }
 
 /**

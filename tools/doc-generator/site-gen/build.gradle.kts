@@ -76,7 +76,7 @@ dependencies {
 
   gcRunner(nessieProject("nessie-gc-tool"))
 
-  serverAdminRunner(project(":nessie-server-admin-tool", "quarkusRunner"))
+  serverAdminRunner(project(":nessie-server-admin-tool", "quarkusFastJarPackageElements"))
 }
 
 val generatedMarkdownDocsDir = layout.buildDirectory.dir("generatedMarkdownDocs")
