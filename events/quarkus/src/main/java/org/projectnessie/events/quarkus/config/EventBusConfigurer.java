@@ -26,8 +26,11 @@ import jakarta.enterprise.event.Observes;
 import jakarta.enterprise.inject.Instance;
 import jakarta.enterprise.inject.Produces;
 import jakarta.inject.Named;
+import org.slf4j.Logger;
 
 public class EventBusConfigurer {
+
+  private static final Logger LOGGER = org.slf4j.LoggerFactory.getLogger(EventBusConfigurer.class);
 
   public static final String LOCAL_CODEC_NAME = "local";
   public static final LocalEventBusCodec<Object> LOCAL_CODEC =
@@ -50,6 +53,10 @@ public class EventBusConfigurer {
   }
 
   void configureEventBus(@Observes StartupEvent ev, EventBus eventBus) {
-    eventBus.registerCodec(LOCAL_CODEC);
+    try {
+      eventBus.registerCodec(LOCAL_CODEC);
+    } catch (IllegalStateException ise) {
+      LOGGER.warn("Failed to re-register local codec", ise);
+    }
   }
 }
