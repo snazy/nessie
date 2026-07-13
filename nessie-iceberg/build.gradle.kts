@@ -23,9 +23,12 @@ publishingHelper { mavenName = "Nessie-Iceberg" }
 // Allow overriding the Iceberg version used by Nessie and the Nessie version used by integration
 // tests that depend on Iceberg.
 val versionIceberg: String =
-  System.getProperty("nessie.versionIceberg", libs.versions.iceberg.get())
+  providers.systemProperty("nessie.versionIceberg").orElse(libs.versions.iceberg).get()
 val versionClientNessie: String =
-  System.getProperty("nessie.versionClientNessie", libs.versions.nessieClientVersion.get())
+  providers
+    .systemProperty("nessie.versionClientNessie")
+    .orElse(libs.versions.nessieClientVersion)
+    .get()
 
 mapOf(
     "versionClientNessie" to versionClientNessie,

@@ -176,6 +176,9 @@ jacksonTestVersions
   .forEach { v -> tasks.named("checkstyleTest$v").configure { enabled = false } }
 
 // Issue w/ testcontainers/podman in GH workflows :(
-if ((Os.isFamily(Os.FAMILY_MAC) || Os.isFamily(Os.FAMILY_WINDOWS)) && System.getenv("CI") != null) {
+if (
+  (Os.isFamily(Os.FAMILY_MAC) || Os.isFamily(Os.FAMILY_WINDOWS)) &&
+    providers.environmentVariable("CI").isPresent
+) {
   tasks.named<Test>("intTest").configure { this.enabled = false }
 }

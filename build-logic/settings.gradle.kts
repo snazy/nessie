@@ -23,12 +23,12 @@ dependencyResolutionManagement {
 dependencyResolutionManagement {
   repositoriesMode = RepositoriesMode.FAIL_ON_PROJECT_REPOS
   repositories {
-    if (System.getProperty("withMavenLocal", "false").toBoolean()) {
+    if (providers.systemProperty("withMavenLocal").getOrElse("false").toBoolean()) {
       mavenLocal()
     }
     mavenCentral()
     gradlePluginPortal()
-    if (System.getProperty("withApacheSnapshots", "false").toBoolean()) {
+    if (providers.systemProperty("withApacheSnapshots").getOrElse("false").toBoolean()) {
       maven {
         name = "Apache Snapshots"
         url = URI("https://repository.apache.org/content/repositories/snapshots/")

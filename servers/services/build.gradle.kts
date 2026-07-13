@@ -91,6 +91,6 @@ dependencies {
 }
 
 // Issue w/ testcontainers/podman in GH workflows :(
-if (Os.isFamily(Os.FAMILY_MAC) && System.getenv("CI") != null) {
+if (Os.isFamily(Os.FAMILY_MAC) && providers.environmentVariable("CI").isPresent) {
   tasks.withType<Test>().configureEach { this.enabled = false }
 }

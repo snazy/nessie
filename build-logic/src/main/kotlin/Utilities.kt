@@ -235,9 +235,9 @@ fun Project.libsRequiredVersion(name: String): String {
   return reqVer
 }
 
-fun testLogLevel(): String = System.getProperty("test.log.level", "WARN")
+fun Project.testLogLevel(): String = providers.systemProperty("test.log.level").getOrElse("WARN")
 
-fun testLogLevel(minVerbose: String): String {
+fun Project.testLogLevel(minVerbose: String): String {
   val requested = LogLevel.valueOf(testLogLevel().uppercase())
   val minimum = LogLevel.valueOf(minVerbose.uppercase())
   if (requested.ordinal > minimum.ordinal) {

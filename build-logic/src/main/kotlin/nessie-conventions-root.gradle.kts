@@ -41,7 +41,7 @@ val projectName = layout.settingsDirectory.file("ide-name.txt").asFile.readText(
 val ideName =
   "$projectName ${project.version.toString().replace(Regex("^([0-9.]+).*"), "$1")} [in ../${project.rootDir.name}]"
 
-if (System.getProperty("idea.sync.active").toBoolean()) {
+if (providers.systemProperty("idea.sync.active").getOrElse("false").toBoolean()) {
 
   idea {
     module {
@@ -62,6 +62,19 @@ if (System.getProperty("idea.sync.active").toBoolean()) {
       val sparkScalaProps = Properties()
       integrationsDir.resolve("spark-scala.properties").reader().use { sparkScalaProps.load(it) }
 
+      val mostBuildDirs =
+        listOf("main", "iceberg")
+          .map { t -> nessieRootProjectDir.resolve("gradle/projects.$t.properties") }
+          .flatMap { f ->
+            f.reader().use { r ->
+              val props = Properties()
+              props.load(r)
+              props.values.map { it.toString() }
+            }
+          }
+          .map { p -> nessieRootProjectDir.resolve(p).resolve("build") }
+          .toSet()
+
       excludeDirs =
         excludeDirs +
           setOf(
@@ -71,6 +84,7 @@ if (System.getProperty("idea.sync.active").toBoolean()) {
             nessieRootProjectDir.resolve(".idea"),
             nessieRootProjectDir.resolve("site/venv"),
             nessieRootProjectDir.resolve("nessie-iceberg/.gradle"),
+            nessieRootProjectDir.resolve("build"),
             buildToolsIT.resolve(".gradle"),
             buildToolsIT.resolve("build"),
             buildToolsIT.resolve("target"),
@@ -78,7 +92,7 @@ if (System.getProperty("idea.sync.active").toBoolean()) {
             integrationsDir.resolve("spark-extensions-base/build"),
             integrationsDir.resolve("spark-extensions-basetests/build"),
           ) +
-          allprojects.map { prj -> prj.layout.buildDirectory.asFile.get() } +
+          mostBuildDirs +
           sparkScalaProps
             .getProperty("sparkVersions")
             .split(",")
@@ -125,7 +139,7 @@ if (System.getProperty("idea.sync.active").toBoolean()) {
 
       delegateActions.testRunner =
         ActionDelegationConfig.TestRunner.valueOf(
-          System.getProperty("nessie.intellij.test-runner", "CHOOSE_PER_TEST")
+          providers.systemProperty("nessie.intellij.test-runner").getOrElse("CHOOSE_PER_TEST")
         )
     }
   }

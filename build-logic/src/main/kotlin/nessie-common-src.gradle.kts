@@ -24,7 +24,6 @@ import org.gradle.process.ExecOperations
 
 plugins {
   eclipse
-  id("org.jetbrains.gradle.plugin.idea-ext")
   checkstyle
   id("net.ltgt.errorprone")
 }
@@ -153,6 +152,7 @@ if (
   val gitBuildInfo =
     gradle.sharedServices.registerIfAbsent("gitBuildInfo", GitBuildInfoService::class.java) {
       parameters.versionFile.set(layout.settingsDirectory.file("version.txt"))
+      parameters.javaVersion.set(providers.systemProperty("java.version"))
     }
 
   tasks.withType<Jar>().configureEach {
@@ -173,6 +173,7 @@ if (
 abstract class GitBuildInfoService : BuildService<GitBuildInfoService.Parameters> {
   interface Parameters : BuildServiceParameters {
     val versionFile: RegularFileProperty
+    val javaVersion: Property<String>
   }
 
   @get:Inject abstract val execOperations: ExecOperations
@@ -193,7 +194,7 @@ abstract class GitBuildInfoService : BuildService<GitBuildInfoService.Parameters
         "Nessie-Build-Git-Describe" to execProc("git", "describe", "--tags"),
         "Nessie-Build-Timestamp" to execProc("date", "+%Y-%m-%d-%H:%M:%S%:z"),
         "Nessie-Build-System" to execProc("uname", "-a"),
-        "Nessie-Build-Java-Version" to System.getProperty("java.version"),
+        "Nessie-Build-Java-Version" to parameters.javaVersion.get(),
       )
 
     buildInfo = computed

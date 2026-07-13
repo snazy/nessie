@@ -50,6 +50,9 @@ tasks.withType<Test>().configureEach {
 // with uncaught exception of type std::__1::system_error: mutex lock failed: Invalid argument`
 //
 // Compatibility tests fail, because Windows not supported by testcontainers (logged message)
-if ((Os.isFamily(Os.FAMILY_MAC) || Os.isFamily(Os.FAMILY_WINDOWS)) && System.getenv("CI") != null) {
+if (
+  (Os.isFamily(Os.FAMILY_MAC) || Os.isFamily(Os.FAMILY_WINDOWS)) &&
+    providers.environmentVariable("CI").isPresent
+) {
   tasks.withType<Test>().configureEach { this.enabled = false }
 }

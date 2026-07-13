@@ -59,6 +59,6 @@ if (Os.isFamily(Os.FAMILY_WINDOWS)) {
 }
 
 // Issue w/ testcontainers/podman in GH workflows :(
-if (Os.isFamily(Os.FAMILY_MAC) && System.getenv("CI") != null) {
+if (Os.isFamily(Os.FAMILY_MAC) && providers.environmentVariable("CI").isPresent) {
   tasks.named<Test>("intTest").configure { this.enabled = false }
 }

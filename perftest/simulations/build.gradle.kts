@@ -26,7 +26,7 @@ plugins {
 publishingHelper { mavenName = "Nessie - Perf Test - Simulations" }
 
 dependencies {
-  if (System.getProperty("idea.sync.active").toBoolean()) {
+  if (providers.systemProperty("idea.sync.active").getOrElse("false").toBoolean()) {
     // IJ complains about Scala-library not present (it's there for the 'gatling' source set).
     compileOnly("org.scala-lang:scala-library:${scalaDependencyVersion("2.13")}")
   }
@@ -46,17 +46,15 @@ dependencies {
 }
 
 nessieQuarkusApp {
-  if (!System.getProperties().containsKey("nessie.uri")) {
+  if (!providers.systemProperty("nessie.uri").isPresent) {
     includeTasks(tasks.withType<GatlingRunTask>()) {
       jvmArgs = listOf("-Dsim.users=10", "-Dnessie.uri=${extra["quarkus.http.test-url"]}/api/v2")
     }
     environmentNonInput.put("HTTP_ACCESS_LOG_LEVEL", testLogLevel())
     jvmArgumentsNonInput.add("-XX:SelfDestructTimer=30")
     systemProperties.put("nessie.server.send-stacktrace-to-client", "true")
-    System.getProperties()
-      .map { e -> mapEntry(e.key.toString(), e.value.toString()) }
-      .filter { e -> e.key.startsWith("nessie.") || e.key.startsWith("quarkus.") }
-      .forEach { e -> systemProperties.put(e.key, e.value) }
+    systemProperties.putAll(providers.systemPropertiesPrefixedBy("nessie."))
+    systemProperties.putAll(providers.systemPropertiesPrefixedBy("quarkus."))
   }
 }
 
@@ -68,8 +66,10 @@ gatling {
   gatlingVersion = libs.versions.gatling.get()
 
   jvmArgs =
-    System.getProperties()
-      .map { e -> mapEntry(e.key.toString(), e.value.toString()) }
+    providers
+      .systemPropertiesPrefixedBy("")
+      .get()
+      .map { e -> mapEntry(e.key, e.value) }
       .filter { e ->
         e.key.startsWith("nessie.") || e.key.startsWith("gatling.") || e.key.startsWith("sim.")
       }

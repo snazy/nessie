@@ -144,9 +144,9 @@ dependencies {
       api(project(":nessie-gc-tool"))
 
       val ideSyncActive =
-        System.getProperty("idea.sync.active").toBoolean() ||
-          System.getProperty("idea.active").toBoolean() ||
-          System.getProperty("eclipse.product") != null ||
+        providers.systemProperty("idea.sync.active").getOrElse("false").toBoolean() ||
+          providers.systemProperty("idea.active").getOrElse("false").toBoolean() ||
+          providers.systemProperty("eclipse.product").isPresent ||
           gradle.startParameter.taskNames.any { it.startsWith("eclipse") }
       val sparkScala =
         loadProperties(layout.settingsDirectory.file("integrations/spark-scala.properties").asFile)

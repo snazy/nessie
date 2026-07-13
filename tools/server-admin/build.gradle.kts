@@ -178,7 +178,7 @@ if (Os.isFamily(Os.FAMILY_WINDOWS)) {
 }
 
 // Issue w/ testcontainers/podman in GH workflows :(
-if (Os.isFamily(Os.FAMILY_MAC) && System.getenv("CI") != null) {
+if (Os.isFamily(Os.FAMILY_MAC) && providers.environmentVariable("CI").isPresent) {
   tasks.named<Test>("intTest").configure { this.enabled = false }
 }
 
@@ -188,5 +188,5 @@ tasks.named<Test>("intTest").configure {
   forkEvery = 6
   // Optional; comma-separated list of backend names to test against;
   // see NessieServerAdminTestBackends for valid values.
-  systemProperty("backends", System.getProperty("backends"))
+  systemProperty("backends", providers.systemProperty("backends").orNull)
 }

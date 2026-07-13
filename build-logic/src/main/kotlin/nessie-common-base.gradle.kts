@@ -32,7 +32,7 @@ apply<CopiedCodeCheckerPlugin>()
 
 if (
   !noSourceCheckProjects.contains(project.path) &&
-    !System.getProperty("idea.sync.active").toBoolean()
+    !providers.systemProperty("idea.sync.active").getOrElse("false").toBoolean()
 ) {
   spotless {
     // Don't use the default (`GIT_ATTRIBUTES_FAST_ALLSAME`) here, because that reads external state

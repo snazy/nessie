@@ -65,9 +65,6 @@ constructor(private val softwareComponentFactory: SoftwareComponentFactory) : Pl
           val projectName = project.name
           val projectVersion = project.version.toString()
           val isRootProject = project.path == ":"
-          val parentGroup = project.parent?.group?.toString()
-          val parentName = project.parent?.name
-          val parentVersion = project.parent?.version?.toString()
 
           groupId = project.group.toString()
           version = projectVersion
@@ -157,9 +154,9 @@ constructor(private val softwareComponentFactory: SoftwareComponentFactory) : Pl
               withXml {
                 val projectNode = asNode()
                 val parentNode = projectNode.appendNode("parent")
-                parentNode.appendNode("groupId", parentGroup)
-                parentNode.appendNode("artifactId", parentName)
-                parentNode.appendNode("version", parentVersion)
+                parentNode.appendNode("groupId", "org.projectnessie.nessie")
+                parentNode.appendNode("artifactId", "nessie")
+                parentNode.appendNode("version", projectVersion)
               }
             }
           }
