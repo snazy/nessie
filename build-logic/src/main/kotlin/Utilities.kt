@@ -343,9 +343,7 @@ fun loadProperties(file: File): Properties {
  * configuration without depending on mutable root-project state.
  */
 fun Project.loadSparkScalaProperties(): Properties =
-  loadProperties(
-    rootProject.layout.projectDirectory.file("integrations/spark-scala.properties").asFile
-  )
+  loadProperties(layout.settingsDirectory.file("integrations/spark-scala.properties").asFile)
 
 /** Resolves the Spark and Scala major versions for all `nessie-spark-extensions*` projects. */
 fun Project.getSparkScalaVersionsForProject(): SparkScalaVersions {

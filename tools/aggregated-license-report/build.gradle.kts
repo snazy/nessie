@@ -30,7 +30,8 @@ dependencies {
   licenseReports(nessieProject("nessie-content-generator", "licenseReports"))
   licenseReports(nessieProject("nessie-cli", "licenseReports"))
 
-  val sparkScala = loadProperties(rootProject.file("integrations/spark-scala.properties"))
+  val sparkScala =
+    loadProperties(layout.settingsDirectory.file("integrations/spark-scala.properties").asFile)
   sparkScala["sparkVersions"]
     .toString()
     .split(",")
@@ -58,7 +59,7 @@ val aggregateLicenseReports =
 val aggregatedLicenseReportsZip =
   tasks.register<Zip>("aggregatedLicenseReportsZip") {
     from(aggregateLicenseReports)
-    from(rootProject.layout.projectDirectory) {
+    from(layout.settingsDirectory) {
       include("NOTICE", "LICENSE")
       eachFile { path = file.name + ".txt" }
     }

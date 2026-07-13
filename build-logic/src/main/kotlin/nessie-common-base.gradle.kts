@@ -43,19 +43,19 @@ if (
     format("xml") {
       target("src/**/*.xml", "src/**/*.xsd")
       eclipseWtp(com.diffplug.spotless.extra.wtp.EclipseWtpFormatterStep.XML)
-        .configFile(rootProject.projectDir.resolve("codestyle/org.eclipse.wst.xml.core.prefs"))
+        .configFile(layout.settingsDirectory.file("codestyle/org.eclipse.wst.xml.core.prefs"))
     }
     kotlinGradle {
       ktfmt().googleStyle()
-      licenseHeaderFile(rootProject.file("codestyle/copyright-header-java.txt"), "$")
-      if (project == rootProject) {
+      licenseHeaderFile(layout.settingsDirectory.file("codestyle/copyright-header-java.txt"), "$")
+      if (project.path == ":") {
         target("*.gradle.kts", "build-logic/*.gradle.kts")
       }
     }
-    if (project == rootProject) {
+    if (project.path == ":") {
       kotlin {
         ktfmt().googleStyle()
-        licenseHeaderFile(rootProject.file("codestyle/copyright-header-java.txt"), "$")
+        licenseHeaderFile(layout.settingsDirectory.file("codestyle/copyright-header-java.txt"), "$")
         target("build-logic/src/**/kotlin/**")
         targetExclude("build-logic/build/**")
       }
@@ -65,7 +65,7 @@ if (
         // - a YAML document separator
         // - the beginning of a YAML document (key-value pair)
         licenseHeaderFile(
-          rootProject.file("codestyle/copyright-header-yaml.txt"),
+          layout.settingsDirectory.file("codestyle/copyright-header-yaml.txt"),
           " *(#(?!#)|---|[^:#\\s\\{/]+\\s*:)",
         )
         target("helm/nessie/**/*.yaml", "helm/nessie/**/*.yml")
@@ -79,7 +79,7 @@ if (
         // - the beginning of a YAML document (key-value pair)
         // - The sentence "To connect to Nessie" (NOTES.txt)
         licenseHeaderFile(
-          rootProject.file("codestyle/copyright-header-helm-template.txt"),
+          layout.settingsDirectory.file("codestyle/copyright-header-helm-template.txt"),
           "( *\\{\\{(?!/\\*\\*)| *#|---|[^:#\\s\\{/]+\\s*:|To connect to Nessie)",
         )
         target("helm/nessie/templates/**")
@@ -87,7 +87,7 @@ if (
       }
       java {
         googleJavaFormat(libsRequiredVersion("googleJavaFormat"))
-        licenseHeaderFile(rootProject.file("codestyle/copyright-header-java.txt"))
+        licenseHeaderFile(layout.settingsDirectory.file("codestyle/copyright-header-java.txt"))
         target("integrations/spark-extensions/shared/src/**/*.java")
       }
     }
@@ -95,7 +95,7 @@ if (
     if (project.plugins.hasPlugin("java-base")) {
       java {
         googleJavaFormat(libsRequiredVersion("googleJavaFormat"))
-        licenseHeaderFile(rootProject.file("codestyle/copyright-header-java.txt"))
+        licenseHeaderFile(layout.settingsDirectory.file("codestyle/copyright-header-java.txt"))
         target("src/**/*.java")
       }
     }
@@ -103,7 +103,7 @@ if (
       scala {
         scalafmt()
         licenseHeaderFile(
-          rootProject.file("codestyle/copyright-header-java.txt"),
+          layout.settingsDirectory.file("codestyle/copyright-header-java.txt"),
           "^(package|import) .*$",
         )
         target("src/**/scala/**")
@@ -113,7 +113,7 @@ if (
     if (project.plugins.hasPlugin("kotlin")) {
       kotlin {
         ktfmt().googleStyle()
-        licenseHeaderFile(rootProject.file("codestyle/copyright-header-java.txt"), "$")
+        licenseHeaderFile(layout.settingsDirectory.file("codestyle/copyright-header-java.txt"), "$")
         target("src/**/kotlin/**")
         targetExclude("build/**")
       }

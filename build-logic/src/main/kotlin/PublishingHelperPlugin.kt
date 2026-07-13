@@ -64,7 +64,7 @@ constructor(private val softwareComponentFactory: SoftwareComponentFactory) : Pl
           val publishingHelper = extensions.getByType<PublishingHelperExtension>()
           val projectName = project.name
           val projectVersion = project.version.toString()
-          val isRootProject = project == rootProject
+          val isRootProject = project.path == ":"
           val parentGroup = project.parent?.group?.toString()
           val parentName = project.parent?.name
           val parentVersion = project.parent?.version?.toString()
@@ -186,7 +186,7 @@ constructor(private val softwareComponentFactory: SoftwareComponentFactory) : Pl
       configureSigning(publication.get())
 
       tasks.named("generatePomFileForMavenPublication", GenerateMavenPom::class.java).configure {
-        if (project == rootProject) {
+        if (project.path == ":") {
           inputs
             .file(layout.projectDirectory.file("gradle/developers.csv"))
             .withPathSensitivity(PathSensitivity.RELATIVE)

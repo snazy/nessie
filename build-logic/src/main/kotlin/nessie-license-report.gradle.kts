@@ -26,16 +26,20 @@ plugins { id("com.github.jk1.dependency-license-report") }
 afterEvaluate {
   // Need to configure after evaluation, because the spark-extensions project use a custom
   // `buildDir`.
+  val outDir = project.layout.buildDirectory.dir("reports/dependency-license")
   licenseReport {
     filters =
       arrayOf(
         LicenseBundleNormalizer(
-          "${rootProject.projectDir}/gradle/license/normalizer-bundle.json",
+          "${layout.settingsDirectory.asFile}/gradle/license/normalizer-bundle.json",
           false,
         ),
-        LicenseFileValidation(),
+        LicenseFileValidation(
+          layout.settingsDirectory.file("gradle/built-uber-dists/LICENSE-BINARY-DIST"),
+          outDir,
+        ),
       )
-    allowedLicensesFile = rootProject.projectDir.resolve("gradle/license/allowed-licenses.json")
+    allowedLicensesFile = layout.settingsDirectory.file("gradle/license/allowed-licenses.json")
     renderers =
       arrayOf<ReportRenderer>(
         InventoryHtmlReportRenderer("index.html"),
@@ -49,7 +53,7 @@ afterEvaluate {
         "io.opentelemetry:opentelemetry-bom-alpha",
         "io.opentelemetry.instrumentation:opentelemetry-instrumentation-bom-alpha",
       )
-    outputDir = "${project.layout.buildDirectory.get()}/reports/dependency-license"
+    outputDir = "${outDir.get().asFile}"
     excludeGroups = arrayOf("org.projectnessie.nessie", "org.projectnessie.nessie-integrations")
   }
 }
@@ -58,8 +62,8 @@ val generateLicenseReport =
   tasks.named("generateLicenseReport") {
     inputs
       .files(
-        rootProject.projectDir.resolve("gradle/license/normalizer-bundle.json"),
-        rootProject.projectDir.resolve("gradle/license/allowed-licenses.json"),
+        layout.settingsDirectory.file("gradle/license/normalizer-bundle.json"),
+        layout.settingsDirectory.file("gradle/license/allowed-licenses.json"),
       )
       .withPathSensitivity(PathSensitivity.RELATIVE)
     inputs.property("renderersHash", Arrays.hashCode(licenseReport.renderers))

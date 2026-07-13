@@ -148,7 +148,8 @@ dependencies {
           System.getProperty("idea.active").toBoolean() ||
           System.getProperty("eclipse.product") != null ||
           gradle.startParameter.taskNames.any { it.startsWith("eclipse") }
-      val sparkScala = loadProperties(rootProject.file("integrations/spark-scala.properties"))
+      val sparkScala =
+        loadProperties(layout.settingsDirectory.file("integrations/spark-scala.properties").asFile)
       val sparkVersions = sparkScala["sparkVersions"].toString().split(",").map { it.trim() }
       val allScalaVersions = LinkedHashSet<String>()
       for (sparkVersion in sparkVersions) {

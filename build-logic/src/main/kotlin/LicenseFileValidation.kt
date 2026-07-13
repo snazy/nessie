@@ -14,17 +14,22 @@
  * limitations under the License.
  */
 
-import com.github.jk1.license.LicenseReportExtension
 import com.github.jk1.license.ProjectData
 import com.github.jk1.license.filter.DependencyFilter
 import java.io.File
 import org.gradle.api.GradleException
+import org.gradle.api.file.Directory
+import org.gradle.api.file.RegularFile
+import org.gradle.api.provider.Provider
 
 /**
  * Validates that all dependencies with MIT/BSD/Go/UPL/ISC licenses, and Apache license, are
  * mentioned in the `LICENSE` file.
  */
-class LicenseFileValidation : DependencyFilter {
+class LicenseFileValidation(
+  val licenseBinaryDistFile: RegularFile,
+  val outputDirAbsolute: Provider<Directory>,
+) : DependencyFilter {
   val needsApacheLicenseMention = setOf("Apache")
 
   val needsFullLicenseMention = setOf("MIT", "BSD", "Go", "ISC", "Universal Permissive")
@@ -55,10 +60,7 @@ class LicenseFileValidation : DependencyFilter {
   override fun filter(data: ProjectData?): ProjectData {
     data!!
 
-    val rootLicenseFile =
-      data.project.rootProject.file("gradle/built-uber-dists/LICENSE-BINARY-DIST").readText()
-
-    val licenseReport = data.project.extensions.getByType(LicenseReportExtension::class.java)
+    val rootLicenseFile = licenseBinaryDistFile.asFile.readText()
 
     val missingApacheMentions = mutableSetOf<String>()
     val missingFullMentions = mutableMapOf<String, String>()
@@ -83,7 +85,7 @@ class LicenseFileValidation : DependencyFilter {
 
             ${
               mod.licenseFiles.flatMap { it.fileDetails }.filter { it.file != null }.map { it.file }
-                .map { File("${licenseReport.absoluteOutputDir}/$it").readText().trim() }
+                .map { File("${outputDirAbsolute.get().asFile}/$it").readText().trim() }
                 .distinct().joinToString("\n") { "\n\n$it\n" }
             }
             """

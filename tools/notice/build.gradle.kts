@@ -30,15 +30,15 @@ val noticeDir = project.layout.buildDirectory.dir("notice")
 val includeNoticeLicenseFiles =
   tasks.register<Sync>("includeNoticeLicenseFiles") {
     destinationDir = noticeDir.get().asFile
-    inputs.files(rootProject.layout.files("NOTICE", "LICENSE", "version.txt"))
+    inputs.files(layout.settingsDirectory.files("NOTICE", "LICENSE", "version.txt"))
     inputs.files(
-      rootProject.layout.files(
+      layout.settingsDirectory.files(
         "gradle/built-uber-dists/NOTICE-BINARY-DIST",
         "gradle/built-uber-dists/LICENSE-BINARY-DIST",
       )
     )
     inputs.property("version", project.version)
-    from(rootProject.projectDir.resolve("gradle/built-uber-dists")) {
+    from(layout.settingsDirectory.dir("gradle/built-uber-dists")) {
       include("NOTICE-BINARY-DIST", "LICENSE-BINARY-DIST")
       eachFile {
         val fileName =

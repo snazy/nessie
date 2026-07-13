@@ -35,11 +35,11 @@ plugins {
   id("nessie-common-base")
 }
 
-loadNessieProjects(rootProject)
+loadNessieProjects(project)
 
-val projectName = rootProject.file("ide-name.txt").readText().trim()
+val projectName = layout.settingsDirectory.file("ide-name.txt").asFile.readText().trim()
 val ideName =
-  "$projectName ${rootProject.version.toString().replace(Regex("^([0-9.]+).*"), "$1")} [in ../${rootProject.rootDir.name}]"
+  "$projectName ${project.version.toString().replace(Regex("^([0-9.]+).*"), "$1")} [in ../${project.rootDir.name}]"
 
 if (System.getProperty("idea.sync.active").toBoolean()) {
 
@@ -92,7 +92,11 @@ if (System.getProperty("idea.sync.active").toBoolean()) {
         profiles.create("Nessie-ASF") {
           // strip trailing LF
           val copyrightText =
-            rootProject.file("codestyle/copyright-header.txt").readLines().joinToString("\n")
+            layout.projectDirectory
+              .file("codestyle/copyright-header.txt")
+              .asFile
+              .readLines()
+              .joinToString("\n")
           notice = copyrightText
         }
       }
@@ -106,8 +110,9 @@ if (System.getProperty("idea.sync.active").toBoolean()) {
         defaults = true
 
         jvmArgs =
-          rootProject.projectDir
-            .resolve("gradle.properties")
+          layout.projectDirectory
+            .file("gradle.properties")
+            .asFile
             .reader()
             .use {
               val rules = Properties()
