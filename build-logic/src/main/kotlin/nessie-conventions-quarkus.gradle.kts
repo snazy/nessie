@@ -21,16 +21,6 @@ import org.gradle.api.services.BuildServiceParameters
 
 plugins { id("nessie-conventions-java21") }
 
-// This can likely be removed with Quarkus 3.26.3 (or newer)
-listOf("compileJava", "javadoc", "sourcesJar").forEach { name ->
-  tasks.named(name).configure { dependsOn(tasks.named("compileQuarkusGeneratedSourcesJava")) }
-}
-
-// This can likely be removed with Quarkus 3.26.3 (or newer)
-listOf("compileTestJava", "checkstyleTest", "compileTestJava").forEach { name ->
-  tasks.named(name).configure { dependsOn(tasks.named("compileQuarkusTestGeneratedSourcesJava")) }
-}
-
 if (quarkusFatJar()) {
   val quarkusUberJarBuildLimiter =
     gradle.sharedServices.registerIfAbsent(

@@ -138,8 +138,7 @@ testing {
 
       dependencies { implementation.add(project()) }
 
-      val hasQuarkus =
-        plugins.hasPlugin("io.quarkus") || plugins.hasPlugin("io.quarkus.application")
+      val hasLegacyQuarkus = plugins.hasPlugin("io.quarkus")
 
       targets.all {
         testTask.configure {
@@ -157,13 +156,13 @@ testing {
           //
           // io.quarkus.test.junit.IntegrationTestUtil.determineBuildOutputDirectory(java.net.URL)
           // is not smart enough :(
-          if (hasQuarkus) {
+          if (hasLegacyQuarkus) {
             systemProperty("build.output.directory", buildDirFile.get())
             dependsOn(tasks.named("quarkusBuild"))
           }
         }
 
-        if (hasQuarkus) {
+        if (hasLegacyQuarkus) {
           tasks.named("compileIntTestJava").configure {
             dependsOn(tasks.named("compileQuarkusTestGeneratedSourcesJava"))
           }
@@ -172,7 +171,7 @@ testing {
         tasks.named("check").configure { dependsOn(testTask) }
       }
 
-      if (hasQuarkus) {
+      if (hasLegacyQuarkus) {
         sources { java.srcDirs(tasks.named("quarkusGenerateCodeTests")) }
       }
     }
