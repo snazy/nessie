@@ -15,12 +15,7 @@
  */
 
 plugins {
-  alias(libs.plugins.quarkus)
-    .version(
-      libs.plugins.quarkus.asProvider().map {
-        System.getProperty("quarkus.custom.version", it.version.requiredVersion)
-      }
-    )
+  id("io.quarkus.application")
   id("nessie-conventions-quarkus")
 }
 

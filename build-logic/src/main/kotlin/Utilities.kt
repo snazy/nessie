@@ -32,7 +32,6 @@ import org.gradle.api.artifacts.VersionCatalogsExtension
 import org.gradle.api.artifacts.dsl.DependencyHandler
 import org.gradle.api.file.DirectoryProperty
 import org.gradle.api.invocation.Gradle
-import org.gradle.api.logging.LogLevel
 import org.gradle.api.provider.ListProperty
 import org.gradle.api.provider.MapProperty
 import org.gradle.api.provider.Property
@@ -235,17 +234,6 @@ fun Project.libsRequiredVersion(name: String): String {
   return reqVer
 }
 
-fun Project.testLogLevel(): String = providers.systemProperty("test.log.level").getOrElse("WARN")
-
-fun Project.testLogLevel(minVerbose: String): String {
-  val requested = LogLevel.valueOf(testLogLevel().uppercase())
-  val minimum = LogLevel.valueOf(minVerbose.uppercase())
-  if (requested.ordinal > minimum.ordinal) {
-    return minimum.name
-  }
-  return requested.name
-}
-
 fun isIncludedInNesQuEIT(gradle: Gradle): Boolean = "NesQuEIT" == gradle.parent?.rootProject?.name
 
 /** Check whether the current build is run in the context of integrations-testing. */
@@ -326,8 +314,6 @@ private class NessieProjects {
 
 /** Utility method to check whether a Quarkus build shall produce the uber-jar. */
 fun Project.quarkusFatJar(): Boolean = providers.gradleProperty("uber-jar").isPresent
-
-fun Project.quarkusPackageType(): String = if (quarkusFatJar()) "uber-jar" else "fast-jar"
 
 /** Just load [Properties] from a [File]. */
 fun loadProperties(file: File): Properties {

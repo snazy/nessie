@@ -59,18 +59,12 @@ components {
   }
 }
 
-if (plugins.hasPlugin("io.quarkus")) {
-  // This directory somehow disappears... Maybe some weird Quarkus code.
-  val testFixturesDir = layout.buildDirectory.dir("resources/testFixtures")
-  tasks.named("quarkusGenerateCodeTests").configure {
-    doFirst { testFixturesDir.get().asFile.mkdirs() }
-  }
-  tasks.withType<Test>().configureEach { doFirst { testFixturesDir.get().asFile.mkdirs() } }
-}
+val testLogLevel = providers.systemProperty("test.log.level").getOrElse("WARN").uppercase()
+val quarkusLogLevel =
+  if (LogLevel.valueOf(testLogLevel).ordinal > LogLevel.INFO.ordinal) "INFO" else testLogLevel
 
 tasks.withType<Test>().configureEach {
   val testJvmArgs = providers.gradleProperty("testJvmArgs").orNull
-  val testHeapSize = providers.gradleProperty("testHeapSize").orNull
   jvmArgs("-XX:+HeapDumpOnOutOfMemoryError")
   if (testJvmArgs != null) {
     jvmArgs(testJvmArgs.split(" "))
@@ -81,42 +75,45 @@ tasks.withType<Test>().configureEach {
   systemProperty("user.country", "US")
   systemProperty("user.variant", "")
 
+  val junitXmlOutputLocation = reports.junitXml.outputLocation
+
+  jvmArgs(
+    "-Dtest.log.level=$testLogLevel",
+    "-Djunit.platform.reporting.open.xml.enabled=true",
+    "-Djunit.jupiter.execution.timeout.default=5m",
+  )
+
   jvmArgumentProviders.add(
     CommandLineArgumentProvider {
       listOf(
-        "-Dtest.log.level=${testLogLevel()}",
-        "-Djunit.platform.reporting.open.xml.enabled=true",
-        "-Djunit.platform.reporting.output.dir=${reports.junitXml.outputLocation.get().asFile.absolutePath}",
-        "-Djunit.jupiter.execution.timeout.default=5m",
+        "-Djunit.platform.reporting.output.dir=${junitXmlOutputLocation.get().asFile.absolutePath}"
       )
     }
   )
   environment("TESTCONTAINERS_REUSE_ENABLE", "true")
 
-  if (plugins.hasPlugin("io.quarkus") || plugins.hasPlugin("io.quarkus.application")) {
+  filter { isFailOnNoMatchingTests = false }
+}
+
+if (plugins.hasPlugin("io.quarkus") || plugins.hasPlugin("io.quarkus.application")) {
+
+  tasks.withType<Test>().configureEach {
     systemProperty("java.util.logging.manager", "org.jboss.logmanager.LogManager")
 
     jvmArgs("--add-opens=java.base/java.util=ALL-UNNAMED")
     // Log-levels are required to be able to parse the HTTP listen URL
-    jvmArgumentProviders.add(
-      CommandLineArgumentProvider {
-        listOf(
-          "-Dquarkus.log.level=${testLogLevel("INFO")}",
-          "-Dquarkus.log.console.level=${testLogLevel("INFO")}",
-          "-Dhttp.access.log.level=${testLogLevel()}",
-        )
-      }
+    jvmArgs(
+      "-Dquarkus.log.level=$quarkusLogLevel",
+      "-Dquarkus.log.console.level=$quarkusLogLevel",
+      "-Dhttp.access.log.level=$testLogLevel",
     )
 
-    minHeapSize = testHeapSize ?: "768m"
-    maxHeapSize = testHeapSize ?: "4g"
-  } else if (testHeapSize != null) {
-    minHeapSize = testHeapSize
-    maxHeapSize = testHeapSize
+    minHeapSize = "768m"
+    maxHeapSize = "4g"
   }
-
-  filter { isFailOnNoMatchingTests = false }
 }
+
+val checkTask = tasks.named("check")
 
 testing {
   suites {
@@ -138,8 +135,6 @@ testing {
 
       dependencies { implementation.add(project()) }
 
-      val hasLegacyQuarkus = plugins.hasPlugin("io.quarkus")
-
       targets.all {
         testTask.configure {
           usesService(
@@ -149,32 +144,42 @@ testing {
           shouldRunAfter(test)
 
           systemProperty("nessie.integrationTest", "true")
-
-          val buildDirFile = layout.buildDirectory.asFile
-
-          // For Quarkus...
-          //
-          // io.quarkus.test.junit.IntegrationTestUtil.determineBuildOutputDirectory(java.net.URL)
-          // is not smart enough :(
-          if (hasLegacyQuarkus) {
-            systemProperty("build.output.directory", buildDirFile.get())
-            dependsOn(tasks.named("quarkusBuild"))
-          }
         }
 
-        if (hasLegacyQuarkus) {
-          tasks.named("compileIntTestJava").configure {
-            dependsOn(tasks.named("compileQuarkusTestGeneratedSourcesJava"))
-          }
-        }
-
-        tasks.named("check").configure { dependsOn(testTask) }
-      }
-
-      if (hasLegacyQuarkus) {
-        sources { java.srcDirs(tasks.named("quarkusGenerateCodeTests")) }
+        checkTask.configure { dependsOn(testTask) }
       }
     }
+  }
+}
+
+if (plugins.hasPlugin("io.quarkus")) {
+  // This directory somehow disappears... Maybe some weird Quarkus code.
+  val testFixturesDir = layout.buildDirectory.dir("resources/testFixtures")
+  tasks.named("quarkusGenerateCodeTests").configure {
+    doFirst { testFixturesDir.get().asFile.mkdirs() }
+  }
+  tasks.withType<Test>().configureEach { doFirst { testFixturesDir.get().asFile.mkdirs() } }
+
+  val compileIntTestJavaTask = tasks.named("compileIntTestJava")
+  val quarkusGenerateCodeTestsTask = tasks.named("quarkusGenerateCodeTests")
+  val buildDir = layout.buildDirectory
+  testing.suites.named<JvmTestSuite>("intTest") {
+    targets.all {
+      testTask.configure {
+        compileIntTestJavaTask.configure {
+          dependsOn("compileQuarkusTestGeneratedSourcesJava")
+        }
+
+        // For Quarkus...
+        //
+        // io.quarkus.test.junit.IntegrationTestUtil.determineBuildOutputDirectory(java.net.URL)
+        // is not smart enough :(
+        systemProperty("build.output.directory", buildDir.asFile.get())
+        dependsOn("quarkusBuild")
+      }
+      checkTask.configure { dependsOn(testTask) }
+    }
+    sources { java.srcDirs(quarkusGenerateCodeTestsTask) }
   }
 }
 

@@ -50,7 +50,10 @@ nessieQuarkusApp {
     includeTasks(tasks.withType<GatlingRunTask>()) {
       jvmArgs = listOf("-Dsim.users=10", "-Dnessie.uri=${extra["quarkus.http.test-url"]}/api/v2")
     }
-    environmentNonInput.put("HTTP_ACCESS_LOG_LEVEL", testLogLevel())
+    environmentNonInput.put(
+      "HTTP_ACCESS_LOG_LEVEL",
+      providers.systemProperty("test.log.level").getOrElse("WARN").uppercase(),
+    )
     jvmArgumentsNonInput.add("-XX:SelfDestructTimer=30")
     systemProperties.put("nessie.server.send-stacktrace-to-client", "true")
     systemProperties.putAll(providers.systemPropertiesPrefixedBy("nessie."))
