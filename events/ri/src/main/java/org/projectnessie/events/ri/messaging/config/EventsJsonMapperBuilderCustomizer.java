@@ -13,18 +13,18 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
-package org.projectnessie.server.catalog;
+package org.projectnessie.events.ri.messaging.config;
 
-import com.fasterxml.jackson.databind.ObjectMapper;
-import io.quarkus.jackson.ObjectMapperCustomizer;
+import io.quarkus.jackson.JsonMapperBuilderCustomizer;
 import io.quarkus.runtime.Startup;
 import jakarta.inject.Singleton;
+import tools.jackson.databind.json.JsonMapper;
 
 @Startup
 @Singleton
-public class CatalogObjectMapperCustomizer implements ObjectMapperCustomizer {
+public class EventsJsonMapperBuilderCustomizer implements JsonMapperBuilderCustomizer {
   @Override
-  public void customize(ObjectMapper objectMapper) {
-    objectMapper.findAndRegisterModules(); // Mostly for Guava / Immutables
+  public void customize(JsonMapper.Builder builder) {
+    builder.findAndAddModules(); // to register JDK8 module
   }
 }

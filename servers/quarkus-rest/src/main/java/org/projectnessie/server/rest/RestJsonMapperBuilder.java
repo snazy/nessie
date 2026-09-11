@@ -15,17 +15,17 @@
  */
 package org.projectnessie.server.rest;
 
-import com.fasterxml.jackson.databind.ObjectMapper;
-import com.fasterxml.jackson.databind.SerializationFeature;
-import io.quarkus.jackson.ObjectMapperCustomizer;
+import io.quarkus.jackson.JsonMapperBuilderCustomizer;
 import jakarta.inject.Singleton;
+import tools.jackson.databind.SerializationFeature;
+import tools.jackson.databind.json.JsonMapper;
 
 @Singleton
-public class RegisterObjectMapper implements ObjectMapperCustomizer {
+public class RestJsonMapperBuilder implements JsonMapperBuilderCustomizer {
 
   @Override
-  public void customize(ObjectMapper mapper) {
-    mapper.enable(SerializationFeature.INDENT_OUTPUT);
-    mapper.disable(SerializationFeature.FAIL_ON_EMPTY_BEANS);
+  public void customize(JsonMapper.Builder builder) {
+    builder.enable(SerializationFeature.INDENT_OUTPUT);
+    builder.disable(SerializationFeature.FAIL_ON_EMPTY_BEANS);
   }
 }
